@@ -13,6 +13,7 @@
   "type": "module",
   "dependencies": {
     "@google/genai": "^2.6.0",
+    "@huggingface/inference": "^4.13.18",
     "@qdrant/js-client-rest": "^1.18.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",

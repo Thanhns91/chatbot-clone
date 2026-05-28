@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import { createCollection } from "./qdrant.js";
+
 dotenv.config();
 
 const app = express();
@@ -16,13 +17,11 @@ app.use("/upload", uploadRoutes);
 app.use("/chat", chatRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Backend running");
+  res.send("Backend Hugging Face RAG running");
 });
 
 app.listen(3000, async () => {
   await createCollection();
 
-  console.log(
-    "Server running at http://localhost:3000"
-  );
+  console.log("Server running at http://localhost:3000");
 });

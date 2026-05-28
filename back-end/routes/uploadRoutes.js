@@ -4,24 +4,15 @@ import fs from "fs";
 import { PDFParse } from "pdf-parse";
 import { v4 as uuidv4 } from "uuid";
 
-import { ai } from "../gemini.js";
 import { qdrant, COLLECTION_NAME } from "../qdrant.js";
 import { semanticChunk } from "../chunking.js";
+import { embedText } from "../huggingface.js";
 
 const router = express.Router();
 
 const upload = multer({
   dest: "uploads/",
 });
-
-async function embedText(text) {
-  const result = await ai.models.embedContent({
-    model: "gemini-embedding-001",
-    contents: text,
-  });
-
-  return result.embeddings[0].values;
-}
 
 router.post("/", upload.single("file"), async (req, res) => {
   try {
@@ -32,11 +23,9 @@ router.post("/", upload.single("file"), async (req, res) => {
     });
 
     const pdfData = await parser.getText();
-
     const text = pdfData.text;
 
     const chunks = semanticChunk(text);
-
     const documentId = uuidv4();
 
     const points = [];
@@ -49,6 +38,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         vector,
         payload: {
           documentId,
+          fileName: req.file.originalname,
           text: chunks[i],
           chunkIndex: i,
         },
@@ -71,6 +61,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     res.status(500).json({
       error: "Upload failed",
+      detail: error.message,
     });
   }
 });
