@@ -1,0 +1,15 @@
+.chat-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #ffffff;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.chat-layout__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

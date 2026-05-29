@@ -1,0 +1,87 @@
+.welcome-screen {
+  flex: 1;
+  padding-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-icon {
+  margin-bottom: 25px;
+  color: #5239ef;
+  font-size: 72px;
+  line-height: 1;
+}
+
+.welcome-title {
+  margin-bottom: 18px;
+  color: #132b48;
+  font-size: 43px;
+  font-weight: 600;
+}
+
+.welcome-description {
+  margin: 0;
+  color: #415879;
+  font-size: 24px;
+}
+
+.chat-input-area {
+  height: 105px;
+  flex-shrink: 0;
+  padding: 0 30px;
+  border-top: 1px solid #e3e8f0;
+  background-color: #ffffff;
+
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.chat-action-btn.btn {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 50%;
+  border-color: #d9e0e9;
+  color: #73849a;
+  font-size: 20px;
+  background-color: #ffffff;
+}
+
+.chat-action-btn.btn:hover {
+  color: #5239ef;
+  border-color: #5239ef;
+  background-color: #ffffff;
+}
+
+.message-input.form-control {
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid #d9e0e9;
+  border-radius: 10px;
+  color: #263c57;
+  font-size: 16px;
+  box-shadow: none;
+}
+
+.message-input.form-control:focus {
+  border-color: #5339ef;
+}
+
+.send-btn.btn {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: #0db5ad;
+  font-size: 20px;
+}
+
+.send-btn.btn:hover {
+  background-color: #079c95;
+}

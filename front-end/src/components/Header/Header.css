@@ -1,0 +1,71 @@
+.chat-header {
+  height: 84px;
+  flex-shrink: 0;
+  padding: 0;
+  border-bottom: 1px solid #e3e8f0;
+  background-color: #ffffff;
+}
+
+.header-container {
+  height: 100%;
+  padding: 0 30px 0 40px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: #162d4b;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.brand i {
+  color: #5239ef;
+  font-size: 28px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon-btn.btn {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  color: #55667d;
+  font-size: 20px;
+  text-decoration: none;
+}
+
+.header-icon-btn.btn:hover {
+  color: #5239ef;
+}
+
+.login-btn.btn,
+.register-btn.btn {
+  height: 44px;
+  margin-left: 10px;
+  padding: 0 22px;
+  border-radius: 11px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.login-btn.btn {
+  border-color: #dfe5ee;
+  color: #122740;
+  background-color: #ffffff;
+}
+
+.register-btn.btn {
+  border: none;
+  background-color: #5339ef;
+}
+
+.register-btn.btn:hover {
+  background-color: #452cd9;
+}
