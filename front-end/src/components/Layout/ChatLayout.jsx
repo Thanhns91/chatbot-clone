@@ -1,6 +1,6 @@
 import React from 'react';
 import './ChatLayout.css';
-import Sidebar from '../components/Sidebar/Sidebar';
+import Sidebar from './Sidebar/Sidebar';
 
 const ChatLayout = ({ children, conversations, activeId, onSelect, onNew }) => {
   return (

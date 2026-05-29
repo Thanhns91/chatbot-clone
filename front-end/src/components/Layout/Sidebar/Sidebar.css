@@ -6,7 +6,7 @@
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background-image: url('../../assets/images/2.png');
+  background-image: url('./src/assets/images/2.png');
   background-size: cover;
   background-position: center;
 }
