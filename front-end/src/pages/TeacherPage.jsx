@@ -66,14 +66,26 @@ export default function TeacherPage({ user, onLogout }) {
 
   const setStatus = (id, status) =>
     setSubmissions((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status } : s))
+      prev.map((s) => (s.id === id ? { ...s, status } : s)),
     );
 
   return (
     <div className="td-root">
       <nav className="td-nav">
         <div className="td-nav-brand">
-          <div className="td-nav-icon">🎓</div>
+          {/* Icon giáo viên */}
+          <div className="td-nav-brand">
+            <div className="td-nav-icon">
+              <img
+                src="/src/assets/images/6.png"
+                alt="Teacher"
+                width={28}
+                height={28}
+                style={{ objectFit: "contain" }}
+              />
+            </div>
+          </div>
+
           <div>
             <div className="td-nav-title">Teacher Dashboard</div>
             <div className="td-nav-subtitle">
@@ -90,8 +102,9 @@ export default function TeacherPage({ user, onLogout }) {
             <div className="td-nav-user-role">Teacher</div>
           </div>
 
+          {/* Nút logout */}
           <button className="td-logout-btn" onClick={onLogout}>
-            <i className="bi bi-box-arrow-right"></i>
+            <i className="ti ti-logout me-1"></i>
             Logout
           </button>
         </div>
@@ -102,18 +115,22 @@ export default function TeacherPage({ user, onLogout }) {
 
         <div className="td-panel">
           <div className="td-panel-tabs">
+            {/* Tab upload */}
             <TabBtn
               active={activeTab === "upload"}
               onClick={() => setActiveTab("upload")}
             >
-              ↑ Upload Materials
+              <i className="ti ti-upload me-2"></i>
+              Upload Materials
             </TabBtn>
 
+            {/* Tab review */}
             <TabBtn
               active={activeTab === "review"}
               onClick={() => setActiveTab("review")}
             >
-              📄 Review Submissions
+              <i className="ti ti-file-check me-2"></i>
+              Review Submissions
               {pending > 0 && <span className="td-tab-badge">{pending}</span>}
             </TabBtn>
           </div>

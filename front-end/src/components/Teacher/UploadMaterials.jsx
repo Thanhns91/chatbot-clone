@@ -17,7 +17,11 @@ export default function UploadMaterials() {
         setDragOver(false);
       }}
     >
-      <div className="td-upload-icon">📤</div>
+      {/* Icon upload */}
+      <div className="td-upload-icon">
+        <i className="ti ti-cloud-upload"></i>
+      </div>
+
       <div className="td-upload-title">Click to upload or drag &amp; drop</div>
       <div className="td-upload-sub">PDF, DOCX, PPTX — max 20 MB</div>
 

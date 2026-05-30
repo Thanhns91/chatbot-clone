@@ -1,26 +1,27 @@
-/* AdminDashboard.css */
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Fraunces:wght@600;700&display=swap");
 
-*,
-*::before,
-*::after {
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
 :root {
-  --bg: #eef1f7;
+  --bg: #f4f5fb;
   --surface: #ffffff;
   --border: #e2e6ef;
   --border-hover: #c5cad5;
   --text-primary: #1a1f2e;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
-  --accent: #e8470a;
-  --accent-light: #fff3ef;
-  --blue: #3b5bdb;
-  --blue-light: #eef2ff;
+
+  /* Đổi accent thành tím giống chatbot */
+  --accent: #5239ef;
+  --accent-dark: #3d2ee0;
+  --accent-light: #eeebfd;
+
+  --blue: #5239ef;
+  --blue-light: #eeebfd;
   --green: #16a34a;
   --green-light: #f0fdf4;
   --green-border: #bbf7d0;
@@ -29,6 +30,7 @@
   --red-border: #fecaca;
   --yellow: #ca8a04;
   --yellow-light: #fefce8;
+
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.07);
   --shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   --radius: 14px;
@@ -37,17 +39,11 @@
 }
 
 @keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── Root ──────────────────────────────────────────────── */
+/* ─── Root ───────────────────────────────────────────────── */
 .ad-root {
   font-family: var(--font-body);
   background: var(--bg);
@@ -55,7 +51,7 @@
   color: var(--text-primary);
 }
 
-/* ─── Navbar ────────────────────────────────────────────── */
+/* ─── Navbar ─────────────────────────────────────────────── */
 .ad-nav {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -75,6 +71,7 @@
   gap: 10px;
 }
 
+/* Icon nav đổi sang tím */
 .ad-nav-icon {
   width: 38px;
   height: 38px;
@@ -84,6 +81,7 @@
   align-items: center;
   justify-content: center;
   font-size: 18px;
+  color: #ffffff;
 }
 
 .ad-nav-title {
@@ -109,13 +107,13 @@
   font-weight: 500;
   text-align: right;
 }
+
 .ad-nav-user-role {
   font-size: 12px;
   color: var(--text-secondary);
   text-align: right;
 }
 
-/* Logout button */
 .ad-logout-btn {
   display: flex;
   align-items: center;
@@ -128,26 +126,22 @@
   font-weight: 500;
   color: #374151;
   cursor: pointer;
-  transition:
-    border-color 0.15s,
-    color 0.15s,
-    background 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-
 .ad-logout-btn:hover {
   border-color: #dc2626;
   color: #dc2626;
   background: #fff5f5;
 }
 
-/* ─── Main ──────────────────────────────────────────────── */
+/* ─── Main ───────────────────────────────────────────────── */
 .ad-main {
   padding: 28px 32px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-/* ─── Stats ─────────────────────────────────────────────── */
+/* ─── Stats ──────────────────────────────────────────────── */
 .ad-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -165,23 +159,15 @@
   justify-content: space-between;
   box-shadow: var(--shadow-sm);
   animation: fadeUp 0.35s ease both;
-  transition:
-    box-shadow 0.2s,
-    transform 0.2s;
+  transition: box-shadow 0.2s, transform 0.2s;
 }
 .ad-stat-card:hover {
   box-shadow: var(--shadow);
   transform: translateY(-2px);
 }
-.ad-stat-card:nth-child(1) {
-  animation-delay: 0.05s;
-}
-.ad-stat-card:nth-child(2) {
-  animation-delay: 0.1s;
-}
-.ad-stat-card:nth-child(3) {
-  animation-delay: 0.15s;
-}
+.ad-stat-card:nth-child(1) { animation-delay: 0.05s; }
+.ad-stat-card:nth-child(2) { animation-delay: 0.10s; }
+.ad-stat-card:nth-child(3) { animation-delay: 0.15s; }
 
 .ad-stat-label {
   font-size: 11px;
@@ -208,17 +194,13 @@
   justify-content: center;
   font-size: 22px;
 }
-.ad-stat-icon--blue {
-  background: var(--blue-light);
-}
-.ad-stat-icon--green {
-  background: var(--green-light);
-}
-.ad-stat-icon--red {
-  background: var(--red-light);
-}
 
-/* ─── Panel ─────────────────────────────────────────────── */
+/* Icon màu tím thay vì xanh dương */
+.ad-stat-icon--blue  { background: var(--accent-light); color: var(--accent); }
+.ad-stat-icon--green { background: var(--green-light);  color: var(--green);  }
+.ad-stat-icon--red   { background: var(--red-light);    color: var(--red);    }
+
+/* ─── Panel ──────────────────────────────────────────────── */
 .ad-panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -258,14 +240,12 @@
 }
 .ad-tab-btn--active {
   background: var(--surface);
-  color: var(--text-primary);
+  color: var(--accent);
   border-color: var(--border);
   box-shadow: var(--shadow-sm);
 }
 
-.ad-panel-body {
-  padding: 24px;
-}
+.ad-panel-body { padding: 24px; }
 
 .ad-panel-header {
   display: flex;
@@ -285,7 +265,7 @@
   color: var(--text-secondary);
 }
 
-/* ─── Table ─────────────────────────────────────────────── */
+/* ─── Table ──────────────────────────────────────────────── */
 .ad-table-wrap {
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -318,19 +298,15 @@
   border-bottom: 1px solid var(--border);
   transition: background 0.12s;
 }
-.ad-table tbody tr:last-child {
-  border-bottom: none;
-}
-.ad-table tbody tr:hover {
-  background: #f8f9fc;
-}
+.ad-table tbody tr:last-child { border-bottom: none; }
+.ad-table tbody tr:hover { background: #f8f7fe; }
 
 .ad-table td {
   padding: 14px 16px;
   vertical-align: middle;
 }
 
-/* ─── Role Badge ────────────────────────────────────────── */
+/* ─── Role Badge ─────────────────────────────────────────── */
 .ad-role-badge {
   display: inline-block;
   padding: 3px 10px;
@@ -339,9 +315,9 @@
   font-weight: 600;
 }
 .ad-role-badge--teacher {
-  background: var(--blue-light);
-  color: var(--blue);
-  border: 1px solid #c7d2fe;
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1px solid #c7bffa;
 }
 .ad-role-badge--member {
   background: var(--green-light);
@@ -349,12 +325,12 @@
   border: 1px solid var(--green-border);
 }
 .ad-role-badge--admin {
-  background: var(--accent-light);
-  color: var(--accent);
-  border: 1px solid #fcd5c5;
+  background: #f3f0ff;
+  color: #5239ef;
+  border: 1px solid #c7bffa;
 }
 
-/* ─── Status Badge ──────────────────────────────────────── */
+/* ─── Status Badge ───────────────────────────────────────── */
 .ad-status-badge {
   display: inline-block;
   padding: 3px 10px;
@@ -373,7 +349,7 @@
   border: 1px solid var(--red-border);
 }
 
-/* ─── Inline Role Select ────────────────────────────────── */
+/* ─── Role Select ────────────────────────────────────────── */
 .ad-role-select {
   appearance: none;
   -webkit-appearance: none;
@@ -385,21 +361,19 @@
   border: 1px solid transparent;
   cursor: pointer;
   outline: none;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
 }
 .ad-role-select:focus {
-  box-shadow: 0 0 0 2px rgba(59, 91, 219, 0.25);
-  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(82, 57, 239, 0.25);
+  border-color: var(--accent);
 }
 .ad-role-select--teacher {
-  background-color: var(--blue-light);
-  color: var(--blue);
-  border-color: #c7d2fe;
+  background-color: var(--accent-light);
+  color: var(--accent);
+  border-color: #c7bffa;
 }
 .ad-role-select--member {
   background-color: var(--green-light);
@@ -407,12 +381,12 @@
   border-color: var(--green-border);
 }
 .ad-role-select--admin {
-  background-color: var(--accent-light);
-  color: var(--accent);
-  border-color: #fcd5c5;
+  background-color: #f3f0ff;
+  color: #5239ef;
+  border-color: #c7bffa;
 }
 
-/* ─── Block Button ──────────────────────────────────────── */
+/* ─── Block / Unblock Button ─────────────────────────────── */
 .ad-block-btn {
   display: inline-flex;
   align-items: center;
@@ -428,9 +402,7 @@
   border-radius: 6px;
   transition: background 0.15s;
 }
-.ad-block-btn:hover {
-  background: var(--red-light);
-}
+.ad-block-btn:hover { background: var(--red-light); }
 
 .ad-unblock-btn {
   display: inline-flex;
@@ -447,11 +419,9 @@
   border-radius: 6px;
   transition: background 0.15s;
 }
-.ad-unblock-btn:hover {
-  background: var(--green-light);
-}
+.ad-unblock-btn:hover { background: var(--green-light); }
 
-/* ─── AI Settings Panel ─────────────────────────────────── */
+/* ─── AI Settings ────────────────────────────────────────── */
 .ad-ai-settings {
   display: flex;
   flex-direction: column;
@@ -467,9 +437,7 @@
   border-radius: 10px;
   transition: border-color 0.15s;
 }
-.ad-setting-row:hover {
-  border-color: var(--border-hover);
-}
+.ad-setting-row:hover { border-color: var(--border-hover); }
 
 .ad-setting-label {
   font-size: 15px;
@@ -488,11 +456,7 @@
   height: 24px;
   flex-shrink: 0;
 }
-.ad-toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
+.ad-toggle input { opacity: 0; width: 0; height: 0; }
 .ad-toggle-slider {
   position: absolute;
   inset: 0;
@@ -513,9 +477,7 @@
   transition: transform 0.2s;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
-.ad-toggle input:checked + .ad-toggle-slider {
-  background: var(--blue);
-}
-.ad-toggle input:checked + .ad-toggle-slider::before {
-  transform: translateX(20px);
-}
+
+/* Toggle bật thì dùng màu tím */
+.ad-toggle input:checked + .ad-toggle-slider { background: var(--accent); }
+.ad-toggle input:checked + .ad-toggle-slider::before { transform: translateX(20px); }

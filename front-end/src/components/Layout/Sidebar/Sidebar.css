@@ -1,6 +1,6 @@
 .sidebar {
-  width: 360px;
-  min-width: 360px;
+  width: 300px;
+  min-width: 300px;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -11,11 +11,12 @@
   background-position: center;
 }
 
+/* Lớp phủ mờ lên ảnh nền */
 .sidebar::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(160, 210, 230, 0.35);
+  background: rgba(180, 195, 230, 0.35);
   backdrop-filter: blur(2px);
   z-index: 0;
 }
@@ -25,59 +26,86 @@
   z-index: 1;
 }
 
-/* Header */
+/* ===== HEADER ===== */
 .sidebar__header {
-  padding: 24px 20px 16px;
+  padding: 28px 20px 16px;
 }
 
+/* Hàng icon + tiêu đề */
+.sidebar__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+/* Ô vuông chứa icon */
+.sidebar__title-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(82, 57, 239, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #5239ef;
+  flex-shrink: 0;
+}
+
+/* Chữ "History" to */
 .sidebar__title {
-  font-size: 16px;
+  margin: 0;
+  font-size: 15px;
   font-weight: 600;
-  color: #1a2a3a;
-  margin: 0 0 14px;
-  letter-spacing: 0.01em;
+  color: #1a1f3a;
+  letter-spacing: -0.2px;
 }
 
-/* Search */
+/* Chữ "of reflection" nhỏ */
+.sidebar__subtitle {
+  margin: 0;
+  font-size: 11px;
+  color: #6b67a8;
+}
+
+/* ===== SEARCH ===== */
 .sidebar__search {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .sidebar__search-icon {
   position: absolute;
   left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
+  font-size: 14px;
+  color: #8b84c8;
   pointer-events: none;
-  z-index: 2;
 }
 
 .sidebar__search-input {
   width: 100%;
-  padding: 9px 14px 9px 36px;
+  padding: 9px 12px 9px 34px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(82, 57, 239, 0.2);
   background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(8px);
+  color: #1a1f3a;
   font-size: 13.5px;
-  color: #2c4a5a;
   outline: none;
-  box-sizing: border-box;
-  transition: border 0.2s, background 0.2s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .sidebar__search-input::placeholder {
-  color: #7a9db5;
+  color: #8b84c8;
 }
 
 .sidebar__search-input:focus {
-  border-color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(82, 57, 239, 0.4);
+  background: rgba(255, 255, 255, 0.75);
 }
 
-/* Conversation list */
+/* ===== DANH SÁCH CONVERSATION ===== */
 .sidebar__list {
   flex: 1;
   overflow-y: auto;
@@ -91,27 +119,39 @@
   width: 4px;
 }
 .sidebar__list::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.4);
+  background: rgba(82, 57, 239, 0.25);
   border-radius: 4px;
 }
 
+/* Trạng thái trống */
 .sidebar__empty {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #6b8fa8;
+  gap: 8px;
+  color: #6b67a8;
   font-size: 13px;
-  opacity: 0.85;
   padding-top: 40px;
 }
 
+.sidebar__empty-icon {
+  font-size: 28px;
+  opacity: 0.6;
+}
+
+.sidebar__empty p {
+  margin: 0;
+}
+
+/* Mỗi item hội thoại */
 .sidebar__item {
   padding: 10px 14px;
   border-radius: 10px;
   cursor: pointer;
   font-size: 13.5px;
-  color: #1a3040;
+  color: #1a1f3a;
   transition: background 0.15s;
   white-space: nowrap;
   overflow: hidden;
@@ -120,17 +160,18 @@
 }
 
 .sidebar__item:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(82, 57, 239, 0.12);
 }
 
 .sidebar__item--active {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(82, 57, 239, 0.18);
   font-weight: 500;
+  color: #3a2db5;
 }
 
-/* New reflection button */
+/* ===== NÚT NEW CHAT ===== */
 .sidebar__footer {
-  padding: 16px 20px 24px;
+  padding: 16px 20px 28px;
 }
 
 .sidebar__new-btn {
@@ -138,19 +179,21 @@
   padding: 14px;
   border-radius: 14px;
   border: none;
-  background: #4f3ef5;
+  background: #5239ef;
   color: #ffffff;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
-  box-shadow: 0 4px 18px rgba(79, 62, 245, 0.35);
+  box-shadow: 0 4px 18px rgba(82, 57, 239, 0.35);
 }
 
 .sidebar__new-btn:hover {
   background: #3d2ee0;
-  box-shadow: 0 6px 22px rgba(79, 62, 245, 0.45);
+  box-shadow: 0 6px 22px rgba(82, 57, 239, 0.45);
 }
 
 .sidebar__new-btn:active {

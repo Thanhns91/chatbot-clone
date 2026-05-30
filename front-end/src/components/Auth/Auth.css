@@ -293,3 +293,349 @@
   background: #4338ca;
   border-color: #4338ca;
 }
+/* ===== AUTH OVERLAY & CARD ===== */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.auth-card {
+  position: relative;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 36px 40px 32px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 40px rgba(99, 102, 241, 0.12), 0 2px 12px rgba(0, 0, 0, 0.08);
+  animation: slideUp 0.28s cubic-bezier(0.34, 1.2, 0.64, 1);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ===== NÚT ĐÓNG ===== */
+.auth-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.auth-close:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+/* ===== LOGO & TIÊU ĐỀ ===== */
+.auth-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.auth-icon img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.auth-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+  letter-spacing: -0.3px;
+}
+
+.auth-subtitle {
+  text-align: center;
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0 0 20px;
+}
+
+/* ===== NÚT GOOGLE ===== */
+.auth-google {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  cursor: pointer;
+  margin-bottom: 16px;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.auth-google:hover {
+  border-color: #c7d2fe;
+  background: #f8f9ff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+}
+
+/* ===== ĐƯỜNG KẺ PHÂN CÁCH ===== */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.auth-divider__line {
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+.auth-divider__text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+}
+
+/* ===== THÔNG BÁO LỖI ===== */
+.auth-error {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #e11d48;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+/* ===== FORM ===== */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.auth-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.auth-input:focus {
+  border-color: #6366f1;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* Input có icon mắt bên phải */
+.auth-input--password {
+  padding-right: 42px;
+}
+
+.auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* ===== NÚT HIỆN/ẨN MẬT KHẨU ===== */
+.auth-eye {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  transition: color 0.15s;
+}
+.auth-eye:hover {
+  color: #6366f1;
+}
+
+/* ===== NÚT SUBMIT ===== */
+.auth-submit {
+  width: 100%;
+  margin-top: 4px;
+  padding: 11px;
+  background: #6366f1;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.auth-submit:hover {
+  background: #4f46e5;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+.auth-submit:active {
+  transform: scale(0.98);
+}
+
+/* ===== LINK CHUYỂN TRANG ===== */
+.auth-switch {
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+  margin: 18px 0 0;
+}
+.auth-switch__link {
+  background: none;
+  border: none;
+  color: #6366f1;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+.auth-switch__link:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+/* ===== DEMO ACCOUNTS ===== */
+.auth-demo {
+  margin-top: 20px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 16px;
+}
+.auth-demo__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.1em;
+  text-align: center;
+  margin: 0 0 10px;
+}
+
+.auth-demo__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 13px;
+  margin-bottom: 6px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.auth-demo__item:last-child {
+  margin-bottom: 0;
+}
+
+.auth-demo__role {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.auth-demo__info {
+  font-size: 11.5px;
+  color: #64748b;
+  font-family: monospace;
+}
+
+/* Màu từng loại tài khoản demo */
+.auth-demo__item--red  { border-color: #fecaca; }
+.auth-demo__item--red:hover { background: #fff1f2; border-color: #fca5a5; }
+.auth-demo__item--red  .auth-demo__role { background: #fff1f2; color: #e11d48; }
+
+.auth-demo__item--blue { border-color: #bfdbfe; }
+.auth-demo__item--blue:hover { background: #eff6ff; border-color: #93c5fd; }
+.auth-demo__item--blue .auth-demo__role { background: #eff6ff; color: #2563eb; }
+
+.auth-demo__item--green { border-color: #bbf7d0; }
+.auth-demo__item--green:hover { background: #f0fdf4; border-color: #86efac; }
+.auth-demo__item--green .auth-demo__role { background: #f0fdf4; color: #16a34a; }
+
+/* ===== AUTH BUTTONS (header) ===== */
+.auth-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.auth-btn {
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.auth-btn--outline {
+  background: #ffffff;
+  border: 1.5px solid #d9d9d9;
+  color: #111827;
+}
+.auth-btn--outline:hover {
+  background: #f8fafc;
+}
+
+.auth-btn--solid {
+  background: #6366f1;
+  border: 1.5px solid #6366f1;
+  color: #ffffff;
+}
+.auth-btn--solid:hover {
+  background: #4f46e5;
+  border-color: #4f46e5;
+}

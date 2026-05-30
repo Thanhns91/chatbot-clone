@@ -69,7 +69,7 @@ export default function AdminPage({ user, onLogout }) {
 
   const handleChangeRole = (id, newRole) =>
     setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
+      prev.map((u) => (u.id === id ? { ...u, role: newRole } : u)),
     );
 
   const handleToggleBlock = (id) =>
@@ -77,20 +77,30 @@ export default function AdminPage({ user, onLogout }) {
       prev.map((u) =>
         u.id === id
           ? { ...u, status: u.status === "active" ? "blocked" : "active" }
-          : u
-      )
+          : u,
+      ),
     );
 
   const handleToggleAi = (sid) =>
     setAiSettings((prev) =>
-      prev.map((s) => (s.id === sid ? { ...s, on: !s.on } : s))
+      prev.map((s) => (s.id === sid ? { ...s, on: !s.on } : s)),
     );
 
   return (
     <div className="ad-root">
       <nav className="ad-nav">
         <div className="ad-nav-brand">
-          <div className="ad-nav-icon">🛡️</div>
+          {/* Icon admin */}
+          <div className="ad-nav-icon">
+            <img
+              src="/src/assets/images/5.png"
+              alt="Admin"
+              width={28}
+              height={28}
+              style={{ objectFit: "contain" }}
+            />
+          </div>
+
           <div>
             <div className="ad-nav-title">Admin Dashboard</div>
             <div className="ad-nav-subtitle">
@@ -105,8 +115,9 @@ export default function AdminPage({ user, onLogout }) {
             <div className="ad-nav-user-role">Administrator</div>
           </div>
 
+          {/* Nút logout */}
           <button className="ad-logout-btn" onClick={onLogout}>
-            <i className="bi bi-box-arrow-right"></i>
+            <i className="ti ti-logout me-1"></i>
             Logout
           </button>
         </div>
@@ -121,22 +132,22 @@ export default function AdminPage({ user, onLogout }) {
 
         <div className="ad-panel">
           <div className="ad-panel-tabs">
+            {/* Tab User Management */}
             <button
-              className={`ad-tab-btn ${
-                activeTab === "users" ? "ad-tab-btn--active" : ""
-              }`}
+              className={`ad-tab-btn ${activeTab === "users" ? "ad-tab-btn--active" : ""}`}
               onClick={() => setActiveTab("users")}
             >
-              👤 User Management
+              <i className="ti ti-users me-2"></i>
+              User Management
             </button>
 
+            {/* Tab AI Settings */}
             <button
-              className={`ad-tab-btn ${
-                activeTab === "ai" ? "ad-tab-btn--active" : ""
-              }`}
+              className={`ad-tab-btn ${activeTab === "ai" ? "ad-tab-btn--active" : ""}`}
               onClick={() => setActiveTab("ai")}
             >
-              〜 AI Settings
+              <i className="ti ti-brain me-2"></i>
+              AI Settings
             </button>
           </div>
 
