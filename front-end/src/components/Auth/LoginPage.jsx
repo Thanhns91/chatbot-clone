@@ -27,29 +27,47 @@ const GoogleButton = () => (
   </button>
 );
 
-const DEMO_ACCOUNTS = [
-  { role: 'Admin',   email: 'admin@example.com',   password: 'admin123',   color: 'red'   },
-  { role: 'Teacher', email: 'teacher@example.com', password: 'teacher123', color: 'blue'  },
-  { role: 'Member',  email: 'member@example.com',  password: 'member123',  color: 'green' },
-];
+// const DEMO_ACCOUNTS = [
+//   { role: 'Admin',   email: 'admin@example.com',   password: 'admin123',   color: 'red'   },
+//   { role: 'Teacher', email: 'teacher@example.com', password: 'teacher123', color: 'blue'  },
+//   { role: 'Member',  email: 'member@example.com',  password: 'member123',  color: 'green' },
+// ];
 
 const LoginPage = ({ onCancel, onLoginSuccess, onSwitchToRegister }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ email: '', password: '' });
 
-  const fillDemo = (acc) => {
-    setForm({ email: acc.email, password: acc.password });
-    setError('');
-  };
+  // const fillDemo = (acc) => {
+  //   setForm({ email: acc.email, password: acc.password });
+  //   setError('');
+  // };
 
-  const handleSignIn = (e) => {
-    e.preventDefault();
-    setError('');
-    const result = login(form.email, form.password);
-    if (!result.success) { setError(result.message); return; }
-    onLoginSuccess?.(result.user.role, result.user);
-  };
+ const handleSignIn = async (e) => {
+  e.preventDefault();
+
+  setError("");
+
+  try {
+    const result = await login(
+      form.email,
+      form.password
+    );
+
+    if (!result.success) {
+      setError(result.message);
+      return;
+    }
+
+    onLoginSuccess?.(
+      result.user.role,
+      result.user
+    );
+  } catch (error) {
+    console.error(error);
+    setError("Login failed");
+  }
+};
 
   return (
     <>
@@ -384,7 +402,7 @@ const LoginPage = ({ onCancel, onLoginSuccess, onSwitchToRegister }) => {
             </button>
           </p>
 
-          <div className="auth-demo">
+          {/* <div className="auth-demo">
             <p className="auth-demo__label">DEMO ACCOUNTS</p>
             {DEMO_ACCOUNTS.map((acc) => (
               <button key={acc.role} type="button"
@@ -395,7 +413,7 @@ const LoginPage = ({ onCancel, onLoginSuccess, onSwitchToRegister }) => {
                 <span className="auth-demo__info">{acc.email} / {acc.password}</span>
               </button>
             ))}
-          </div>
+          </div> */}
 
         </div>
       </div>

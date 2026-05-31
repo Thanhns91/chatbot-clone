@@ -1,37 +1,22 @@
-const ROLES = ["Teacher", "Member"];
+export default function UserTable({
+  users,
+  onChangeRole,
+  onToggleBlock,
+  onDeleteUser,
+}) {
+  const visibleUsers = users;
 
-function StatusBadge({ status }) {
-  return (
-    <span className={`ad-status-badge ad-status-badge--${status}`}>
-      {status}
-    </span>
-  );
-}
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
 
-function RoleSelect({ userId, currentRole, onChangeRole }) {
-  return (
-    <select
-      className={`ad-role-select ad-role-select--${currentRole.toLowerCase()}`}
-      value={currentRole}
-      onChange={(e) => onChangeRole(userId, e.target.value)}
-    >
-      {ROLES.map((r) => (
-        <option key={r} value={r}>
-          {r}
-        </option>
-      ))}
-    </select>
-  );
-}
+    return new Date(dateString).toLocaleDateString("en-CA");
+  };
 
-export default function UserTable({ users, onChangeRole, onToggleBlock }) {
   return (
-    <>
-      <div className="ad-panel-header">
-        <div className="ad-panel-title">All Users</div>
-        <div className="ad-panel-count">
-          {users.length} accounts (admin hidden)
-        </div>
+    <div className="ad-users">
+      <div className="ad-users-head">
+        <h2>All Users</h2>
+        <span>{visibleUsers.length} accounts</span>
       </div>
 
       <div className="ad-table-wrap">
@@ -48,43 +33,87 @@ export default function UserTable({ users, onChangeRole, onToggleBlock }) {
           </thead>
 
           <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td style={{ fontWeight: 500 }}>{u.name}</td>
-                <td style={{ color: "var(--text-secondary)" }}>{u.email}</td>
-                <td>
-                  <RoleSelect
-                    userId={u.id}
-                    currentRole={u.role}
-                    onChangeRole={onChangeRole}
-                  />
-                </td>
-                <td style={{ color: "var(--text-secondary)" }}>{u.joinDate}</td>
-                <td>
-                  <StatusBadge status={u.status} />
-                </td>
-                <td>
-                  {u.status === "active" ? (
-                    <button
-                      className="ad-block-btn"
-                      onClick={() => onToggleBlock(u.id)}
+            {visibleUsers.map((user) => {
+              const isAdmin = user.role === "admin";
+
+              return (
+                <tr key={user.userId}>
+                  <td>{user.fullName}</td>
+                  <td>{user.email}</td>
+
+                  <td>
+                    <select
+                      className={`ad-role-select ad-role-select--${user.role}`}
+                      value={user.role}
+                      disabled={isAdmin}
+                      onChange={(e) =>
+                        onChangeRole(user.userId, e.target.value)
+                      }
                     >
-                      ⊗ Block
-                    </button>
-                  ) : (
-                    <button
-                      className="ad-unblock-btn"
-                      onClick={() => onToggleBlock(u.id)}
+                      <option value="student">Student</option>
+                      <option value="teacher">Teacher</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </td>
+
+                  <td>{formatDate(user.createdAt)}</td>
+
+                  <td>
+                    <span
+                      className={`ad-status-badge ad-status-badge--${user.status}`}
                     >
-                      ✔ Unblock
-                    </button>
-                  )}
+                      {user.status}
+                    </span>
+                  </td>
+
+                  <td>
+                    {isAdmin ? (
+                      <span style={{ color: "#9ca3af", fontWeight: 600 }}>
+                        Protected
+                      </span>
+                    ) : (
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <button
+                          className={
+                            user.status === "blocked"
+                              ? "ad-action-btn ad-action-btn--unblock"
+                              : "ad-action-btn ad-action-btn--block"
+                          }
+                          onClick={() =>
+                            onToggleBlock(user.userId, user.status)
+                          }
+                        >
+                          {user.status === "blocked" ? "✓ Unblock" : "⊗ Block"}
+                        </button>
+
+                        <button
+                          className="ad-action-btn"
+                          style={{
+                            background: "#ef4444",
+                            color: "white",
+                            border: "none",
+                          }}
+                          onClick={() => onDeleteUser(user.userId)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+
+            {visibleUsers.length === 0 && (
+              <tr>
+                <td colSpan="6" style={{ textAlign: "center" }}>
+                  No users found
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
-    </>
+    </div>
   );
 }

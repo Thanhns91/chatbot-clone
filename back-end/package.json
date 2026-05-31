@@ -15,12 +15,16 @@
     "@google/genai": "^2.6.0",
     "@huggingface/inference": "^4.13.18",
     "@qdrant/js-client-rest": "^1.18.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "groq-sdk": "^1.2.0",
+    "mammoth": "^1.12.0",
     "multer": "^2.1.1",
+    "mysql2": "^3.22.4",
     "pdf-parse": "^2.4.5",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "xlsx": "^0.18.5"
   }
 }

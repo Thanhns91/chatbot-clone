@@ -1,63 +1,51 @@
-// ========================
-// DEMO ACCOUNTS
-// ========================
-const DEMO_ACCOUNTS = [
-  {
-    email: 'admin@example.com',
-    password: 'admin123',
-    role: 'admin',
-    name: 'Admin',
-  },
-  {
-    email: 'teacher@example.com',
-    password: 'teacher123',
-    role: 'teacher',
-    name: 'Teacher',
-  },
-  {
-    email: 'member@example.com',
-    password: 'member123',
-    role: 'member',
-    name: 'Member',
-  },
-];
+const API_URL = "http://localhost:3000";
 
-// ========================
-// LOGIN
-// ========================
-export const login = (email, password) => {
-  const user = DEMO_ACCOUNTS.find(
-    (acc) => acc.email === email && acc.password === password
-  );
+export const register = async (fullName, email, password) => {
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fullName,
+      email,
+      password,
+    }),
+  });
 
-  if (!user) {
-    return { success: false, message: 'Email hoặc mật khẩu không đúng.' };
+  return res.json();
+};
+
+export const login = async (email, password) => {
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    sessionStorage.setItem("currentUser", JSON.stringify(data.user));
   }
 
-  // Lưu vào sessionStorage
-  sessionStorage.setItem('currentUser', JSON.stringify(user));
-
-  return { success: true, user };
+  return data;
 };
 
-// ========================
-// LOGOUT
-// ========================
 export const logout = () => {
-  sessionStorage.removeItem('currentUser');
+  sessionStorage.removeItem("currentUser");
 };
 
-// ========================
-// GET CURRENT USER
-// ========================
 export const getCurrentUser = () => {
-  const raw = sessionStorage.getItem('currentUser');
+  const raw = sessionStorage.getItem("currentUser");
   return raw ? JSON.parse(raw) : null;
 };
 
-// ========================
-// CHECK ROLE
-// ========================
-export const isAdmin = () => getCurrentUser()?.role === 'admin';
-export const isTeacher = () => getCurrentUser()?.role === 'teacher';
-export const isMember = () => getCurrentUser()?.role === 'member';
+export const isAdmin = () => getCurrentUser()?.role === "admin";
+export const isTeacher = () => getCurrentUser()?.role === "teacher";
+export const isStudent = () => getCurrentUser()?.role === "student";

@@ -1,35 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 import "../components/Admin/Admin.css";
 import StatsCards from "../components/Admin/StatsCards";
 import UserTable from "../components/Admin/UserTable";
 import AISettings from "../components/Admin/AISettings";
 
-const initialUsers = [
-  {
-    id: 1,
-    name: "Teacher User",
-    email: "teacher@example.com",
-    role: "Teacher",
-    joinDate: "2025-03-10",
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "Member User",
-    email: "member@example.com",
-    role: "Member",
-    joinDate: "2026-08-05",
-    status: "active",
-  },
-  {
-    id: 3,
-    name: "John Doe",
-    email: "john231313@gmail.com",
-    role: "Member",
-    joinDate: "2026-02-28",
-    status: "active",
-  },
-];
+import {
+  getUsers,
+  updateUserStatus,
+  updateUserRole,
+  deleteUser,
+} from "../services/api";
 
 const initialAiSettings = [
   {
@@ -59,7 +40,7 @@ const initialAiSettings = [
 ];
 
 export default function AdminPage({ user, onLogout }) {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState([]);
   const [aiSettings, setAiSettings] = useState(initialAiSettings);
   const [activeTab, setActiveTab] = useState("users");
 
@@ -67,32 +48,81 @@ export default function AdminPage({ user, onLogout }) {
   const activeUsers = users.filter((u) => u.status === "active").length;
   const blockedUsers = users.filter((u) => u.status === "blocked").length;
 
-  const handleChangeRole = (id, newRole) =>
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
-    );
+  useEffect(() => {
+    async function fetchUsers() {
+      try {
+        const data = await getUsers();
+        setUsers(data);
+      } catch (error) {
+        console.error("Load users failed:", error);
+      }
+    }
 
-  const handleToggleBlock = (id) =>
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === id
-          ? { ...u, status: u.status === "active" ? "blocked" : "active" }
-          : u
-      )
-    );
+    fetchUsers();
+  }, []);
 
-  const handleToggleAi = (sid) =>
+  const reloadUsers = async () => {
+    try {
+      const data = await getUsers();
+      setUsers(data);
+    } catch (error) {
+      console.error("Reload users failed:", error);
+    }
+  };
+
+  const handleChangeRole = async (userId, newRole) => {
+    try {
+      await updateUserRole(userId, newRole);
+      await reloadUsers();
+    } catch (error) {
+      console.error("Update role failed:", error);
+      alert("Update role failed");
+    }
+  };
+
+  const handleToggleBlock = async (userId, currentStatus) => {
+    try {
+      const newStatus = currentStatus === "blocked" ? "active" : "blocked";
+
+      await updateUserStatus(userId, newStatus);
+      await reloadUsers();
+    } catch (error) {
+      console.error("Update status failed:", error);
+      alert("Update status failed");
+    }
+  };
+
+  const handleToggleAi = (sid) => {
     setAiSettings((prev) =>
       prev.map((s) => (s.id === sid ? { ...s, on: !s.on } : s))
     );
+  };
+
+  const handleDeleteUser = async (userId) => {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this user?"
+  );
+
+  if (!confirmDelete) return;
+
+  try {
+    await deleteUser(userId);
+    await reloadUsers();
+  } catch (error) {
+    console.error(error);
+    alert("Delete user failed");
+  }
+};
 
   return (
     <div className="ad-root">
       <nav className="ad-nav">
         <div className="ad-nav-brand">
           <div className="ad-nav-icon">🛡️</div>
+
           <div>
             <div className="ad-nav-title">Admin Dashboard</div>
+
             <div className="ad-nav-subtitle">
               AI Learning — User &amp; AI Management
             </div>
@@ -101,7 +131,10 @@ export default function AdminPage({ user, onLogout }) {
 
         <div className="ad-nav-right">
           <div>
-            <div className="ad-nav-user-name">{user?.name || "Admin User"}</div>
+            <div className="ad-nav-user-name">
+              {user?.name || user?.fullName || "Admin"}
+            </div>
+
             <div className="ad-nav-user-role">Administrator</div>
           </div>
 
@@ -146,6 +179,7 @@ export default function AdminPage({ user, onLogout }) {
                 users={users}
                 onChangeRole={handleChangeRole}
                 onToggleBlock={handleToggleBlock}
+                onDeleteUser={handleDeleteUser}
               />
             ) : (
               <AISettings settings={aiSettings} onToggle={handleToggleAi} />

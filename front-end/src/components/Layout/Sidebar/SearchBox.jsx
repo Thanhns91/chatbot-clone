@@ -1,4 +1,4 @@
-import React from 'react';
+import 'react';
 
 const SearchBox = ({ value, onChange, placeholder = 'Search' }) => {
   return (
