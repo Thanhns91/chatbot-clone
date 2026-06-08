@@ -57,8 +57,9 @@ export default function TeacherPage({ user, onLogout }) {
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [activeTab, setActiveTab] = useState("review");
 
+
   if (user?.role === "admin") {
-    return <AdminPage user={user} onLogout={onLogout} />;
+    return <AdminPage onLogout={onLogout} />;
   }
 
   const pending = submissions.filter((s) => s.status === "pending").length;
@@ -66,14 +67,24 @@ export default function TeacherPage({ user, onLogout }) {
 
   const setStatus = (id, status) =>
     setSubmissions((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status } : s))
+      prev.map((s) => (s.id === id ? { ...s, status } : s)),
     );
 
   return (
     <div className="td-root">
       <nav className="td-nav">
         <div className="td-nav-brand">
-          <div className="td-nav-icon">🎓</div>
+          <div className="td-nav-brand">
+            <div className="td-nav-icon">
+              <img
+                src="/src/assets/images/6.png"
+                alt="Teacher"
+                width={28}
+                height={28}
+                style={{ objectFit: "contain" }}
+              />
+            </div>
+          </div>
           <div>
             <div className="td-nav-title">Teacher Dashboard</div>
             <div className="td-nav-subtitle">
@@ -84,14 +95,11 @@ export default function TeacherPage({ user, onLogout }) {
 
         <div className="td-nav-right">
           <div className="td-nav-user">
-            <div className="td-nav-user-name">
-              {user?.name || "Teacher User"}
-            </div>
+            <div className="td-nav-user-name">{user?.name || "Teacher User"}</div>
             <div className="td-nav-user-role">Teacher</div>
           </div>
-
           <button className="td-logout-btn" onClick={onLogout}>
-            <i className="bi bi-box-arrow-right"></i>
+            <i className="ti ti-logout me-1"></i>
             Logout
           </button>
         </div>
@@ -99,31 +107,21 @@ export default function TeacherPage({ user, onLogout }) {
 
       <main className="td-main">
         <StatsCards pending={pending} approved={approved} />
-
         <div className="td-panel">
           <div className="td-panel-tabs">
-            <TabBtn
-              active={activeTab === "upload"}
-              onClick={() => setActiveTab("upload")}
-            >
-              ↑ Upload Materials
+            <TabBtn active={activeTab === "upload"} onClick={() => setActiveTab("upload")}>
+              <i className="ti ti-upload me-2"></i>
+              Upload Materials
             </TabBtn>
-
-            <TabBtn
-              active={activeTab === "review"}
-              onClick={() => setActiveTab("review")}
-            >
-              📄 Review Submissions
+            <TabBtn active={activeTab === "review"} onClick={() => setActiveTab("review")}>
+              <i className="ti ti-file-check me-2"></i>
+              Review Submissions
               {pending > 0 && <span className="td-tab-badge">{pending}</span>}
             </TabBtn>
           </div>
-
           <div className="td-panel-body">
             {activeTab === "review" ? (
-              <ReviewSubmissions
-                submissions={submissions}
-                setStatus={setStatus}
-              />
+              <ReviewSubmissions submissions={submissions} setStatus={setStatus} />
             ) : (
               <>
                 <div className="td-panel-header">

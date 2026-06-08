@@ -1,8 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ChatLayout.css';
 import Sidebar from './Sidebar/Sidebar';
+import Header from './Header/Header';
+import LibraryPanel from './LibraryPanel/LibraryPanel';
 
-const ChatLayout = ({ children, conversations, activeId, onSelect, onNew }) => {
+const ChatLayout = ({
+  children,
+  conversations,
+  setConversations,
+  activeId,
+  onSelect,
+  onNew,
+  headerRight,   // ✅ thêm prop này
+}) => {
+  const [libraryOpen, setLibraryOpen] = useState(false);
+
+  const handleToggleStar = (id) => {
+    setConversations?.((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, starred: !c.starred } : c))
+    );
+  };
+
   return (
     <div className="chat-layout">
       <Sidebar
@@ -10,9 +28,26 @@ const ChatLayout = ({ children, conversations, activeId, onSelect, onNew }) => {
         activeId={activeId}
         onSelect={onSelect}
         onNew={onNew}
+        onToggleStar={handleToggleStar}
       />
+
       <main className="chat-layout__main">
-        {children}
+        <Header
+          libraryOpen={libraryOpen}
+          onToggleLibrary={() => setLibraryOpen((v) => !v)}
+          headerRight={headerRight}   // ✅ truyền xuống Header
+        />
+
+        <div className="chat-layout__body">
+          <div className="chat-layout__content">
+            {children}
+          </div>
+
+          <LibraryPanel
+            open={libraryOpen}
+            onClose={() => setLibraryOpen(false)}
+          />
+        </div>
       </main>
     </div>
   );
