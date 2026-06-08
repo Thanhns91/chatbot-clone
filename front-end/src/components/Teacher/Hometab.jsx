@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis,
   Tooltip, ResponsiveContainer,
-  BarChart, Bar,
 } from "recharts";
 
 /* ── Per-tab chart data ── */

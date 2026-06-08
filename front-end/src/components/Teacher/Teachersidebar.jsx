@@ -1,6 +1,6 @@
 import React from "react";
 
-const TeacherSidebar = ({ user, page, setPage, onBack, onLogout }) => {
+const TeacherSidebar = ({ user, page, setPage,onLogout }) => {
   const initial = user?.name?.charAt(0).toUpperCase() || "T";
 
   return (
