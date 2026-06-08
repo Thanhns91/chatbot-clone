@@ -39,9 +39,18 @@
   color: #55667d;
   font-size: 20px;
   text-decoration: none;
+  border-radius: 10px;
+  transition: background 0.15s, color 0.15s;
 }
 
 .header-icon-btn.btn:hover {
+  background: #f4f4f8;
+  color: #5239ef;
+}
+
+/* Library button — active khi panel đang mở */
+.header-icon-btn.btn.active {
+  background: #ede9fe;
   color: #5239ef;
 }
 

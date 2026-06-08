@@ -1,3 +1,4 @@
+/* ===== HEADER ===== */
 .homepage__header {
   display: flex;
   align-items: center;
@@ -60,28 +61,28 @@
 }
 
 .homepage__login-btn:hover {
-  border-color: #4f3ef5;
-  color: #4f3ef5;
+  border-color: #2563EB;
+  color: #2563EB;
 }
 
 .homepage__register-btn {
   padding: 7px 18px;
   border: none;
   border-radius: 8px;
-  background: #4f3ef5;
+  background: #2563EB;
   font-size: 14px;
   font-weight: 600;
   color: #ffffff;
   cursor: pointer;
   transition: background 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 10px rgba(79, 62, 245, 0.3);
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
 }
 
 .homepage__register-btn:hover {
-  background: #3d2ee0;
+  background: #1d4ed8;
 }
 
-/* Body */
+/* ===== BODY ===== */
 .homepage__body {
   flex: 1;
   display: flex;
@@ -123,7 +124,7 @@
   max-width: 480px;
 }
 
-/* Input bar */
+/* ===== INPUT BAR ===== */
 .homepage__input-bar {
   display: flex;
   align-items: center;
@@ -172,7 +173,7 @@
 }
 
 .homepage__input:focus {
-  border-color: #4f3ef5;
+  border-color: #2563EB;
   background: #ffffff;
 }
 
@@ -192,19 +193,11 @@
   box-shadow: 0 2px 10px rgba(30, 176, 144, 0.35);
 }
 
-.homepage__send-btn:hover {
-  background: #17967a;
-}
+.homepage__send-btn:hover { background: #17967a; }
+.homepage__send-btn:active { transform: scale(0.94); }
+.homepage__send-btn--active { box-shadow: 0 4px 16px rgba(30, 176, 144, 0.45); }
 
-.homepage__send-btn:active {
-  transform: scale(0.94);
-}
-
-.homepage__send-btn--active {
-  box-shadow: 0 4px 16px rgba(30, 176, 144, 0.45);
-}
-
-/* ── Avatar (sau khi đăng nhập) ── */
+/* ===== AVATAR ===== */
 .homepage__avatar-wrap {
   position: relative;
 }
@@ -213,8 +206,8 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: #4f3ef5;
-  color: #fff;
+  background: #2563EB;
+  color: #ffffff;
   font-size: 15px;
   font-weight: 700;
   border: none;
@@ -223,14 +216,14 @@
   align-items: center;
   justify-content: center;
   transition: opacity 0.15s, box-shadow 0.15s;
-  box-shadow: 0 2px 8px rgba(79, 62, 245, 0.35);
-}
-.homepage__avatar:hover {
-  opacity: 0.88;
-  box-shadow: 0 4px 14px rgba(79, 62, 245, 0.45);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
 }
 
-/* Dropdown menu */
+.homepage__avatar:hover {
+  opacity: 0.88;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+}
+
 .homepage__avatar-menu {
   position: absolute;
   top: calc(100% + 10px);
@@ -240,7 +233,7 @@
   border-radius: 12px;
   padding: 14px 16px;
   min-width: 190px;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
   z-index: 100;
   animation: menuIn 0.15s ease both;
 }
@@ -256,14 +249,10 @@
   gap: 3px;
   margin-bottom: 10px;
 }
-.homepage__avatar-info strong {
-  font-size: 14px;
-  color: #111827;
-}
-.homepage__avatar-info span {
-  font-size: 12px;
-  color: #6b7280;
-}
+
+.homepage__avatar-info strong { font-size: 14px; color: #111827; }
+.homepage__avatar-info span   { font-size: 12px; color: #6b7280; }
+
 .homepage__avatar-role {
   display: inline-block;
   margin-top: 4px;
@@ -293,6 +282,7 @@
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
+
 .homepage__avatar-logout:hover {
   border-color: #dc2626;
   color: #dc2626;

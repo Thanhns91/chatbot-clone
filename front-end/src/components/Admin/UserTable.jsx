@@ -16,9 +16,7 @@ function RoleSelect({ userId, currentRole, onChangeRole }) {
       onChange={(e) => onChangeRole(userId, e.target.value)}
     >
       {ROLES.map((r) => (
-        <option key={r} value={r}>
-          {r}
-        </option>
+        <option key={r} value={r}>{r}</option>
       ))}
     </select>
   );
@@ -29,9 +27,7 @@ export default function UserTable({ users, onChangeRole, onToggleBlock }) {
     <>
       <div className="ad-panel-header">
         <div className="ad-panel-title">All Users</div>
-        <div className="ad-panel-count">
-          {users.length} accounts (admin hidden)
-        </div>
+        <div className="ad-panel-count">{users.length} accounts (admin hidden)</div>
       </div>
 
       <div className="ad-table-wrap">
@@ -46,7 +42,6 @@ export default function UserTable({ users, onChangeRole, onToggleBlock }) {
               <th>Action</th>
             </tr>
           </thead>
-
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
@@ -60,23 +55,15 @@ export default function UserTable({ users, onChangeRole, onToggleBlock }) {
                   />
                 </td>
                 <td style={{ color: "var(--text-secondary)" }}>{u.joinDate}</td>
-                <td>
-                  <StatusBadge status={u.status} />
-                </td>
+                <td><StatusBadge status={u.status} /></td>
                 <td>
                   {u.status === "active" ? (
-                    <button
-                      className="ad-block-btn"
-                      onClick={() => onToggleBlock(u.id)}
-                    >
-                      ⊗ Block
+                    <button className="ad-block-btn" onClick={() => onToggleBlock(u.id)}>
+                      <i className="bi bi-slash-circle" /> Block
                     </button>
                   ) : (
-                    <button
-                      className="ad-unblock-btn"
-                      onClick={() => onToggleBlock(u.id)}
-                    >
-                      ✔ Unblock
+                    <button className="ad-unblock-btn" onClick={() => onToggleBlock(u.id)}>
+                      <i className="bi bi-check-circle" /> Unblock
                     </button>
                   )}
                 </td>
