@@ -48,19 +48,6 @@ export default function AdminPage({ user, onLogout }) {
   const activeUsers = users.filter((u) => u.status === "active").length;
   const blockedUsers = users.filter((u) => u.status === "blocked").length;
 
-  useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const data = await getUsers();
-        setUsers(data);
-      } catch (error) {
-        console.error("Load users failed:", error);
-      }
-    }
-
-    fetchUsers();
-  }, []);
-
   const reloadUsers = async () => {
     try {
       const data = await getUsers();
@@ -69,6 +56,10 @@ export default function AdminPage({ user, onLogout }) {
       console.error("Reload users failed:", error);
     }
   };
+
+  useEffect(() => {
+    reloadUsers();
+  }, []);
 
   const handleChangeRole = async (userId, newRole) => {
     try {
@@ -83,12 +74,27 @@ export default function AdminPage({ user, onLogout }) {
   const handleToggleBlock = async (userId, currentStatus) => {
     try {
       const newStatus = currentStatus === "blocked" ? "active" : "blocked";
-
       await updateUserStatus(userId, newStatus);
       await reloadUsers();
     } catch (error) {
       console.error("Update status failed:", error);
       alert("Update status failed");
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this user?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await deleteUser(userId);
+      await reloadUsers();
+    } catch (error) {
+      console.error("Delete user failed:", error);
+      alert("Delete user failed");
     }
   };
 
@@ -98,31 +104,22 @@ export default function AdminPage({ user, onLogout }) {
     );
   };
 
-  const handleDeleteUser = async (userId) => {
-  const confirmDelete = window.confirm(
-    "Are you sure you want to delete this user?"
-  );
-
-  if (!confirmDelete) return;
-
-  try {
-    await deleteUser(userId);
-    await reloadUsers();
-  } catch (error) {
-    console.error(error);
-    alert("Delete user failed");
-  }
-};
-
   return (
     <div className="ad-root">
       <nav className="ad-nav">
         <div className="ad-nav-brand">
-          <div className="ad-nav-icon">🛡️</div>
+          <div className="ad-nav-icon">
+            <img
+              src="/src/assets/images/5.png"
+              alt="Admin"
+              width={28}
+              height={28}
+              style={{ objectFit: "contain" }}
+            />
+          </div>
 
           <div>
             <div className="ad-nav-title">Admin Dashboard</div>
-
             <div className="ad-nav-subtitle">
               AI Learning — User &amp; AI Management
             </div>
@@ -134,12 +131,11 @@ export default function AdminPage({ user, onLogout }) {
             <div className="ad-nav-user-name">
               {user?.name || user?.fullName || "Admin"}
             </div>
-
             <div className="ad-nav-user-role">Administrator</div>
           </div>
 
           <button className="ad-logout-btn" onClick={onLogout}>
-            <i className="bi bi-box-arrow-right"></i>
+            <i className="ti ti-logout me-1"></i>
             Logout
           </button>
         </div>
@@ -160,7 +156,8 @@ export default function AdminPage({ user, onLogout }) {
               }`}
               onClick={() => setActiveTab("users")}
             >
-              👤 User Management
+              <i className="ti ti-users me-2"></i>
+              User Management
             </button>
 
             <button
@@ -169,7 +166,8 @@ export default function AdminPage({ user, onLogout }) {
               }`}
               onClick={() => setActiveTab("ai")}
             >
-              〜 AI Settings
+              <i className="ti ti-brain me-2"></i>
+              AI Settings
             </button>
           </div>
 
