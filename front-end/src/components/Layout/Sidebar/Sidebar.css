@@ -173,6 +173,7 @@
   transform: translateX(3px);
 }
 
+/* Active — nổi bật */
 .sidebar__item--active {
   background: rgba(255, 255, 255, 0.72) !important;
   border-color: rgba(37, 99, 235, 0.3);

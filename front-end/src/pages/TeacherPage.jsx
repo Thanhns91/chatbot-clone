@@ -15,6 +15,7 @@ const PAGE_META = {
 export default function TeacherPage({ user, onLogout, onBack }) {
   const [page, setPage] = useState("home");
 
+
   if (user?.role === "admin") {
     return <AdminPage user={user} onLogout={onLogout} onBack={onBack} />;
   }

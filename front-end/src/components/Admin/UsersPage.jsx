@@ -1,0 +1,145 @@
+import { useState } from 'react'
+
+const INITIAL_USERS = [
+    { id: 1, name: 'Teacher User', email: 'teacher@example.com', role: 'Teacher', joinDate: '2025-03-10', status: 'active' },
+    { id: 2, name: 'Member User', email: 'member@example.com', role: 'Member', joinDate: '2026-08-05', status: 'active' },
+    { id: 3, name: 'John Doe', email: 'john231313@gmail.com', role: 'Member', joinDate: '2026-02-28', status: 'active' },
+]
+
+export default function UsersPage() {
+    const [users, setUsers] = useState(INITIAL_USERS)
+    const [showModal, setModal] = useState(false)
+    const [form, setForm] = useState({ name: '', email: '' })
+
+    const activeCount = users.filter(u => u.status === 'active').length
+    const blockedCount = users.filter(u => u.status === 'blocked').length
+
+    const toggleBlock = id => setUsers(prev => prev.map(u =>
+        u.id === id ? { ...u, status: u.status === 'active' ? 'blocked' : 'active' } : u
+    ))
+    const deleteUser = id => setUsers(prev => prev.filter(u => u.id !== id))
+    const createTeacher = () => {
+        if (!form.name.trim() || !form.email.trim()) return
+        setUsers(prev => [...prev, {
+            id: Math.max(...prev.map(u => u.id)) + 1,
+            name: form.name, email: form.email, role: 'Teacher',
+            joinDate: new Date().toISOString().split('T')[0], status: 'active',
+        }])
+        setForm({ name: '', email: '' })
+        setModal(false)
+    }
+
+    const STATS = [
+        { label: 'Total Users', val: users.length, color: '#2563eb', iconBg: '#dbeafe', icon: 'bi-people-fill' },
+        { label: 'Active Users', val: activeCount, color: '#16a34a', iconBg: '#dcfce7', icon: 'bi-check-circle-fill' },
+        { label: 'Blocked Users', val: blockedCount, color: '#dc2626', iconBg: '#fee2e2', icon: 'bi-person-slash' },
+    ]
+
+    return (
+        <>
+            <div className="admin-topbar">
+                <h1>User Management</h1>
+                <p>Manage platform users and permissions</p>
+            </div>
+
+            <div className="admin-body">
+                <div className="row g-3 mb-4">
+                    {STATS.map(s => (
+                        <div key={s.label} className="col-md-4">
+                            <div className="stat-card">
+                                <div>
+                                    <div className="stat-label">{s.label}</div>
+                                    <div className="stat-val" style={{ color: s.color }}>{s.val}</div>
+                                </div>
+                                <div className="stat-icon" style={{ background: s.iconBg, color: s.color }}>
+                                    <i className={`bi ${s.icon}`} />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="a-card">
+                    <div className="d-flex align-items-center justify-content-between mb-3">
+                        <div className="d-flex align-items-center gap-2">
+                            <i className="bi bi-people" style={{ fontSize: 18 }} />
+                            <span style={{ fontWeight: 600, fontSize: 15 }}>User Management</span>
+                        </div>
+                        <button className="btn-purple" onClick={() => setModal(true)}>
+                            <i className="bi bi-person-plus-fill" /> Create Teacher Account
+                        </button>
+                    </div>
+                    <div className="d-flex justify-content-between mb-2">
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>All Users</span>
+                        <span style={{ fontSize: 12, color: '#94a3b8' }}>{users.length} accounts (admin hidden)</span>
+                    </div>
+                    <div className="table-responsive">
+                        <table className="table admin-table mb-0">
+                            <thead>
+                                <tr><th>Name</th><th>Email</th><th>Role</th><th>Join Date</th><th>Status</th><th>Action</th></tr>
+                            </thead>
+                            <tbody>
+                                {users.map(u => (
+                                    <tr key={u.id}>
+                                        <td style={{ fontWeight: 500 }}>{u.name}</td>
+                                        <td style={{ color: '#64748b' }}>{u.email}</td>
+                                        <td>
+                                            <span className={`role-badge ${u.role === 'Teacher' ? 'badge-teacher' : 'badge-member'}`}>
+                                                {u.role}
+                                            </span>
+                                        </td>
+                                        <td style={{ color: '#64748b' }}>{u.joinDate}</td>
+                                        <td>
+                                            <span className={u.status === 'active' ? 'status-active' : 'status-blocked'}>
+                                                {u.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className="d-flex align-items-center gap-2">
+                                                <button className="btn-block" onClick={() => toggleBlock(u.id)}>
+                                                    <i className="bi bi-slash-circle" />
+                                                    {u.status === 'active' ? 'Block' : 'Unblock'}
+                                                </button>
+                                                <button className="btn-del" onClick={() => deleteUser(u.id)}>
+                                                    <i className="bi bi-trash3" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {showModal && (
+                <div className="modal-overlay">
+                    <div className="modal-box">
+                        <div className="d-flex justify-content-between align-items-center mb-4">
+                            <h5 style={{ margin: 0, fontWeight: 700 }}>Create Teacher Account</h5>
+                            <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}
+                                onClick={() => setModal(false)}>
+                                <i className="bi bi-x-lg" />
+                            </button>
+                        </div>
+                        <div className="mb-3">
+                            <label className="form-label fw-semibold" style={{ fontSize: 13 }}>Full Name</label>
+                            <input className="form-control" placeholder="Enter teacher name"
+                                value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+                        </div>
+                        <div className="mb-4">
+                            <label className="form-label fw-semibold" style={{ fontSize: 13 }}>Email Address</label>
+                            <input className="form-control" type="email" placeholder="teacher@example.com"
+                                value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+                        </div>
+                        <div className="d-flex gap-2 justify-content-end">
+                            <button className="btn btn-light border" onClick={() => setModal(false)}>Cancel</button>
+                            <button className="btn-purple" onClick={createTeacher}>Create Account</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    )
+}

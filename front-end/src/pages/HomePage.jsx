@@ -8,13 +8,13 @@ import { logout } from "../services/authService";
 
 const UserAvatar = ({ user, onLogout }) => {
   const [open, setOpen] = useState(false);
-  const initial = user?.name?.charAt(0).toUpperCase() || "U";
+  const initial = user?.name?.charAt(0).toUpperCase() || 'U';
 
   return (
     <div className="homepage__avatar-wrap">
       <button
         className="homepage__avatar"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         title={user?.name}
       >
         {initial}
@@ -27,7 +27,6 @@ const UserAvatar = ({ user, onLogout }) => {
             <span>{user?.email}</span>
             <span className="homepage__avatar-role">{user?.role}</span>
           </div>
-
           <hr className="homepage__avatar-divider" />
           <button className="homepage__avatar-logout" onClick={onLogout}>
             <i className="ti ti-logout me-2"></i>
@@ -133,11 +132,9 @@ const HomePage = () => {
         <button className="homepage__tool-btn" title="Attach file">
           <i className="ti ti-paperclip" style={{ fontSize: 18 }}></i>
         </button>
-
         <button className="homepage__tool-btn" title="Voice input">
           <i className="ti ti-microphone" style={{ fontSize: 18 }}></i>
         </button>
-
         <input
           className="homepage__input"
           type="text"
@@ -146,7 +143,6 @@ const HomePage = () => {
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && setMessage("")}
         />
-
         <button
           className={`homepage__send-btn ${
             message.trim() ? "homepage__send-btn--active" : ""

@@ -477,6 +477,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: var(--accent);
+  font-size: 18px;
 }
 
 .td-change-photo-btn {

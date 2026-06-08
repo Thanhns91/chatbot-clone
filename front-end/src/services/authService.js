@@ -16,11 +16,11 @@ export const login = (email, password) => {
 };
 
 export const logout = () => {
-  sessionStorage.removeItem("currentUser");
+  sessionStorage.removeItem('currentUser');
 };
 
 export const getCurrentUser = () => {
-  const raw = sessionStorage.getItem("currentUser");
+  const raw = sessionStorage.getItem('currentUser');
   return raw ? JSON.parse(raw) : null;
 };
 
