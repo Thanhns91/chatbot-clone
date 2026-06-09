@@ -53,12 +53,24 @@ const HomePage = () => {
   const [activeId, setActiveId] = useState(1);
   const [message, setMessage] = useState("");
 
-  const [currentUser, setCurrentUser] = useState(null);
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("currentUser");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [showDashboard, setShowDashboard] = useState(() => {
+    return sessionStorage.getItem("showDashboard") === "true";
+  });
 
   const handleLoginSuccess = (role, user) => {
     setCurrentUser(user);
     setShowDashboard(true);
+    sessionStorage.setItem("currentUser", JSON.stringify(user));
+    sessionStorage.setItem("showDashboard", "true");
   };
 
   const handleLogout = () => {

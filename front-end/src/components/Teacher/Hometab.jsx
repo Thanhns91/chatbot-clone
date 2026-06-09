@@ -56,6 +56,44 @@ const overview = [
   { label: "Student Files", value: 137, max: 150, color: "#22c55e" },
 ];
 
+/* ── Smooth cursor line: follows mouse pixel-perfectly via SVG ── */
+const SmoothCursor = ({ points, height, stroke }) => {
+  if (!points?.length) return null;
+  const x = points[0].x;
+  return (
+    <g>
+      <line
+        x1={x} y1={0} x2={x} y2={height}
+        stroke={stroke}
+        strokeWidth={1.5}
+        strokeDasharray="5 4"
+        opacity={0.55}
+        style={{ pointerEvents: "none" }}
+      />
+    </g>
+  );
+};
+
+/* ── Custom tooltip: minimal pill ── */
+const SmoothTooltip = ({ active, payload, stroke }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: "#fff",
+      border: "none",
+      borderRadius: 10,
+      boxShadow: "0 4px 18px rgba(0,0,0,0.10)",
+      padding: "6px 14px",
+      fontSize: 13,
+      fontWeight: 600,
+      color: stroke,
+      pointerEvents: "none",
+    }}>
+      {payload[0].value}
+    </div>
+  );
+};
+
 const HomeTab = () => {
   const [activeDataTab, setActiveDataTab] = useState("Materials");
   const tabs = ["Materials", "Student Files"];
@@ -88,13 +126,17 @@ const HomeTab = () => {
 
         <div className="td-chart-wrap">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={tab.chartData} margin={{ top: 5, right: 10, left: -30, bottom: 0 }}>
+            <AreaChart
+              data={tab.chartData}
+              margin={{ top: 5, right: 10, left: -30, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id={tab.gradId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor={tab.gradColor} stopOpacity={0.25} />
                   <stop offset="95%" stopColor={tab.gradColor} stopOpacity={0.02} />
                 </linearGradient>
               </defs>
+
               <XAxis
                 dataKey="day"
                 tick={{ fontSize: 12, fill: "#8a96a8" }}
@@ -102,16 +144,13 @@ const HomeTab = () => {
                 tickLine={false}
               />
               <YAxis hide />
+
               <Tooltip
-                contentStyle={{
-                  borderRadius: 10,
-                  border: "none",
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-                  fontSize: 13,
-                }}
-                formatter={(v) => [v]}
-                labelFormatter={() => ""}
+                cursor={<SmoothCursor stroke={tab.stroke} height={180} />}
+                content={<SmoothTooltip stroke={tab.stroke} />}
+                isAnimationActive={false}
               />
+
               <Area
                 type="monotone"
                 dataKey="v"
@@ -119,7 +158,7 @@ const HomeTab = () => {
                 strokeWidth={2}
                 fill={`url(#${tab.gradId})`}
                 dot={false}
-                activeDot={{ r: 5, fill: tab.stroke }}
+                activeDot={{ r: 5, fill: tab.stroke, strokeWidth: 0 }}
               />
             </AreaChart>
           </ResponsiveContainer>
