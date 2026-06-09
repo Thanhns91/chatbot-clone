@@ -53,10 +53,19 @@ const HomePage = () => {
   const [activeId, setActiveId] = useState(1);
   const [message, setMessage] = useState("");
 
-  const [currentUser, setCurrentUser] = useState(null);
-  const [showDashboard, setShowDashboard] = useState(false);
+  // Đọc từ sessionStorage khi khởi tạo
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = sessionStorage.getItem("currentUser");
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [showDashboard, setShowDashboard] = useState(() => {
+    return sessionStorage.getItem("showDashboard") === "true";
+  });
 
   const handleLoginSuccess = (role, user) => {
+    sessionStorage.setItem("currentUser", JSON.stringify(user));
+    sessionStorage.setItem("showDashboard", "true");
     setCurrentUser(user);
     setShowDashboard(true);
   };
@@ -77,7 +86,6 @@ const HomePage = () => {
       messageCount: 0,
       starred: false,
     };
-
     setConversations((prev) => [newConv, ...prev]);
     setActiveId(newConv.id);
   };
@@ -119,9 +127,7 @@ const HomePage = () => {
             alt="logo"
             style={{ width: 120, height: 120, objectFit: "contain" }}
           />
-
           <h1 className="homepage__title">Where should we start?</h1>
-
           <p className="homepage__subtitle">
             Ask me anything — I am here to help you learn and explore ideas.
           </p>
@@ -155,4 +161,4 @@ const HomePage = () => {
   );
 };
 
-export default HomePage;
+export default HomePage;  

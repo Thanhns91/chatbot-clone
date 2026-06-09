@@ -34,9 +34,6 @@ export default function TeacherPage({ user, onLogout, onBack }) {
 
       <div className="td-main">
         <div className="td-page-header">
-          <button className="td-page-header__toggle">
-            <i className="bi bi-layout-sidebar"></i>
-          </button>
           <div>
             <h1 className="td-page-header__title">{meta.title}</h1>
             <p className="td-page-header__sub">{meta.sub}</p>
