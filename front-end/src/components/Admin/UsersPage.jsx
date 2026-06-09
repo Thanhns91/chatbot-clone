@@ -10,6 +10,8 @@ export default function UsersPage() {
     const [users, setUsers] = useState(INITIAL_USERS)
     const [showModal, setModal] = useState(false)
     const [form, setForm] = useState({ name: '', email: '' })
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
 
     const activeCount = users.filter(u => u.status === 'active').length
     const blockedCount = users.filter(u => u.status === 'blocked').length
@@ -18,15 +20,41 @@ export default function UsersPage() {
         u.id === id ? { ...u, status: u.status === 'active' ? 'blocked' : 'active' } : u
     ))
     const deleteUser = id => setUsers(prev => prev.filter(u => u.id !== id))
-    const createTeacher = () => {
+
+    const createTeacher = async () => {
         if (!form.name.trim() || !form.email.trim()) return
-        setUsers(prev => [...prev, {
-            id: Math.max(...prev.map(u => u.id)) + 1,
-            name: form.name, email: form.email, role: 'Teacher',
-            joinDate: new Date().toISOString().split('T')[0], status: 'active',
-        }])
-        setForm({ name: '', email: '' })
-        setModal(false)
+
+        setLoading(true)
+        setError('')
+
+        try {
+            const res = await fetch('http://localhost:3000/api/auth/admin/create-teacher', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fullName: form.name, email: form.email }),
+            })
+
+            const data = await res.json()
+
+            if (!data.success) {
+                setError(data.message)
+                return
+            }
+
+            setUsers(prev => [...prev, {
+                id: Math.max(...prev.map(u => u.id)) + 1,
+                name: form.name, email: form.email, role: 'Teacher',
+                joinDate: new Date().toISOString().split('T')[0], status: 'active',
+            }])
+
+            setForm({ name: '', email: '' })
+            setModal(false)
+
+        } catch (err) {
+            setError('Không thể kết nối server.')
+        } finally {
+            setLoading(false)
+        }
     }
 
     const STATS = [
@@ -65,7 +93,7 @@ export default function UsersPage() {
                             <i className="bi bi-people" style={{ fontSize: 18 }} />
                             <span style={{ fontWeight: 600, fontSize: 15 }}>User Management</span>
                         </div>
-                        <button className="btn-purple" onClick={() => setModal(true)}>
+                        <button className="btn-purple" onClick={() => { setError(''); setModal(true) }}>
                             <i className="bi bi-person-plus-fill" /> Create Teacher Account
                         </button>
                     </div>
@@ -133,9 +161,18 @@ export default function UsersPage() {
                             <input className="form-control" type="email" placeholder="teacher@example.com"
                                 value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
                         </div>
+
+                        {error && (
+                            <div style={{ color: '#b91c1c', fontSize: 13, marginBottom: 12 }}>
+                                ❌ {error}
+                            </div>
+                        )}
+
                         <div className="d-flex gap-2 justify-content-end">
                             <button className="btn btn-light border" onClick={() => setModal(false)}>Cancel</button>
-                            <button className="btn-purple" onClick={createTeacher}>Create Account</button>
+                            <button className="btn-purple" onClick={createTeacher} disabled={loading}>
+                                {loading ? 'Đang tạo...' : 'Create Account'}
+                            </button>
                         </div>
                     </div>
                 </div>
