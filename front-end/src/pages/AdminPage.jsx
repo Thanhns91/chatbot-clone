@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'  // thêm
+import { logout } from '../services/authService'  // thêm
 import '../components/Admin/Admin.css'
 
 import Sidebar from '../components/Admin/Sidebar'
@@ -14,13 +16,21 @@ const PAGES = {
   ai: AISettingsPage,
 }
 
-export default function AdminPage({ onLogout }) {
+export default function AdminPage() {
   const [page, setPage] = useState('home')
+  const navigate = useNavigate()
   const Page = PAGES[page]
+
+  const handleLogout = () => {
+    logout()
+    localStorage.removeItem('currentUser')
+    sessionStorage.clear()
+    navigate('/')
+  }
 
   return (
     <div className="admin-wrapper">
-      <Sidebar active={page} onNav={setPage} onLogout={onLogout} />
+      <Sidebar active={page} onNav={setPage} onLogout={handleLogout} />
       <div className="admin-main">
         <Page />
       </div>

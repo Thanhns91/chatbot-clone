@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";  // thêm
+import { logout } from "../services/authService";  // thêm
 import AdminPage from "./AdminPage";
 import TeacherSidebar from "../components/Teacher/TeacherSidebar";
 import HomeTab from "../components/Teacher/HomeTab";
@@ -7,17 +9,27 @@ import ProfileTab from "../components/Teacher/ProfileTab";
 import "../components/Teacher/Teacher.css";
 
 const PAGE_META = {
-  home:      { title: "Teacher Dashboard", sub: "AI Learning — Manage materials & student submissions" },
-  materials: { title: "My Materials",      sub: "AI Learning — Upload and manage your teaching resources" },
-  profile:   { title: "Profile",           sub: "AI Learning — Manage your account and preferences" },
+  home: { title: "Teacher Dashboard", sub: "AI Learning — Manage materials & student submissions" },
+  materials: { title: "My Materials", sub: "AI Learning — Upload and manage your teaching resources" },
+  profile: { title: "Profile", sub: "AI Learning — Manage your account and preferences" },
 };
 
-export default function TeacherPage({ user, onLogout, onBack }) {
+export default function TeacherPage() {
   const [page, setPage] = useState("home");
+  const navigate = useNavigate()
 
+  // Đọc user từ localStorage
+  const user = JSON.parse(localStorage.getItem("currentUser"))
+
+  const handleLogout = () => {
+    logout()
+    localStorage.removeItem("currentUser")
+    sessionStorage.clear()
+    navigate("/")
+  }
 
   if (user?.role === "admin") {
-    return <AdminPage user={user} onLogout={onLogout} onBack={onBack} />;
+    return <AdminPage />
   }
 
   const meta = PAGE_META[page];
@@ -28,10 +40,8 @@ export default function TeacherPage({ user, onLogout, onBack }) {
         user={user}
         page={page}
         setPage={setPage}
-        onBack={onBack}
-        onLogout={onLogout}
+        onLogout={handleLogout}
       />
-
       <div className="td-main">
         <div className="td-page-header">
           <div>
@@ -39,11 +49,10 @@ export default function TeacherPage({ user, onLogout, onBack }) {
             <p className="td-page-header__sub">{meta.sub}</p>
           </div>
         </div>
-
         <div className="td-content">
-          {page === "home"      && <HomeTab />}
+          {page === "home" && <HomeTab />}
           {page === "materials" && <MaterialsTab />}
-          {page === "profile"   && <ProfileTab user={user} />}
+          {page === "profile" && <ProfileTab user={user} />}
         </div>
       </div>
     </div>

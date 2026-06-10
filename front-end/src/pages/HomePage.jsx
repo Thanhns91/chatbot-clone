@@ -1,10 +1,11 @@
 import { useState } from "react";
 import ChatLayout from "../components/Layout/ChatLayout";
 import AuthButton from "../components/Auth/AuthButton";
-import TeacherPage from "./TeacherPage";
 import logo7 from "../assets/images/7.png";
 import "./HomePage.css";
 import { logout } from "../services/authService";
+import { useNavigate } from 'react-router-dom'
+
 
 const UserAvatar = ({ user, onLogout }) => {
   const [open, setOpen] = useState(false);
@@ -53,25 +54,17 @@ const HomePage = () => {
   const [activeId, setActiveId] = useState(1);
   const [message, setMessage] = useState("");
 
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem("currentUser");
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showDashboard, setShowDashboard] = useState(false);
 
-  const [showDashboard, setShowDashboard] = useState(() => {
-    return sessionStorage.getItem("showDashboard") === "true";
-  });
+  const navigate = useNavigate()
 
   const handleLoginSuccess = (role, user) => {
     setCurrentUser(user);
-    setShowDashboard(true);
-    sessionStorage.setItem("currentUser", JSON.stringify(user));
-    sessionStorage.setItem("showDashboard", "true");
-  };
+    localStorage.setItem("currentUser", JSON.stringify(user)) // quan trọng
+    if (role === 'admin') navigate('/admin')
+    else if (role === 'teacher') navigate('/teacher')
+  }
 
   const handleLogout = () => {
     logout();
@@ -94,19 +87,6 @@ const HomePage = () => {
     setActiveId(newConv.id);
   };
 
-  if (
-    currentUser &&
-    (currentUser.role === "admin" || currentUser.role === "teacher") &&
-    showDashboard
-  ) {
-    return (
-      <TeacherPage
-        user={currentUser}
-        onLogout={handleLogout}
-        onBack={() => setShowDashboard(false)}
-      />
-    );
-  }
 
   return (
     <ChatLayout
@@ -156,9 +136,8 @@ const HomePage = () => {
           onKeyDown={(e) => e.key === "Enter" && setMessage("")}
         />
         <button
-          className={`homepage__send-btn ${
-            message.trim() ? "homepage__send-btn--active" : ""
-          }`}
+          className={`homepage__send-btn ${message.trim() ? "homepage__send-btn--active" : ""
+            }`}
         >
           <i className="ti ti-send" style={{ fontSize: 18 }}></i>
         </button>
