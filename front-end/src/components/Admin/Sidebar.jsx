@@ -1,3 +1,5 @@
+import { Button } from 'react-bootstrap'
+
 const NAV = [
     { id: 'home', icon: 'bi-house-door-fill', label: 'Home' },
     { id: 'users', icon: 'bi-people-fill', label: 'Users' },
@@ -37,10 +39,16 @@ export default function Sidebar({ active, onNav, onLogout }) {
                     <div className="footer-name">Admin User</div>
                     <div className="footer-role">Administrator</div>
                 </div>
-                <button className="logout-btn" title="Logout" onClick={onLogout}>
+                <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    className="logout-btn"
+                    title="Logout"
+                    onClick={onLogout}
+                >
                     <i className="bi bi-box-arrow-right" />
                     Logout
-                </button>
+                </Button>
             </div>
         </div>
     )

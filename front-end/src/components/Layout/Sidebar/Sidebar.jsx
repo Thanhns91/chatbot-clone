@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "./Sidebar.css";
+import "./Sidebar.scss";
 import SearchBox from "./SearchBox";
 import NewReflectionButton from "./NewReflectionButton";
 
@@ -29,7 +29,7 @@ const Sidebar = ({ conversations = [], activeId, onSelect, onNew, onToggleStar }
           <span
             className={`sidebar__item-badge ${conv.starred ? "sidebar__item-badge--starred" : ""}`}
           >
-            {conv.starred && <i className="ti ti-star-filled" style={{ fontSize: 9 }}></i>}
+            {conv.starred && <i className="ti ti-star-filled sidebar__item-badge-icon"></i>}
             +{conv.messageCount || 0}
           </span>
         </div>

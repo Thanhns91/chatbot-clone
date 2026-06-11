@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import "./SettingsModal.css";
+import Modal from "react-bootstrap/Modal";
+import Button from "react-bootstrap/Button";
+import Form from "react-bootstrap/Form";
+import "./SettingsModal.scss";
 
 export default function SettingsModal({ user, onClose, onSave }) {
   const [activeTab, setActiveTab] = useState(user ? "profile" : "appearance");
@@ -10,7 +13,6 @@ export default function SettingsModal({ user, onClose, onSave }) {
     bio: user?.bio || "",
   });
 
-  // Áp dụng theme lên <html>
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
@@ -30,9 +32,9 @@ export default function SettingsModal({ user, onClose, onSave }) {
         {/* Header */}
         <div className="sm-header">
           <h2 className="sm-title">Settings</h2>
-          <button className="sm-close" onClick={onClose}>
+          <Button variant="light" className="sm-close" onClick={onClose}>
             <i className="bi bi-x-lg"></i>
-          </button>
+          </Button>
         </div>
 
         {/* Tabs */}
@@ -67,7 +69,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   onClick={() => setTheme("light")}
                 >
                   <div className="sm-theme-preview sm-theme-preview--light">
-                    <i className="bi bi-sun" style={{ fontSize: 28, color: "#f59e0b" }}></i>
+                    <i className="bi bi-sun"></i>
                   </div>
                   <div className="sm-theme-info">
                     <span className="sm-theme-name">Light</span>
@@ -81,7 +83,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   onClick={() => setTheme("dark")}
                 >
                   <div className="sm-theme-preview sm-theme-preview--dark">
-                    <i className="bi bi-moon" style={{ fontSize: 28, color: "#818cf8" }}></i>
+                    <i className="bi bi-moon"></i>
                   </div>
                   <div className="sm-theme-info">
                     <span className="sm-theme-name">Dark</span>
@@ -97,54 +99,55 @@ export default function SettingsModal({ user, onClose, onSave }) {
             <div className="sm-profile">
               {/* Avatar */}
               <div className="sm-avatar-wrap">
-                <button className="sm-avatar">
+                <Button variant="link" className="sm-avatar">
                   {user.name?.charAt(0).toUpperCase() || "U"}
-                </button>
+                </Button>
                 <span className="sm-avatar-hint">Click to change avatar</span>
               </div>
 
               {/* Fields */}
-              <div className="sm-field">
-                <label className="sm-label">Display Name</label>
-                <input
+              <Form.Group className="sm-field">
+                <Form.Label className="sm-label">Display Name</Form.Label>
+                <Form.Control
                   className="sm-input"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
-              </div>
+              </Form.Group>
 
-              <div className="sm-field">
-                <label className="sm-label">Email</label>
-                <input
+              <Form.Group className="sm-field">
+                <Form.Label className="sm-label">Email</Form.Label>
+                <Form.Control
                   className="sm-input"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
-              </div>
+              </Form.Group>
 
-              <div className="sm-field">
-                <label className="sm-label">Bio</label>
-                <textarea
+              <Form.Group className="sm-field">
+                <Form.Label className="sm-label">Bio</Form.Label>
+                <Form.Control
+                  as="textarea"
                   className="sm-input sm-textarea"
                   placeholder="Tell us a bit about yourself..."
                   value={form.bio}
                   onChange={(e) => setForm({ ...form, bio: e.target.value })}
                 />
-              </div>
+              </Form.Group>
 
-              <div className="sm-field">
-                <label className="sm-label">Role</label>
-                <input
+              <Form.Group className="sm-field">
+                <Form.Label className="sm-label">Role</Form.Label>
+                <Form.Control
                   className="sm-input"
                   value={user.role || "Member"}
                   disabled
                 />
-              </div>
+              </Form.Group>
 
-              <button className="sm-save" onClick={handleSave}>
+              <Button variant="primary" className="sm-save" onClick={handleSave}>
                 Save Changes
-              </button>
+              </Button>
             </div>
           )}
         </div>

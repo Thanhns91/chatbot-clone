@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Row, Col, Table, Form, Button } from 'react-bootstrap'
 
 const INITIAL_DOCS = [
     { id: 1, name: 'Course Syllabus Q1 2026.pdf', type: 'PDF', size: '1.2 MB', uploaded: '2026-03-10', uploader: 'Teacher User' },
@@ -33,64 +34,77 @@ export default function DocumentsPage() {
 
             <div className="admin-body">
                 <div className="d-flex align-items-center justify-content-between mb-4">
-                    <div className="input-group" style={{ maxWidth: 280 }}>
-                        <span className="input-group-text bg-white border-end-0" style={{ borderRadius: '8px 0 0 8px' }}>
-                            <i className="bi bi-search text-secondary" />
-                        </span>
-                        <input className="form-control border-start-0" style={{ borderRadius: '0 8px 8px 0' }}
-                            placeholder="Search documents..."
-                            value={search} onChange={e => setSearch(e.target.value)} />
+                    <div className="search-box">
+                        <i className="bi bi-search search-box__icon" />
+                        <Form.Control
+                            className="search-box__input"
+                            placeholder="Search"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
                     </div>
                     <button className="btn-purple">
                         <i className="bi bi-upload" /> Upload Document
                     </button>
                 </div>
 
-                <div className="row g-3 mb-4">
+                <Row className="g-3 mb-4">
                     {STATS.map(s => (
-                        <div key={s.label} className="col-md-4">
+                        <Col key={s.label} md={4}>
                             <div className="stat-card">
                                 <div>
                                     <div className="stat-label">{s.label}</div>
                                     <div className="stat-val" style={{ color: s.color }}>{s.val}</div>
                                 </div>
                             </div>
-                        </div>
+                        </Col>
                     ))}
-                </div>
+                </Row>
 
                 <div className="a-card">
                     <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16 }}>All Documents</div>
                     <div className="table-responsive">
-                        <table className="table admin-table mb-0">
+                        <Table className="admin-table mb-0">
                             <thead>
-                                <tr><th>Name</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Uploader</th><th>Actions</th></tr>
+                                <tr>
+                                    <th>Name</th><th>Type</th><th>Size</th>
+                                    <th>Uploaded</th><th>Uploader</th><th>Actions</th>
+                                </tr>
                             </thead>
                             <tbody>
-                                {filtered.length === 0
-                                    ? <tr><td colSpan={6} className="text-center text-secondary py-4">No documents found</td></tr>
-                                    : filtered.map(d => (
-                                        <tr key={d.id}>
-                                            <td>
-                                                <div className="d-flex align-items-center gap-2">
-                                                    <i className="bi bi-file-earmark text-secondary" />
-                                                    <span>{d.name}</span>
-                                                </div>
-                                            </td>
-                                            <td><span className={`role-badge ${TYPE_BADGE[d.type] || ''}`}>{d.type}</span></td>
-                                            <td style={{ color: '#64748b' }}>{d.size}</td>
-                                            <td style={{ color: '#64748b' }}>{d.uploaded}</td>
-                                            <td style={{ color: '#64748b' }}>{d.uploader}</td>
-                                            <td>
-                                                <button className="btn-del" onClick={() => setDocs(prev => prev.filter(x => x.id !== d.id))}>
-                                                    <i className="bi bi-trash3" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                }
+                                {filtered.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="text-center text-secondary py-4">
+                                            No documents found
+                                        </td>
+                                    </tr>
+                                ) : filtered.map(d => (
+                                    <tr key={d.id}>
+                                        <td>
+                                            <div className="d-flex align-items-center gap-2">
+                                                <i className="bi bi-file-earmark text-secondary" />
+                                                <span>{d.name}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span className={`role-badge ${TYPE_BADGE[d.type] || ''}`}>{d.type}</span>
+                                        </td>
+                                        <td style={{ color: '#64748b' }}>{d.size}</td>
+                                        <td style={{ color: '#64748b' }}>{d.uploaded}</td>
+                                        <td style={{ color: '#64748b' }}>{d.uploader}</td>
+                                        <td>
+                                            <Button
+                                                variant="link"
+                                                className="btn-del p-0"
+                                                onClick={() => setDocs(prev => prev.filter(x => x.id !== d.id))}
+                                            >
+                                                <i className="bi bi-trash3" />
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
-                        </table>
+                        </Table>
                     </div>
                 </div>
             </div>

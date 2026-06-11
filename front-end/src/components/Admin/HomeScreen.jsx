@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Row, Col } from 'react-bootstrap'
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
 
 const TAB_META = {
@@ -43,7 +44,11 @@ export default function HomePage() {
                     <div className="d-flex align-items-start justify-content-between mb-3">
                         <div className="d-flex gap-2">
                             {Object.keys(TAB_META).map(t => (
-                                <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
+                                <button
+                                    key={t}
+                                    className={`tab-btn ${tab === t ? 'active' : ''}`}
+                                    onClick={() => setTab(t)}
+                                >
                                     {t.charAt(0).toUpperCase() + t.slice(1)}
                                 </button>
                             ))}
@@ -74,8 +79,15 @@ export default function HomePage() {
                                 formatter={v => [v, 'Activity']}
                                 labelFormatter={() => ''}
                             />
-                            <Area type="monotone" dataKey="v" stroke="#818cf8" strokeWidth={1.5}
-                                fill="url(#grad)" dot={false} activeDot={{ r: 4, fill: '#7c3aed' }} />
+                            <Area
+                                type="monotone"
+                                dataKey="v"
+                                stroke="#818cf8"
+                                strokeWidth={1.5}
+                                fill="url(#grad)"
+                                dot={false}
+                                activeDot={{ r: 4, fill: '#7c3aed' }}
+                            />
                         </AreaChart>
                     </ResponsiveContainer>
 
@@ -84,8 +96,8 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                <div className="row g-3">
-                    <div className="col-md-6">
+                <Row className="g-3">
+                    <Col md={6}>
                         <div className="a-card h-100">
                             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Recent Activity</div>
                             {ACTIVITIES.map(a => (
@@ -97,15 +109,21 @@ export default function HomePage() {
                                 </div>
                             ))}
                         </div>
-                    </div>
-                    <div className="col-md-6">
+                    </Col>
+                    <Col md={6}>
                         <div className="a-card h-100">
                             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Overview</div>
                             {OVERVIEW.map(item => (
                                 <div key={item.label} className="d-flex align-items-center gap-3 py-2 border-bottom">
                                     <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
                                     <div className="ov-bar-wrap">
-                                        <div className="ov-bar" style={{ width: `${Math.min((item.count / 1054) * 100, 100)}%`, background: item.color }} />
+                                        <div
+                                            className="ov-bar"
+                                            style={{
+                                                width: `${Math.min((item.count / 1054) * 100, 100)}%`,
+                                                background: item.color,
+                                            }}
+                                        />
                                     </div>
                                     <span style={{ fontSize: 13, fontWeight: 600, minWidth: 36, textAlign: 'right' }}>
                                         {item.count >= 1000 ? `${(item.count / 1000).toFixed(1)}k` : item.count}
@@ -113,8 +131,8 @@ export default function HomePage() {
                                 </div>
                             ))}
                         </div>
-                    </div>
-                </div>
+                    </Col>
+                </Row>
             </div>
         </>
     )

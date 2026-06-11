@@ -1,19 +1,14 @@
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
-
-import "./Chat.css";
+import "./Chat.scss";
 
 function ChatInput() {
   const [message, setMessage] = useState("");
 
   const handleSendMessage = () => {
-    if (message.trim() === "") {
-      return;
-    }
-
+    if (message.trim() === "") return;
     console.log("Tin nhắn người dùng:", message);
-
     setMessage("");
   };
 
@@ -38,7 +33,7 @@ function ChatInput() {
         type="text"
         placeholder="Write what you think..."
         value={message}
-        onChange={(event) => setMessage(event.target.value)}
+        onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
       />
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './ChatLayout.css';
+import './ChatLayout.scss';
 import Sidebar from './Sidebar/Sidebar';
 import Header from './Header/Header';
 import LibraryPanel from './LibraryPanel/LibraryPanel';
