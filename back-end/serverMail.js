@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import session from "express-session";
+import passport from "passport";
 import pool from "./db.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
@@ -17,10 +19,20 @@ const app = express();
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.use("/upload", uploadRoutes);
 app.use("/chat", chatRoutes);
 app.use("/documents", documentRoutes);
 app.use("/auth", authRoutes);
+app.use("/auth", googleAuthRoutes);
 app.use("/users", userRoutes);
 app.use("/chat-history", chatHistoryRoutes);
 
