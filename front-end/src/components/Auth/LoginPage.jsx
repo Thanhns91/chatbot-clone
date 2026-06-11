@@ -4,26 +4,15 @@ import { login } from "../../services/authService";
 import { auth, googleProvider } from "../../fireBase/firebase";
 import { signInWithPopup } from "firebase/auth";
 
-const DEMO_ACCOUNTS = [
-  { role: "Admin", email: "admin@example.com", password: "admin123", color: "red" },
-  { role: "Teacher", email: "teacher@example.com", password: "teacher123", color: "blue" },
-  { role: "Member", email: "member@example.com", password: "member123", color: "green" },
-];
-
 export default function LoginPage({ onCancel, onLoginSuccess, onSwitchToRegister }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ email: "", password: "" });
 
-  const fillDemo = (acc) => {
-    setForm({ email: acc.email, password: acc.password });
-    setError("");
-  };
-
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
     setError("");
-    const result = login(form.email, form.password);
+    const result = await login(form.email, form.password);
     if (!result.success) {
       setError(result.message);
       return;
@@ -36,7 +25,6 @@ export default function LoginPage({ onCancel, onLoginSuccess, onSwitchToRegister
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
 
-      // Gọi API lưu vào database
       const res = await fetch("http://localhost:3000/auth/google-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,18 +112,6 @@ export default function LoginPage({ onCancel, onLoginSuccess, onSwitchToRegister
             Register now
           </button>
         </p>
-
-        <div className="auth-demo">
-          <p className="auth-demo__label">DEMO ACCOUNTS</p>
-          {DEMO_ACCOUNTS.map((acc) => (
-            <button key={acc.role} type="button"
-              className={`auth-demo__item auth-demo__item--${acc.color}`}
-              onClick={() => fillDemo(acc)}>
-              <span className="auth-demo__role">{acc.role}</span>
-              <span className="auth-demo__info">{acc.email} / {acc.password}</span>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

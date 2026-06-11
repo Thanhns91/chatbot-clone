@@ -36,17 +36,19 @@ export default function DocumentsPage({ currentUser }) {
     ]
 
     const handleUpload = async (e) => {
-        const file = e.target.files[0]
-        if (!file) return
+    const file = e.target.files[0]
+    if (!file) return
 
-        setUploading(true)
-        setError('')
+    setUploading(true)
+    setError('')
 
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('uploadedBy', currentUser?.role || 'teacher')
-        formData.append('uploaderId', currentUser?.userId || 1)
+    const user = currentUser || JSON.parse(sessionStorage.getItem('currentUser') || '{}')
+const role = user?.role === 'admin' ? 'teacher' : (user?.role || 'teacher')
 
+const formData = new FormData()
+formData.append('file', file)
+formData.append('uploadedBy', role)
+formData.append('uploaderId', user?.userId || '')
         try {
             const res = await fetch(`${API}/upload`, {
                 method: 'POST',

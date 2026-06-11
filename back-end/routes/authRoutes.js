@@ -30,7 +30,7 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ success: false, message: "Email already exists" });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = password;
 
     await pool.query(
       `INSERT INTO Users (fullName, email, passwordHash, role, status) VALUES (?, ?, ?, 'student', 'active')`,
@@ -61,7 +61,7 @@ router.post("/login", async (req, res) => {
       return res.status(403).json({ success: false, message: "Your account is blocked" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+     const isMatch = password === user.passwordHash;
 
     if (!isMatch) {
       return res.status(400).json({ success: false, message: "Email or password is incorrect" });
