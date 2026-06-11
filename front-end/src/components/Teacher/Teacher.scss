@@ -1,0 +1,708 @@
+* { box-sizing: border-box; }
+
+// ── Variables ──
+$brand:        #2563EB;
+$brand-hover:  #1d4ed8;
+$brand-light:  #eff6ff;
+$sidebar-w:    240px;
+
+$border:       #e2e8f0;
+$text-dark:    #1e293b;
+$text-mid:     #475569;
+$text-muted:   #94a3b8;
+$bg-main:      #f8fafc;
+$radius-card:  16px;
+$radius-btn:   10px;
+
+// ── Layout ──
+.td-root {
+  display: flex;
+  min-height: 100vh;
+  background: #ffffff;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+// ── Sidebar ──
+.td-sidebar {
+  width: $sidebar-w;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow: hidden;
+  background: #ffffff;
+  border-right: 1px solid $border;
+
+  &__brand {
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid $border;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: $brand;
+    color: #fff;
+    font-weight: 700;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+
+  &__brand-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: $text-dark;
+    line-height: 1.2;
+  }
+
+  &__brand-sub {
+    font-size: 11px;
+    color: $brand;
+  }
+
+  &__nav {
+    flex: 1;
+    padding: 14px 10px;
+  }
+
+  &__footer {
+    padding: 14px 16px;
+    border-top: 1px solid $border;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: $brand;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  }
+
+  &__user-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: $text-dark;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__user-role {
+    font-size: 11px;
+    color: $brand;
+  }
+
+  &__logout {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1.5px solid $border;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    white-space: nowrap;
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.08);
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+  }
+}
+
+// ── Nav item ──
+.td-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: $text-mid;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 2px;
+
+  &:hover {
+    background: #f1f5f9;
+    color: $text-dark;
+  }
+
+  &--active {
+    background: $brand-light;
+    color: $brand;
+    font-weight: 600;
+    border: 1px solid rgba(37, 99, 235, 0.15);
+  }
+
+  i {
+    font-size: 18px;
+    width: 20px;
+    flex-shrink: 0;
+  }
+}
+
+// ── Main area ──
+.td-main {
+  margin-left: $sidebar-w;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: $bg-main;
+}
+
+// ── Page header ──
+.td-page-header {
+  background: #ffffff;
+  border-bottom: 1px solid $border;
+  padding: 14px 28px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  flex-shrink: 0;
+
+  &__title {
+    font-size: 20px;
+    font-weight: 700;
+    color: $text-dark;
+    margin: 0;
+  }
+
+  &__sub {
+    font-size: 12px;
+    color: #60a5fa;
+    margin: 0;
+  }
+}
+
+// ── Scrollable content ──
+.td-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: $border; border-radius: 3px; }
+  &::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+  // ── Profile tab — react-bootstrap overrides ──
+  .card {
+    border: 1px solid $border !important;
+    border-radius: $radius-card !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .btn-primary {
+    background: $brand !important;
+    border-color: $brand !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+
+    &:hover {
+      background: $brand-hover !important;
+      border-color: $brand-hover !important;
+    }
+  }
+
+  .btn-outline-primary {
+    color: $brand !important;
+    border-color: $brand !important;
+
+    &:hover {
+      background: $brand-light !important;
+      color: $brand !important;
+    }
+  }
+
+  .form-control,
+  .form-select {
+    border: 1px solid $border !important;
+    border-radius: $radius-btn !important;
+    background: #ffffff !important;
+
+    &:focus {
+      border-color: $brand !important;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+    }
+  }
+
+  .border-primary { border-color: $brand !important; }
+}
+
+// ── Card ──
+.td-card {
+  background: #ffffff;
+  border: 1px solid $border;
+  border-radius: $radius-card;
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+
+  &::after { content: ""; display: table; clear: both; }
+}
+
+// ── Tab buttons ──
+.td-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.td-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.td-tab {
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  background: none;
+  color: $text-muted;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #f1f5f9;
+    color: $text-mid;
+  }
+
+  &--active {
+    background: #ffffff;
+    border-color: $border;
+    color: $brand;
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.1);
+  }
+}
+
+// ── Total number ──
+.td-total {
+  text-align: right;
+
+  &__num {
+    font-size: 28px;
+    font-weight: 700;
+    color: $text-dark;
+    line-height: 1;
+  }
+
+  &__label {
+    font-size: 12px;
+    color: $text-muted;
+    margin-top: 2px;
+  }
+}
+
+// ── Chart ──
+.td-chart-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: $text-dark;
+  margin: 0 0 4px;
+}
+
+.td-chart-sub {
+  font-size: 12px;
+  color: $text-muted;
+  margin: 0 0 16px;
+}
+
+.td-chart-wrap {
+  width: 100%;
+  height: 180px;
+  position: relative;
+}
+
+// ── Bottom grid ──
+.td-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+// ── Section label ──
+.td-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: $text-muted;
+  margin-bottom: 16px;
+}
+
+.td-preview-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid $border;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  color: $text-mid;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #f1f5f9;
+    color: $text-dark;
+  }
+}
+
+.td-activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.td-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+  color: $text-dark;
+}
+
+// ── Activity icon ──
+.td-activity-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.td-activity-file {
+  flex: 1;
+  min-width: 0;
+
+  &__name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: $text-dark;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__meta {
+    font-size: 12px;
+    color: $text-muted;
+    margin-top: 2px;
+  }
+}
+
+// ── Overview bars ──
+.td-overview-item {
+  margin-bottom: 14px;
+}
+
+.td-overview-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13.5px;
+  color: $text-dark;
+  margin-bottom: 6px;
+
+  span {
+    color: $text-muted;
+    font-weight: 600;
+  }
+}
+
+.td-bar-track {
+  height: 6px;
+  background: $border;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.td-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+// ── Materials tab ──
+.td-upload-zone {
+  border: 2px dashed $border;
+  border-radius: 14px;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+
+  &:hover,
+  &--active {
+    border-color: $brand;
+    background: $brand-light;
+  }
+}
+
+.td-upload-icon {
+  width: 56px;
+  height: 56px;
+  background: $brand;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 22px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.td-upload-text  { font-size: 14px; color: $text-mid; margin: 0; font-weight: 500; }
+.td-upload-hint  { font-size: 12px; color: $text-muted; margin: 0; }
+.td-upload-title { font-size: 14px; color: $text-mid; margin: 0; font-weight: 500; }
+.td-upload-sub   { font-size: 12px; color: $text-muted; margin: 0; }
+
+.td-select-btn {
+  padding: 8px 24px;
+  background: $brand;
+  color: #fff;
+  border: none;
+  border-radius: $radius-btn;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+
+  &:hover { background: $brand-hover; }
+}
+
+// ── File list ──
+.td-file-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child { border-bottom: none; }
+}
+
+.td-file-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+
+  &--pdf  { background: #fef2f2; color: #dc2626; }
+  &--mp4  { background: $brand-light; color: $brand; }
+  &--docx { background: $brand-light; color: $brand; }
+}
+
+.td-file-name { font-size: 14px; font-weight: 500; color: $text-dark; }
+.td-file-meta { font-size: 12px; color: $text-muted; margin-top: 2px; }
+
+// ── Chart tooltip ──
+.td-chart-tooltip {
+  background: #fff;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.10);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+// ── Profile tab extras ──
+.td-profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: $brand;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.td-appearance-sub {
+  font-size: 13.5px;
+}
+
+// ── Theme card ──
+.td-theme-card {
+  cursor: pointer;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: none !important;
+
+  &:hover {
+    border-color: #93c5fd !important;
+    box-shadow: 0 2px 12px rgba(37, 99, 235, 0.08) !important;
+  }
+
+  &--active {
+    border-color: $brand !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  }
+}
+
+.td-theme-preview {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  // top corners rounded to match card, bottom square
+  border-radius: 12px 12px 0 0;
+
+  &--light {
+    background: #f1f5f9;
+  }
+
+  &--dark {
+    background: #1e293b;
+  }
+}
+
+.td-theme-emoji {
+  font-size: 36px;
+  line-height: 1;
+  display: block;
+}
+
+.td-theme-info {
+  padding: 12px 14px !important;
+}
+
+.td-theme-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-dark;
+  line-height: 1.3;
+}
+
+.td-theme-desc {
+  font-size: 12px;
+  color: $text-muted;
+  margin-top: 2px;
+}
+
+.td-modal-sub {
+  font-size: 13.5px;
+}
+
+// ── React-Bootstrap ProgressBar override ──
+.td-overview-item {
+  .progress {
+    height: 6px;
+    border-radius: 3px;
+    background: #e2e8f0;
+  }
+
+  .progress-bar {
+    background-color: var(--bs-progress-bar-bg) !important;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+}
+
+// ── React-Bootstrap Nav.Link reset for sidebar ──
+.td-sidebar__nav {
+  .nav-link {
+    padding: 0;
+    color: inherit;
+
+    &:hover,
+    &:focus {
+      color: inherit;
+      background: none;
+    }
+  }
+}
+
+// ── ButtonGroup tab override ──
+.td-tabs-row {
+  .btn-group {
+    .td-tab {
+      &.btn-primary {
+        background: #fff !important;
+        border-color: #e2e8f0 !important;
+        color: #2563EB !important;
+        font-weight: 600;
+        box-shadow: 0 1px 4px rgba(37, 99, 235, 0.1) !important;
+      }
+
+      &.btn-outline-secondary {
+        border-color: transparent !important;
+        color: #94a3b8 !important;
+        background: none !important;
+        box-shadow: none !important;
+
+        &:hover {
+          background: #f1f5f9 !important;
+          color: #475569 !important;
+        }
+      }
+    }
+  }
+}

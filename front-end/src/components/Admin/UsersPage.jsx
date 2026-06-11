@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Row, Col, Table, Modal, Form, Button } from 'react-bootstrap'
 
 const INITIAL_USERS = [
     { id: 1, name: 'Teacher User', email: 'teacher@example.com', role: 'Teacher', joinDate: '2025-03-10', status: 'active' },
@@ -33,24 +34,22 @@ export default function UsersPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fullName: form.name, email: form.email }),
             })
-
             const data = await res.json()
 
-            if (!data.success) {
-                setError(data.message)
-                return
-            }
+            if (!data.success) { setError(data.message); return }
 
             setUsers(prev => [...prev, {
                 id: Math.max(...prev.map(u => u.id)) + 1,
-                name: form.name, email: form.email, role: 'Teacher',
-                joinDate: new Date().toISOString().split('T')[0], status: 'active',
+                name: form.name,
+                email: form.email,
+                role: 'Teacher',
+                joinDate: new Date().toISOString().split('T')[0],
+                status: 'active',
             }])
 
             setForm({ name: '', email: '' })
             setModal(false)
-
-        } catch (err) {
+        } catch {
             setError('Không thể kết nối server.')
         } finally {
             setLoading(false)
@@ -71,9 +70,9 @@ export default function UsersPage() {
             </div>
 
             <div className="admin-body">
-                <div className="row g-3 mb-4">
+                <Row className="g-3 mb-4">
                     {STATS.map(s => (
-                        <div key={s.label} className="col-md-4">
+                        <Col key={s.label} md={4}>
                             <div className="stat-card">
                                 <div>
                                     <div className="stat-label">{s.label}</div>
@@ -83,9 +82,9 @@ export default function UsersPage() {
                                     <i className={`bi ${s.icon}`} />
                                 </div>
                             </div>
-                        </div>
+                        </Col>
                     ))}
-                </div>
+                </Row>
 
                 <div className="a-card">
                     <div className="d-flex align-items-center justify-content-between mb-3">
@@ -102,9 +101,12 @@ export default function UsersPage() {
                         <span style={{ fontSize: 12, color: '#94a3b8' }}>{users.length} accounts (admin hidden)</span>
                     </div>
                     <div className="table-responsive">
-                        <table className="table admin-table mb-0">
+                        <Table className="admin-table mb-0">
                             <thead>
-                                <tr><th>Name</th><th>Email</th><th>Role</th><th>Join Date</th><th>Status</th><th>Action</th></tr>
+                                <tr>
+                                    <th>Name</th><th>Email</th><th>Role</th>
+                                    <th>Join Date</th><th>Status</th><th>Action</th>
+                                </tr>
                             </thead>
                             <tbody>
                                 {users.map(u => (
@@ -136,47 +138,46 @@ export default function UsersPage() {
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
+                        </Table>
                     </div>
                 </div>
             </div>
 
-            {showModal && (
-                <div className="modal-overlay">
-                    <div className="modal-box">
-                        <div className="d-flex justify-content-between align-items-center mb-4">
-                            <h5 style={{ margin: 0, fontWeight: 700 }}>Create Teacher Account</h5>
-                            <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}
-                                onClick={() => setModal(false)}>
-                                <i className="bi bi-x-lg" />
-                            </button>
+            <Modal show={showModal} onHide={() => setModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title style={{ fontWeight: 700, fontSize: 18 }}>Create Teacher Account</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form.Group className="mb-3">
+                        <Form.Label className="fw-semibold" style={{ fontSize: 13 }}>Full Name</Form.Label>
+                        <Form.Control
+                            placeholder="Enter teacher name"
+                            value={form.name}
+                            onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                        />
+                    </Form.Group>
+                    <Form.Group className="mb-4">
+                        <Form.Label className="fw-semibold" style={{ fontSize: 13 }}>Email Address</Form.Label>
+                        <Form.Control
+                            type="email"
+                            placeholder="teacher@example.com"
+                            value={form.email}
+                            onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                        />
+                    </Form.Group>
+                    {error && (
+                        <div style={{ color: '#b91c1c', fontSize: 13, marginBottom: 12 }}>
+                            ❌ {error}
                         </div>
-                        <div className="mb-3">
-                            <label className="form-label fw-semibold" style={{ fontSize: 13 }}>Full Name</label>
-                            <input className="form-control" placeholder="Enter teacher name"
-                                value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
-                        </div>
-                        <div className="mb-4">
-                            <label className="form-label fw-semibold" style={{ fontSize: 13 }}>Email Address</label>
-                            <input className="form-control" type="email" placeholder="teacher@example.com"
-                                value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
-                        </div>
-
-                        {error && (
-                            <div style={{ color: '#b91c1c', fontSize: 13, marginBottom: 12 }}>
-                                ❌ {error}
-                            </div>
-                        )}
-
-                        <div className="d-flex gap-2 justify-content-end">
-                            <button className="btn btn-light border" onClick={() => setModal(false)}>Cancel</button>
-                            <button className="btn-purple" onClick={createTeacher} disabled={loading}>
-                                {loading ? 'Đang tạo...' : 'Create Account'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="light" className="border" onClick={() => setModal(false)}>Cancel</Button>
+                    <button className="btn-purple" onClick={createTeacher} disabled={loading}>
+                        {loading ? 'Đang tạo...' : 'Create Account'}
+                    </button>
+                </Modal.Footer>
+            </Modal>
         </>
     )
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import "./Auth.css";
+import { Form, Button, Alert } from "react-bootstrap";
+import "./Auth.scss";
 
 export default function RegisterPage({
   onCancel,
@@ -75,17 +76,17 @@ export default function RegisterPage({
 
         {/* Hiển thị lỗi nếu có */}
         {error && (
-          <div className="auth-error">
+          <Alert variant="danger" className="auth-error py-2 px-3 border-0">
             <i className="bi bi-exclamation-circle me-2"></i>
             {error}
-          </div>
+          </Alert>
         )}
 
         {/* Form đăng ký */}
-        <form className="auth-form" onSubmit={handleRegister}>
-          <div className="auth-field">
-            <label className="auth-label">Full name</label>
-            <input
+        <Form className="auth-form" onSubmit={handleRegister}>
+          <Form.Group className="auth-field">
+            <Form.Label className="auth-label">Full name</Form.Label>
+            <Form.Control
               type="text"
               className="auth-input"
               placeholder="John Smith"
@@ -93,11 +94,11 @@ export default function RegisterPage({
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
             />
-          </div>
+          </Form.Group>
 
-          <div className="auth-field">
-            <label className="auth-label">Email</label>
-            <input
+          <Form.Group className="auth-field">
+            <Form.Label className="auth-label">Email</Form.Label>
+            <Form.Control
               type="email"
               className="auth-input"
               placeholder="you@example.com"
@@ -105,12 +106,12 @@ export default function RegisterPage({
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
             />
-          </div>
+          </Form.Group>
 
-          <div className="auth-field">
-            <label className="auth-label">Password</label>
+          <Form.Group className="auth-field">
+            <Form.Label className="auth-label">Password</Form.Label>
             <div className="auth-input-wrap">
-              <input
+              <Form.Control
                 type={showPassword ? "text" : "password"}
                 className="auth-input auth-input--password"
                 value={form.password}
@@ -122,17 +123,15 @@ export default function RegisterPage({
                 className="auth-eye"
                 onClick={() => setShowPassword((v) => !v)}
               >
-                <i
-                  className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}
-                ></i>
+                <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}></i>
               </button>
             </div>
-          </div>
+          </Form.Group>
 
-          <div className="auth-field">
-            <label className="auth-label">Confirm password</label>
+          <Form.Group className="auth-field">
+            <Form.Label className="auth-label">Confirm password</Form.Label>
             <div className="auth-input-wrap">
-              <input
+              <Form.Control
                 type={showConfirm ? "text" : "password"}
                 className="auth-input auth-input--password"
                 value={form.confirm}
@@ -144,17 +143,15 @@ export default function RegisterPage({
                 className="auth-eye"
                 onClick={() => setShowConfirm((v) => !v)}
               >
-                <i
-                  className={showConfirm ? "bi bi-eye-slash" : "bi bi-eye"}
-                ></i>
+                <i className={showConfirm ? "bi bi-eye-slash" : "bi bi-eye"}></i>
               </button>
             </div>
-          </div>
+          </Form.Group>
 
-          <button type="submit" className="auth-submit">
+          <Button type="submit" className="auth-submit border-0">
             Create Account
-          </button>
-        </form>
+          </Button>
+        </Form>
 
         {/* Chuyển sang trang đăng nhập */}
         <p className="auth-switch">

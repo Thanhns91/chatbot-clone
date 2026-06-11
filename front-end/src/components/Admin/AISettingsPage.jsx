@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Form, Button } from 'react-bootstrap'
 
 const AI_MODELS = ['Claude Sonnet 4.6', 'Claude Haiku 4.5', 'Claude Opus 4.6']
 
@@ -18,8 +19,10 @@ export default function AISettingsPage() {
 
     const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500) }
     const handleReset = () => {
-        setModel(DEFAULT.model); setTemperature(DEFAULT.temperature)
-        setMaxTokens(DEFAULT.maxTokens); setPrompt(DEFAULT.prompt)
+        setModel(DEFAULT.model)
+        setTemperature(DEFAULT.temperature)
+        setMaxTokens(DEFAULT.maxTokens)
+        setPrompt(DEFAULT.prompt)
     }
 
     return (
@@ -39,44 +42,57 @@ export default function AISettingsPage() {
                         </div>
                     </div>
 
-                    <div className="mb-4">
-                        <label className="setting-label d-block mb-2">AI Model</label>
-                        <select className="form-select" style={{ borderRadius: 8, fontSize: 14 }}
-                            value={model} onChange={e => setModel(e.target.value)}>
+                    <Form.Group className="mb-4">
+                        <Form.Label className="setting-label d-block mb-2">AI Model</Form.Label>
+                        <Form.Select
+                            style={{ borderRadius: 8, fontSize: 14 }}
+                            value={model}
+                            onChange={e => setModel(e.target.value)}
+                        >
                             {AI_MODELS.map(m => <option key={m}>{m}</option>)}
-                        </select>
-                    </div>
+                        </Form.Select>
+                    </Form.Group>
 
-                    <div className="mb-4">
+                    <Form.Group className="mb-4">
                         <div className="d-flex justify-content-between mb-2">
                             <span className="setting-label">Temperature</span>
                             <span className="range-val">{temperature.toFixed(1)}</span>
                         </div>
-                        <input type="range" className="form-range" min="0" max="1" step="0.1"
-                            value={temperature} onChange={e => setTemperature(parseFloat(e.target.value))} />
+                        <Form.Range
+                            min={0} max={1} step={0.1}
+                            value={temperature}
+                            onChange={e => setTemperature(parseFloat(e.target.value))}
+                        />
                         <div className="d-flex justify-content-between" style={{ fontSize: 12, color: '#94a3b8' }}>
                             <span>Precise (0.0)</span><span>Creative (1.0)</span>
                         </div>
-                    </div>
+                    </Form.Group>
 
-                    <div className="mb-4">
+                    <Form.Group className="mb-4">
                         <div className="d-flex justify-content-between mb-2">
                             <span className="setting-label">Max Tokens</span>
                             <span className="range-val">{maxTokens.toLocaleString()}</span>
                         </div>
-                        <input type="range" className="form-range" min="256" max="8192" step="256"
-                            value={maxTokens} onChange={e => setMaxTokens(parseInt(e.target.value))} />
+                        <Form.Range
+                            min={256} max={8192} step={256}
+                            value={maxTokens}
+                            onChange={e => setMaxTokens(parseInt(e.target.value))}
+                        />
                         <div className="d-flex justify-content-between" style={{ fontSize: 12, color: '#94a3b8' }}>
                             <span>256</span><span>8,192</span>
                         </div>
-                    </div>
+                    </Form.Group>
 
-                    <div className="mb-4">
-                        <label className="setting-label d-block mb-2">System Prompt</label>
-                        <textarea className="form-control" rows={4}
+                    <Form.Group className="mb-4">
+                        <Form.Label className="setting-label d-block mb-2">System Prompt</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={4}
                             style={{ borderRadius: 8, fontSize: 14, resize: 'vertical' }}
-                            value={prompt} onChange={e => setPrompt(e.target.value)} />
-                    </div>
+                            value={prompt}
+                            onChange={e => setPrompt(e.target.value)}
+                        />
+                    </Form.Group>
 
                     <div className="d-flex justify-content-end align-items-center gap-2">
                         {saved && (
@@ -84,7 +100,7 @@ export default function AISettingsPage() {
                                 <i className="bi bi-check-circle-fill me-1" />Settings saved!
                             </span>
                         )}
-                        <button className="btn btn-light border" onClick={handleReset}>Reset</button>
+                        <Button variant="light" className="border" onClick={handleReset}>Reset</Button>
                         <button className="btn-purple" onClick={handleSave}>
                             <i className="bi bi-floppy" /> Save Settings
                         </button>

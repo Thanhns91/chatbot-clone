@@ -1,6 +1,6 @@
 import React from "react";
 import SessionCard from "./SessionCard";
-import "./Chat.css";
+import "./Chat.scss";
 
 const MessageList = ({ conversation, onStar, onDelete }) => {
   if (!conversation) return null;

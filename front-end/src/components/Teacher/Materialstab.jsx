@@ -1,4 +1,7 @@
 import React from "react";
+import Card from "react-bootstrap/Card";
+import Button from "react-bootstrap/Button";
+import ListGroup from "react-bootstrap/ListGroup";
 
 const uploadHistory = [
   { name: "Algebra_Unit4_Notes.pdf",  date: "Jun 1, 2026",  size: "2.1 MB",  type: "pdf"  },
@@ -7,7 +10,7 @@ const uploadHistory = [
 ];
 
 const fileIcon = (type) => {
-  if (type === "pdf")  return { cls: "td-file-icon--pdf",  icon: "bi bi-file-earmark-pdf" };
+  if (type === "pdf")  return { cls: "td-file-icon--pdf",  icon: "bi bi-file-earmark-pdf"  };
   if (type === "mp4")  return { cls: "td-file-icon--mp4",  icon: "bi bi-file-earmark-play" };
   return                      { cls: "td-file-icon--docx", icon: "bi bi-file-earmark-word" };
 };
@@ -16,33 +19,45 @@ const MaterialsTab = () => {
   return (
     <>
       {/* Upload zone */}
-      <div className="td-upload-zone">
-        <div className="td-upload-icon">
-          <i className="bi bi-upload"></i>
-        </div>
-        <p className="td-upload-text">Drop files here or click to browse</p>
-        <p className="td-upload-hint">PDF, DOCX, PPTX, MP4 · max 100MB</p>
-        <button className="td-select-btn">Select Files</button>
-      </div>
+      <Card className="td-upload-zone border-0">
+        <Card.Body className="d-flex flex-column align-items-center gap-3 py-5">
+          <div className="td-upload-icon">
+            <i className="bi bi-upload"></i>
+          </div>
+          <Card.Text className="td-upload-text mb-0">
+            Drop files here or click to browse
+          </Card.Text>
+          <Card.Text className="td-upload-hint mb-0">
+            PDF, DOCX, PPTX, MP4 · max 100MB
+          </Card.Text>
+          <Button variant="primary" className="td-select-btn">
+            Select Files
+          </Button>
+        </Card.Body>
+      </Card>
 
       {/* Upload history */}
-      <div className="td-card">
-        <div className="td-section-label">Upload History</div>
-        {uploadHistory.map((f, i) => {
-          const { cls, icon } = fileIcon(f.type);
-          return (
-            <div key={i} className="td-file-item">
-              <div className={`td-file-icon ${cls}`}>
-                <i className={icon}></i>
-              </div>
-              <div>
-                <div className="td-file-name">{f.name}</div>
-                <div className="td-file-meta">{f.date} · {f.size}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <Card className="td-card">
+        <Card.Body>
+          <div className="td-section-label">Upload History</div>
+          <ListGroup variant="flush">
+            {uploadHistory.map((f, i) => {
+              const { cls, icon } = fileIcon(f.type);
+              return (
+                <ListGroup.Item key={i} className="td-file-item px-0">
+                  <div className={`td-file-icon ${cls}`}>
+                    <i className={icon}></i>
+                  </div>
+                  <div>
+                    <div className="td-file-name">{f.name}</div>
+                    <div className="td-file-meta">{f.date} · {f.size}</div>
+                  </div>
+                </ListGroup.Item>
+              );
+            })}
+          </ListGroup>
+        </Card.Body>
+      </Card>
     </>
   );
 };
