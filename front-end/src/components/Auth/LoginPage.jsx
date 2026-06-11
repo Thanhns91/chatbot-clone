@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./Auth.css";
 import { login } from "../../services/authService";
-import { auth, googleProvider } from "../../firebase";
+import { auth, googleProvider } from "../../../fireBase/firebase";
 import { signInWithPopup } from "firebase/auth";
 
 const DEMO_ACCOUNTS = [

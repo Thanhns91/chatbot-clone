@@ -28,7 +28,7 @@ export default function UsersPage() {
         setError('')
 
         try {
-            const res = await fetch('http://localhost:3000/api/auth/admin/create-teacher', {
+            const res = await fetch('http://localhost:3000/auth/admin/create-teacher', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fullName: form.name, email: form.email }),
