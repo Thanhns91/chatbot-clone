@@ -1,18 +1,24 @@
-const DEMO_ACCOUNTS = [
-  { email: 'admin@example.com',   password: 'admin123',   role: 'admin',   name: 'Admin'   },
-  { email: 'teacher@example.com', password: 'teacher123', role: 'teacher', name: 'Teacher' },
-  { email: 'member@example.com',  password: 'member123',  role: 'member',  name: 'Member'  },
-];
+const API = 'http://localhost:3000';
 
-export const login = (email, password) => {
-  const user = DEMO_ACCOUNTS.find(
-    (acc) => acc.email === email && acc.password === password
-  );
-  if (!user) {
-    return { success: false, message: 'Email hoặc mật khẩu không đúng.' };
+export const login = async (email, password) => {
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      return { success: false, message: data.message };
+    }
+
+    sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+    return { success: true, user: data.user };
+  } catch (error) {
+    return { success: false, message: 'Không thể kết nối server.' };
   }
-  sessionStorage.setItem('currentUser', JSON.stringify(user));
-  return { success: true, user };
 };
 
 export const logout = () => {
@@ -26,4 +32,4 @@ export const getCurrentUser = () => {
 
 export const isAdmin   = () => getCurrentUser()?.role === 'admin';
 export const isTeacher = () => getCurrentUser()?.role === 'teacher';
-export const isMember  = () => getCurrentUser()?.role === 'member';
+export const isMember  = () => getCurrentUser()?.role === 'student';
