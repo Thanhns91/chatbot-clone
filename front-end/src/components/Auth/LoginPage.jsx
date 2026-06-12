@@ -1,5 +1,6 @@
 import { useState } from "react";
-import "./Auth.css";
+import { Form, Button, Alert } from "react-bootstrap";
+import "./Auth.scss";
 import { login } from "../../services/authService";
 
 const DEMO_ACCOUNTS = [
@@ -91,17 +92,17 @@ export default function LoginPage({
 
         {/* Hiển thị lỗi nếu có */}
         {error && (
-          <div className="auth-error">
+          <Alert variant="danger" className="auth-error py-2 px-3 border-0">
             <i className="bi bi-exclamation-circle me-2"></i>
             {error}
-          </div>
+          </Alert>
         )}
 
         {/* Form đăng nhập */}
-        <form className="auth-form" onSubmit={handleSignIn}>
-          <div className="auth-field">
-            <label className="auth-label">Email</label>
-            <input
+        <Form className="auth-form" onSubmit={handleSignIn}>
+          <Form.Group className="auth-field">
+            <Form.Label className="auth-label">Email</Form.Label>
+            <Form.Control
               type="email"
               className="auth-input"
               placeholder="you@example.com"
@@ -109,12 +110,12 @@ export default function LoginPage({
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
             />
-          </div>
+          </Form.Group>
 
-          <div className="auth-field">
-            <label className="auth-label">Password</label>
+          <Form.Group className="auth-field">
+            <Form.Label className="auth-label">Password</Form.Label>
             <div className="auth-input-wrap">
-              <input
+              <Form.Control
                 type={showPassword ? "text" : "password"}
                 className="auth-input auth-input--password"
                 value={form.password}
@@ -126,17 +127,15 @@ export default function LoginPage({
                 className="auth-eye"
                 onClick={() => setShowPassword((v) => !v)}
               >
-                <i
-                  className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}
-                ></i>
+                <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}></i>
               </button>
             </div>
-          </div>
+          </Form.Group>
 
-          <button type="submit" className="auth-submit">
+          <Button type="submit" className="auth-submit border-0">
             Sign In
-          </button>
-        </form>
+          </Button>
+        </Form>
 
         {/* Chuyển sang trang đăng ký */}
         <p className="auth-switch">

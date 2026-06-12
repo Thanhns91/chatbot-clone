@@ -1,53 +1,47 @@
-const ROLES = ["Admin", "Teacher", "Member", "Student"];
+import { Table, Button, Form } from 'react-bootstrap'
+
+const ROLES = ['Admin', 'Teacher', 'Member', 'Student']
 
 function StatusBadge({ status }) {
   return (
     <span className={`ad-status ad-status--${status}`}>
       {status}
     </span>
-  );
+  )
 }
 
 function RoleSelect({ userId, currentRole, onChangeRole }) {
   return (
-    <select
+    <Form.Select
       className={`ad-role-select ad-role-select--${currentRole.toLowerCase()}`}
       value={currentRole}
-      onChange={(e) => onChangeRole(userId, e.target.value)}
+      onChange={e => onChangeRole(userId, e.target.value)}
+      size="sm"
     >
-      {ROLES.map((r) => (
-        <option key={r} value={r}>
-          {r}
-        </option>
+      {ROLES.map(r => (
+        <option key={r} value={r}>{r}</option>
       ))}
-    </select>
-  );
+    </Form.Select>
+  )
 }
 
-export default function UserTable({
-  users = [],
-  onChangeRole,
-  onToggleBlock,
-  onDeleteUser,
-}) {
-  const visibleUsers = users;
+export default function UserTable({ users = [], onChangeRole, onToggleBlock, onDeleteUser }) {
+  const visibleUsers = users
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString();
-  };
+  const formatDate = dateString => {
+    if (!dateString) return '-'
+    return new Date(dateString).toLocaleDateString()
+  }
 
   return (
     <>
       <div className="ad-panel-header">
         <div className="ad-panel-title">All Users</div>
-        <div className="ad-panel-count">
-          {visibleUsers.length} accounts
-        </div>
+        <div className="ad-panel-count">{visibleUsers.length} accounts</div>
       </div>
 
       <div className="ad-table-wrap">
-        <table className="ad-table">
+        <Table className="ad-table admin-table mb-0">
           <thead>
             <tr>
               <th>Name</th>
@@ -58,18 +52,11 @@ export default function UserTable({
               <th>Action</th>
             </tr>
           </thead>
-
           <tbody>
-            {visibleUsers.map((u) => (
+            {visibleUsers.map(u => (
               <tr key={u.id}>
-                <td style={{ fontWeight: 500 }}>
-                  {u.name || u.fullName || "-"}
-                </td>
-
-                <td style={{ color: "var(--text-secondary)" }}>
-                  {u.email}
-                </td>
-
+                <td style={{ fontWeight: 500 }}>{u.name || u.fullName || '-'}</td>
+                <td style={{ color: 'var(--text-secondary)' }}>{u.email}</td>
                 <td>
                   <RoleSelect
                     userId={u.id}
@@ -77,44 +64,46 @@ export default function UserTable({
                     onChangeRole={onChangeRole}
                   />
                 </td>
-
-                <td style={{ color: "var(--text-secondary)" }}>
+                <td style={{ color: 'var(--text-secondary)' }}>
                   {formatDate(u.joinDate || u.createdAt)}
                 </td>
-
                 <td>
                   <StatusBadge status={u.status} />
                 </td>
-
                 <td>
-                  {u.status === "active" ? (
-                    <button
-                      className="ad-block-btn"
+                  {u.status === 'active' ? (
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      className="ad-block-btn me-2"
                       onClick={() => onToggleBlock(u.id, u.status)}
                     >
-                      <i className="bi bi-slash-circle" /> Block
-                    </button>
+                      <i className="bi bi-slash-circle me-1" />Block
+                    </Button>
                   ) : (
-                    <button
-                      className="ad-unblock-btn"
+                    <Button
+                      variant="outline-success"
+                      size="sm"
+                      className="ad-unblock-btn me-2"
                       onClick={() => onToggleBlock(u.id, u.status)}
                     >
-                      <i className="bi bi-check-circle" /> Unblock
-                    </button>
+                      <i className="bi bi-check-circle me-1" />Unblock
+                    </Button>
                   )}
-
-                  <button
-                    className="ad-delete-btn"
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="ad-delete-btn text-danger p-0"
                     onClick={() => onDeleteUser(u.id)}
                   >
-                    <i className="bi bi-trash" /> Delete
-                  </button>
+                    <i className="bi bi-trash me-1" />Delete
+                  </Button>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </div>
     </>
-  );
+  )
 }
