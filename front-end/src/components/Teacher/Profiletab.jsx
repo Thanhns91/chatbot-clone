@@ -53,10 +53,7 @@ const ProfileTab = ({ user }) => {
           <Card.Title className="fw-bold mb-4">Personal Information</Card.Title>
 
           <div className="d-flex align-items-center gap-3 mb-4">
-            <div
-              className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fs-4 fw-bold flex-shrink-0"
-              style={{ width: 72, height: 72 }}
-            >
+            <div className="td-profile-avatar">
               {initial}
             </div>
             <div>
@@ -115,25 +112,26 @@ const ProfileTab = ({ user }) => {
           <Card.Title className="fw-bold text-primary d-flex align-items-center gap-2 mb-1">
             <i className="bi bi-sun"></i> Appearance
           </Card.Title>
-          <p className="text-muted mb-4" style={{ fontSize: 13.5 }}>Choose your preferred interface theme.</p>
+          <p className="text-muted mb-4 td-appearance-sub">
+            Choose your preferred interface theme.
+          </p>
 
           <Row className="g-3">
             {[
-              { key: "light", emoji: "☀️", name: "Light", desc: "Default theme", bg: "bg-light" },
-              { key: "dark",  emoji: "🌙", name: "Dark",  desc: "Easy on the eyes", bg: "bg-dark" },
-            ].map(({ key, emoji, name, desc, bg }) => (
+              { key: "light", emoji: "☀️", name: "Light", desc: "Default theme",    bgClass: "td-theme-preview--light" },
+              { key: "dark",  emoji: "🌙", name: "Dark",  desc: "Easy on the eyes", bgClass: "td-theme-preview--dark"  },
+            ].map(({ key, emoji, name, desc, bgClass }) => (
               <Col md={6} key={key}>
                 <Card
-                  className={`h-100 ${theme === key ? "border-primary border-2" : ""}`}
-                  style={{ cursor: "pointer" }}
+                  className={`td-theme-card ${theme === key ? "td-theme-card--active" : ""}`}
                   onClick={() => setTheme(key)}
                 >
-                  <div className={`${bg} d-flex align-items-center justify-content-center`} style={{ height: 90, fontSize: 28 }}>
-                    {emoji}
+                  <div className={`td-theme-preview ${bgClass}`}>
+                    <span className="td-theme-emoji">{emoji}</span>
                   </div>
-                  <Card.Body className="py-2 px-3">
-                    <div className="fw-semibold">{name}</div>
-                    <div className="text-muted" style={{ fontSize: 12 }}>{desc}</div>
+                  <Card.Body className="td-theme-info">
+                    <div className="td-theme-name">{name}</div>
+                    <div className="td-theme-desc">{desc}</div>
                   </Card.Body>
                 </Card>
               </Col>
@@ -150,14 +148,14 @@ const ProfileTab = ({ user }) => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p className="text-muted mb-4" style={{ fontSize: 13.5 }}>
+          <p className="text-muted mb-4 td-modal-sub">
             Update your password to keep your account secure.
           </p>
 
           <div className="d-flex flex-column gap-3">
             {[
               { field: "current", label: "Current Password" },
-              { field: "newPw",   label: "New Password" },
+              { field: "newPw",   label: "New Password"     },
               { field: "confirm", label: "Confirm New Password" },
             ].map(({ field, label }) => (
               <div key={field}>
@@ -182,11 +180,13 @@ const ProfileTab = ({ user }) => {
 
           {pwData.newPw.length > 0 && (
             <div className={`mt-2 small ${pwData.newPw.length < 8 ? "text-danger" : "text-success"}`}>
-              {pwData.newPw.length < 8 ? "⚠ At least 8 characters required" : "✓ Password length looks good"}
+              {pwData.newPw.length < 8
+                ? "⚠ At least 8 characters required"
+                : "✓ Password length looks good"}
             </div>
           )}
 
-          {pwError && <Alert variant="danger" className="mt-3 py-2 mb-0">{pwError}</Alert>}
+          {pwError   && <Alert variant="danger"  className="mt-3 py-2 mb-0">{pwError}</Alert>}
           {pwSuccess && <Alert variant="success" className="mt-3 py-2 mb-0">✓ Password changed successfully!</Alert>}
         </Modal.Body>
         <Modal.Footer>

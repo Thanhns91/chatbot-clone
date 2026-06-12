@@ -14,7 +14,7 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(cors());
 app.use(express.json());
 
 app.use("/upload", uploadRoutes);
@@ -23,14 +23,15 @@ app.use("/documents", documentRoutes);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/chat-history", chatHistoryRoutes);
-
 app.get("/", (req, res) => {
   res.send("Backend Hugging Face RAG running");
 });
 
 try {
   const connection = await pool.getConnection();
+
   console.log("MySQL Connected");
+
   connection.release();
 } catch (error) {
   console.log("MySQL Error");
@@ -39,5 +40,8 @@ try {
 
 app.listen(3000, async () => {
   await createCollection();
+
   console.log("Server running at http://localhost:3000");
 });
+
+

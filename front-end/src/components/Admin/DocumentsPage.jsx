@@ -1,104 +1,28 @@
-import { useState, useEffect, useRef } from 'react'
-import { Button, Col, Form, Row, Table } from 'react-bootstrap'
+import { useState } from 'react'
+
+const INITIAL_DOCS = [
+    { id: 1, name: 'Course Syllabus Q1 2026.pdf', type: 'PDF', size: '1.2 MB', uploaded: '2026-03-10', uploader: 'Teacher User' },
+    { id: 2, name: 'Member Handbook.docx', type: 'DOCX', size: '345 KB', uploaded: '2026-02-15', uploader: 'Admin' },
+    { id: 3, name: 'AI Learning Resources.pdf', type: 'PDF', size: '2.8 MB', uploaded: '2026-01-20', uploader: 'Teacher User' },
+    { id: 4, name: 'Progress Report Template.xlsx', type: 'XLSX', size: '88 KB', uploaded: '2025-12-05', uploader: 'Admin' },
+    { id: 5, name: 'Lecture Notes Week 1.pdf', type: 'PDF', size: '560 KB', uploaded: '2025-11-10', uploader: 'Teacher User' },
+]
 
 const TYPE_BADGE = { PDF: 'badge-pdf', DOCX: 'badge-docx', XLSX: 'badge-xlsx' }
-const API = 'http://localhost:3000'
 
-export default function DocumentsPage({ currentUser }) {
-    const [docs, setDocs] = useState([])
+export default function DocumentsPage() {
+    const [docs, setDocs] = useState(INITIAL_DOCS)
     const [search, setSearch] = useState('')
-    const [uploading, setUploading] = useState(false)
-    const [error, setError] = useState('')
-    const fileRef = useRef()
 
-    const fetchDocs = async () => {
-        try {
-            const res = await fetch(`${API}/documents`)
-            const data = await res.json()
-            if (data.success) setDocs(data.data)
-        } catch (err) {
-            console.error(err)
-        }
-    }
-
-    useEffect(() => { fetchDocs() }, [])
-
-    const getFileType = (fileType) => {
-        if (!fileType) return 'OTHER'
-        if (fileType.includes('pdf')) return 'PDF'
-        if (fileType.includes('word') || fileType.includes('docx')) return 'DOCX'
-        if (fileType.includes('sheet') || fileType.includes('xlsx')) return 'XLSX'
-        return 'OTHER'
-    }
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return '-'
-        return new Date(dateStr).toISOString().split('T')[0]
-    }
-
-    const filtered = docs.filter(d =>
-        d.fileName?.toLowerCase().includes(search.toLowerCase())
-    )
-
-    const pdfCount = docs.filter(d => getFileType(d.fileType) === 'PDF').length
-    const otherCount = docs.filter(d => getFileType(d.fileType) !== 'PDF').length
+    const filtered = docs.filter(d => d.name.toLowerCase().includes(search.toLowerCase()))
+    const pdfCount = docs.filter(d => d.type === 'PDF').length
+    const otherCount = docs.filter(d => d.type !== 'PDF').length
 
     const STATS = [
         { label: 'Total Documents', val: docs.length, color: '#2563eb' },
         { label: 'PDF Files', val: pdfCount, color: '#dc2626' },
         { label: 'Other Files', val: otherCount, color: '#16a34a' },
     ]
-
-    const handleUpload = async (e) => {
-        const file = e.target.files[0]
-        if (!file) return
-
-        setUploading(true)
-        setError('')
-
-        const user = currentUser || JSON.parse(sessionStorage.getItem('currentUser') || '{}')
-        const role = user?.role === 'admin' ? 'teacher' : (user?.role || 'teacher')
-
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('uploadedBy', role)
-        formData.append('uploaderId', user?.userId || '')
-
-        try {
-            const res = await fetch(`${API}/upload`, {
-                method: 'POST',
-                body: formData,
-            })
-            const data = await res.json()
-
-            if (data.documentId) {
-                await fetchDocs()
-            } else {
-                setError(data.error || 'Upload thất bại')
-            }
-        } catch (err) {
-            setError('Không thể kết nối server')
-        } finally {
-            setUploading(false)
-            fileRef.current.value = ''
-        }
-    }
-
-    const handleDelete = async (documentId) => {
-        if (!confirm('Bạn có chắc muốn xóa document này?')) return
-
-        try {
-            const res = await fetch(`${API}/documents/${documentId}`, {
-                method: 'DELETE',
-            })
-            const data = await res.json()
-            if (data.success) {
-                setDocs(prev => prev.filter(d => d.documentId !== documentId))
-            }
-        } catch (err) {
-            setError('Xóa thất bại')
-        }
-    }
 
     return (
         <>
@@ -109,94 +33,64 @@ export default function DocumentsPage({ currentUser }) {
 
             <div className="admin-body">
                 <div className="d-flex align-items-center justify-content-between mb-4">
-                    <div className="search-box">
-                        <i className="bi bi-search search-box__icon" />
-                        <Form.Control
-                            className="search-box__input"
-                            placeholder="Search"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
+                    <div className="input-group" style={{ maxWidth: 280 }}>
+                        <span className="input-group-text bg-white border-end-0" style={{ borderRadius: '8px 0 0 8px' }}>
+                            <i className="bi bi-search text-secondary" />
+                        </span>
+                        <input className="form-control border-start-0" style={{ borderRadius: '0 8px 8px 0' }}
+                            placeholder="Search documents..."
+                            value={search} onChange={e => setSearch(e.target.value)} />
                     </div>
-
-                    <div>
-                        {error && <span style={{ color: '#b91c1c', fontSize: 13, marginRight: 12 }}>❌ {error}</span>}
-                        <input
-                            type="file"
-                            ref={fileRef}
-                            style={{ display: 'none' }}
-                            accept=".pdf,.docx,.xlsx,.xls"
-                            onChange={handleUpload}
-                        />
-                        <button className="btn-purple" onClick={() => fileRef.current.click()} disabled={uploading}>
-                            <i className="bi bi-upload" /> {uploading ? 'Đang upload...' : 'Upload Document'}
-                        </button>
-                    </div>
+                    <button className="btn-purple">
+                        <i className="bi bi-upload" /> Upload Document
+                    </button>
                 </div>
 
-                <Row className="g-3 mb-4">
+                <div className="row g-3 mb-4">
                     {STATS.map(s => (
-                        <Col key={s.label} md={4}>
+                        <div key={s.label} className="col-md-4">
                             <div className="stat-card">
                                 <div>
                                     <div className="stat-label">{s.label}</div>
                                     <div className="stat-val" style={{ color: s.color }}>{s.val}</div>
                                 </div>
                             </div>
-                        </Col>
+                        </div>
                     ))}
-                </Row>
+                </div>
 
                 <div className="a-card">
                     <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16 }}>All Documents</div>
                     <div className="table-responsive">
-                        <Table className="admin-table mb-0">
+                        <table className="table admin-table mb-0">
                             <thead>
-                                <tr>
-                                    <th>Name</th><th>Type</th>
-                                    <th>Uploaded</th><th>Uploader</th><th>Status</th><th>Actions</th>
-                                </tr>
+                                <tr><th>Name</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Uploader</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
-                                {filtered.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="text-center text-secondary py-4">
-                                            No documents found
-                                        </td>
-                                    </tr>
-                                ) : filtered.map(d => (
-                                    <tr key={d.documentId}>
-                                        <td>
-                                            <div className="d-flex align-items-center gap-2">
-                                                <i className="bi bi-file-earmark text-secondary" />
-                                                <span>{d.fileName}</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span className={`role-badge ${TYPE_BADGE[getFileType(d.fileType)] || ''}`}>
-                                                {getFileType(d.fileType)}
-                                            </span>
-                                        </td>
-                                        <td style={{ color: '#64748b' }}>{formatDate(d.uploadDate)}</td>
-                                        <td style={{ color: '#64748b' }}>{d.uploaderName || d.uploadedBy}</td>
-                                        <td>
-                                            <span className={d.reviewStatus === 'approved' ? 'status-active' : 'status-blocked'}>
-                                                {d.reviewStatus}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <Button
-                                                variant="link"
-                                                className="btn-del p-0"
-                                                onClick={() => handleDelete(d.documentId)}
-                                            >
-                                                <i className="bi bi-trash3" />
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {filtered.length === 0
+                                    ? <tr><td colSpan={6} className="text-center text-secondary py-4">No documents found</td></tr>
+                                    : filtered.map(d => (
+                                        <tr key={d.id}>
+                                            <td>
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <i className="bi bi-file-earmark text-secondary" />
+                                                    <span>{d.name}</span>
+                                                </div>
+                                            </td>
+                                            <td><span className={`role-badge ${TYPE_BADGE[d.type] || ''}`}>{d.type}</span></td>
+                                            <td style={{ color: '#64748b' }}>{d.size}</td>
+                                            <td style={{ color: '#64748b' }}>{d.uploaded}</td>
+                                            <td style={{ color: '#64748b' }}>{d.uploader}</td>
+                                            <td>
+                                                <button className="btn-del" onClick={() => setDocs(prev => prev.filter(x => x.id !== d.id))}>
+                                                    <i className="bi bi-trash3" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                }
                             </tbody>
-                        </Table>
+                        </table>
                     </div>
                 </div>
             </div>

@@ -1,6 +1,6 @@
 import React from "react";
 import Button from "react-bootstrap/Button";
-import "./LibraryPanel.css";
+import "./LibraryPanel.scss";
 
 const MOCK_LESSONS = [
   { id: 1, icon: "📘", color: "purple", title: "Introduction to Machine Learning", category: "Computer Science", pages: 42, date: "May 20" },

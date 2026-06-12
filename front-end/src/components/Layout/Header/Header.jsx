@@ -2,7 +2,7 @@ import { useState } from "react";
 import Button from "react-bootstrap/Button";
 import Navbar from "react-bootstrap/Navbar";
 import Container from "react-bootstrap/Container";
-import "./Header.css";
+import "./Header.scss";
 import logo7 from "../../../assets/images/7.png";
 import SettingsModal from "../SettingModel/SettingsModal";
 
@@ -17,7 +17,7 @@ function Header({ libraryOpen, onToggleLibrary, headerRight, currentUser }) {
             <img
               src={logo7}
               alt="logo"
-              style={{ width: 32, height: 32, objectFit: "contain" }}
+              className="brand__logo"
             />
             <span>AI Learning</span>
           </Navbar.Brand>

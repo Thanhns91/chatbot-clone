@@ -1,59 +1,90 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { logout } from '../services/authService'
-import ChatLayout from '../components/Layout/ChatLayout'
-import AuthButton from '../components/Auth/AuthButton'
-import UserAvatar from '../components/Member/UserAvatar'
-import logo7 from '../assets/images/7.png'
-import Form from 'react-bootstrap/Form'
-import './HomePage.scss'
+import { useState } from "react";
+import Form from "react-bootstrap/Form";
+import ChatLayout from "../components/Layout/ChatLayout";
+import AuthButton from "../components/Auth/AuthButton";
+import logo7 from "../assets/images/7.png";
+import "./HomePage.scss";
+import { logout } from "../services/authService";
+import { useNavigate } from "react-router-dom";
+import Button from "react-bootstrap/Button";
 
-// Slug hoá tên: "Member User" -> "member-user"
-const toSlug = (name = '') =>
-  name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+const UserAvatar = ({ user, onLogout }) => {
+  const [open, setOpen] = useState(false);
+  const initial = user?.name?.charAt(0).toUpperCase() || "U";
+
+  return (
+    <div className="homepage__avatar-wrap">
+      <Button
+        className="homepage__avatar"
+        onClick={() => setOpen((v) => !v)}
+        title={user?.name}
+      >
+        {initial}
+      </Button>
+
+      {open && (
+        <div className="homepage__avatar-menu">
+          <div className="homepage__avatar-info">
+            <strong>{user?.name}</strong>
+            <span>{user?.email}</span>
+            <span className="homepage__avatar-role">{user?.role}</span>
+          </div>
+          <hr className="homepage__avatar-divider" />
+          <Button variant="outline-secondary" className="homepage__avatar-logout" onClick={onLogout}>
+            <i className="ti ti-logout me-2"></i>
+            Logout
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const HomePage = () => {
-  const navigate = useNavigate()
-  const [message, setMessage] = useState('')
-  const [currentUser, setCurrentUser] = useState(null)
-
   const [conversations, setConversations] = useState([
-    { id: '1', title: 'hello', preview: 'hello', date: 'Today', messageCount: 2, starred: false },
-  ])
-  const [activeId, setActiveId] = useState('1')
+    {
+      id: 1,
+      title: "hello",
+      preview: "hello",
+      date: "Today",
+      messageCount: 2,
+      starred: false,
+    },
+  ]);
+
+  const [activeId, setActiveId] = useState(1);
+  const [message, setMessage] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showDashboard, setShowDashboard] = useState(false);
+
+  const navigate = useNavigate();
 
   const handleLoginSuccess = (role, user) => {
-    setCurrentUser(user)
-    localStorage.setItem('currentUser', JSON.stringify(user))
-
-    if (role === 'admin') navigate('/admin/home')
-    else if (role === 'teacher') navigate('/teacher/home')
-    else {
-      const slug = toSlug(user.name) || 'user'
-      navigate(`/u/${slug}/chat`)
-    }
-  }
+    setCurrentUser(user);
+    localStorage.setItem("currentUser", JSON.stringify(user));
+    if (role === "admin") navigate("/admin");
+    else if (role === "teacher") navigate("/teacher");
+  };
 
   const handleLogout = () => {
-    logout()
-    localStorage.removeItem('currentUser')
-    sessionStorage.clear()
-    setCurrentUser(null)
-  }
+    logout();
+    sessionStorage.clear();
+    setCurrentUser(null);
+    setShowDashboard(false);
+  };
 
   const handleNew = () => {
-    const newId = String(Date.now())
     const newConv = {
-      id: newId,
-      title: 'New reflection',
-      preview: '',
-      date: 'Today',
+      id: Date.now(),
+      title: "New reflection",
+      preview: "",
+      date: "Today",
       messageCount: 0,
       starred: false,
-    }
-    setConversations((prev) => [newConv, ...prev])
-    setActiveId(newId)
-  }
+    };
+    setConversations((prev) => [newConv, ...prev]);
+    setActiveId(newConv.id);
+  };
 
   return (
     <ChatLayout
@@ -64,14 +95,20 @@ const HomePage = () => {
       onNew={handleNew}
       currentUser={currentUser}
       headerRight={
-        currentUser
-          ? <UserAvatar user={currentUser} onLogout={handleLogout} />
-          : <AuthButton onLoginSuccess={handleLoginSuccess} />
+        currentUser ? (
+          <UserAvatar user={currentUser} onLogout={handleLogout} />
+        ) : (
+          <AuthButton onLoginSuccess={handleLoginSuccess} />
+        )
       }
     >
       <div className="homepage__body">
         <div className="homepage__welcome">
-          <img src={logo7} alt="logo" className="homepage__logo" />
+          <img
+            src={logo7}
+            alt="logo"
+            className="homepage__logo"
+          />
           <h1 className="homepage__title">Where should we start?</h1>
           <p className="homepage__subtitle">
             Ask me anything — I am here to help you learn and explore ideas.
@@ -81,10 +118,10 @@ const HomePage = () => {
 
       <div className="homepage__input-bar">
         <button className="homepage__tool-btn homepage__tool-btn--attach" title="Attach file or image">
-          <i className="ti ti-paperclip" />
+          <i className="ti ti-paperclip" style={{ fontSize: 18 }}></i>
         </button>
         <button className="homepage__tool-btn homepage__tool-btn--mic" title="Voice input">
-          <i className="ti ti-microphone" />
+          <i className="ti ti-microphone" style={{ fontSize: 18 }}></i>
         </button>
         <Form.Control
           className="homepage__input"
@@ -92,14 +129,16 @@ const HomePage = () => {
           placeholder="Ask anything..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && setMessage('')}
+          onKeyDown={(e) => e.key === "Enter" && setMessage("")}
         />
-        <button className={`homepage__send-btn ${message.trim() ? 'homepage__send-btn--active' : ''}`}>
-          <i className="ti ti-send" />
+        <button
+          className={`homepage__send-btn ${message.trim() ? "homepage__send-btn--active" : ""}`}
+        >
+          <i className="ti ti-send" style={{ fontSize: 18 }}></i>
         </button>
       </div>
     </ChatLayout>
-  )
-}
+  );
+};
 
-export default HomePage
+export default HomePage;
