@@ -1,35 +1,77 @@
-import { useState } from 'react'
-import { Row, Col, Table, Modal, Form, Button } from 'react-bootstrap'
+import { useState, useEffect } from 'react'
+import { Button, Col, Form, Modal, Row, Table } from 'react-bootstrap'
 
-const INITIAL_USERS = [
-    { id: 1, name: 'Teacher User', email: 'teacher@example.com', role: 'Teacher', joinDate: '2025-03-10', status: 'active' },
-    { id: 2, name: 'Member User', email: 'member@example.com', role: 'Member', joinDate: '2026-08-05', status: 'active' },
-    { id: 3, name: 'John Doe', email: 'john231313@gmail.com', role: 'Member', joinDate: '2026-02-28', status: 'active' },
-]
+const API = 'http://localhost:3000'
 
 export default function UsersPage() {
-    const [users, setUsers] = useState(INITIAL_USERS)
+    const [users, setUsers] = useState([])
+    const [loading, setLoading] = useState(true)
     const [showModal, setModal] = useState(false)
     const [form, setForm] = useState({ name: '', email: '' })
-    const [loading, setLoading] = useState(false)
+    const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
 
     const activeCount = users.filter(u => u.status === 'active').length
     const blockedCount = users.filter(u => u.status === 'blocked').length
 
-    const toggleBlock = id => setUsers(prev => prev.map(u =>
-        u.id === id ? { ...u, status: u.status === 'active' ? 'blocked' : 'active' } : u
-    ))
-    const deleteUser = id => setUsers(prev => prev.filter(u => u.id !== id))
+    const fetchUsers = async () => {
+        try {
+            const res = await fetch(`${API}/users`)
+            const data = await res.json()
+            setUsers(data.map(u => ({
+                id: u.userId,
+                name: u.fullName,
+                email: u.email,
+                role: u.role,
+                joinDate: u.createdAt?.split('T')[0] || '-',
+                status: u.status,
+            })))
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => { fetchUsers() }, [])
+
+    const toggleBlock = async (id, currentStatus) => {
+        const newStatus = currentStatus === 'active' ? 'blocked' : 'active'
+        try {
+            await fetch(`${API}/users/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus }),
+            })
+            setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus } : u))
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    const deleteUser = async (id) => {
+        if (!confirm('Bạn có chắc muốn xóa user này?')) return
+        try {
+            const res = await fetch(`${API}/users/${id}`, { method: 'DELETE' })
+            const data = await res.json()
+            if (data.success) {
+                setUsers(prev => prev.filter(u => u.id !== id))
+            } else {
+                alert(data.message)
+            }
+        } catch (err) {
+            console.error(err)
+        }
+    }
 
     const createTeacher = async () => {
         if (!form.name.trim() || !form.email.trim()) return
 
-        setLoading(true)
+        setSubmitting(true)
         setError('')
 
         try {
-            const res = await fetch('http://localhost:3000/api/auth/admin/create-teacher', {
+            const res = await fetch(`${API}/auth/admin/create-teacher`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fullName: form.name, email: form.email }),
@@ -38,21 +80,13 @@ export default function UsersPage() {
 
             if (!data.success) { setError(data.message); return }
 
-            setUsers(prev => [...prev, {
-                id: Math.max(...prev.map(u => u.id)) + 1,
-                name: form.name,
-                email: form.email,
-                role: 'Teacher',
-                joinDate: new Date().toISOString().split('T')[0],
-                status: 'active',
-            }])
-
+            await fetchUsers()
             setForm({ name: '', email: '' })
             setModal(false)
         } catch {
             setError('Không thể kết nối server.')
         } finally {
-            setLoading(false)
+            setSubmitting(false)
         }
     }
 
@@ -109,12 +143,16 @@ export default function UsersPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.map(u => (
+                                {loading ? (
+                                    <tr><td colSpan={6} className="text-center py-4">Đang tải...</td></tr>
+                                ) : users.length === 0 ? (
+                                    <tr><td colSpan={6} className="text-center py-4 text-secondary">No users found</td></tr>
+                                ) : users.map(u => (
                                     <tr key={u.id}>
                                         <td style={{ fontWeight: 500 }}>{u.name}</td>
                                         <td style={{ color: '#64748b' }}>{u.email}</td>
                                         <td>
-                                            <span className={`role-badge ${u.role === 'Teacher' ? 'badge-teacher' : 'badge-member'}`}>
+                                            <span className={`role-badge ${u.role === 'teacher' ? 'badge-teacher' : 'badge-member'}`}>
                                                 {u.role}
                                             </span>
                                         </td>
@@ -126,7 +164,7 @@ export default function UsersPage() {
                                         </td>
                                         <td>
                                             <div className="d-flex align-items-center gap-2">
-                                                <button className="btn-block" onClick={() => toggleBlock(u.id)}>
+                                                <button className="btn-block" onClick={() => toggleBlock(u.id, u.status)}>
                                                     <i className="bi bi-slash-circle" />
                                                     {u.status === 'active' ? 'Block' : 'Unblock'}
                                                 </button>
@@ -173,8 +211,8 @@ export default function UsersPage() {
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="light" className="border" onClick={() => setModal(false)}>Cancel</Button>
-                    <button className="btn-purple" onClick={createTeacher} disabled={loading}>
-                        {loading ? 'Đang tạo...' : 'Create Account'}
+                    <button className="btn-purple" onClick={createTeacher} disabled={submitting}>
+                        {submitting ? 'Đang tạo...' : 'Create Account'}
                     </button>
                 </Modal.Footer>
             </Modal>
