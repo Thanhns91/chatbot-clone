@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Button, Col, Form, Row, Table } from 'react-bootstrap'
 
 const TYPE_BADGE = { PDF: 'badge-pdf', DOCX: 'badge-docx', XLSX: 'badge-xlsx' }
 const API = 'http://localhost:3000'
@@ -22,12 +23,25 @@ export default function DocumentsPage({ currentUser }) {
 
     useEffect(() => { fetchDocs() }, [])
 
+    const getFileType = (fileType) => {
+        if (!fileType) return 'OTHER'
+        if (fileType.includes('pdf')) return 'PDF'
+        if (fileType.includes('word') || fileType.includes('docx')) return 'DOCX'
+        if (fileType.includes('sheet') || fileType.includes('xlsx')) return 'XLSX'
+        return 'OTHER'
+    }
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '-'
+        return new Date(dateStr).toISOString().split('T')[0]
+    }
+
     const filtered = docs.filter(d =>
         d.fileName?.toLowerCase().includes(search.toLowerCase())
     )
 
-    const pdfCount = docs.filter(d => d.fileType?.includes('pdf')).length
-    const otherCount = docs.filter(d => !d.fileType?.includes('pdf')).length
+    const pdfCount = docs.filter(d => getFileType(d.fileType) === 'PDF').length
+    const otherCount = docs.filter(d => getFileType(d.fileType) !== 'PDF').length
 
     const STATS = [
         { label: 'Total Documents', val: docs.length, color: '#2563eb' },
@@ -36,19 +50,20 @@ export default function DocumentsPage({ currentUser }) {
     ]
 
     const handleUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+        const file = e.target.files[0]
+        if (!file) return
 
-    setUploading(true)
-    setError('')
+        setUploading(true)
+        setError('')
 
-    const user = currentUser || JSON.parse(sessionStorage.getItem('currentUser') || '{}')
-const role = user?.role === 'admin' ? 'teacher' : (user?.role || 'teacher')
+        const user = currentUser || JSON.parse(sessionStorage.getItem('currentUser') || '{}')
+        const role = user?.role === 'admin' ? 'teacher' : (user?.role || 'teacher')
 
-const formData = new FormData()
-formData.append('file', file)
-formData.append('uploadedBy', role)
-formData.append('uploaderId', user?.userId || '')
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('uploadedBy', role)
+        formData.append('uploaderId', user?.userId || '')
+
         try {
             const res = await fetch(`${API}/upload`, {
                 method: 'POST',
@@ -85,19 +100,6 @@ formData.append('uploaderId', user?.userId || '')
         }
     }
 
-    const getFileType = (fileType) => {
-        if (!fileType) return 'OTHER'
-        if (fileType.includes('pdf')) return 'PDF'
-        if (fileType.includes('word') || fileType.includes('docx')) return 'DOCX'
-        if (fileType.includes('sheet') || fileType.includes('xlsx')) return 'XLSX'
-        return 'OTHER'
-    }
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return '-'
-        return new Date(dateStr).toISOString().split('T')[0]
-    }
-
     return (
         <>
             <div className="admin-topbar">
@@ -107,13 +109,14 @@ formData.append('uploaderId', user?.userId || '')
 
             <div className="admin-body">
                 <div className="d-flex align-items-center justify-content-between mb-4">
-                    <div className="input-group" style={{ maxWidth: 280 }}>
-                        <span className="input-group-text bg-white border-end-0" style={{ borderRadius: '8px 0 0 8px' }}>
-                            <i className="bi bi-search text-secondary" />
-                        </span>
-                        <input className="form-control border-start-0" style={{ borderRadius: '0 8px 8px 0' }}
-                            placeholder="Search documents..."
-                            value={search} onChange={e => setSearch(e.target.value)} />
+                    <div className="search-box">
+                        <i className="bi bi-search search-box__icon" />
+                        <Form.Control
+                            className="search-box__input"
+                            placeholder="Search"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
                     </div>
 
                     <div>
@@ -131,59 +134,69 @@ formData.append('uploaderId', user?.userId || '')
                     </div>
                 </div>
 
-                <div className="row g-3 mb-4">
+                <Row className="g-3 mb-4">
                     {STATS.map(s => (
-                        <div key={s.label} className="col-md-4">
+                        <Col key={s.label} md={4}>
                             <div className="stat-card">
                                 <div>
                                     <div className="stat-label">{s.label}</div>
                                     <div className="stat-val" style={{ color: s.color }}>{s.val}</div>
                                 </div>
                             </div>
-                        </div>
+                        </Col>
                     ))}
-                </div>
+                </Row>
 
                 <div className="a-card">
                     <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16 }}>All Documents</div>
                     <div className="table-responsive">
-                        <table className="table admin-table mb-0">
+                        <Table className="admin-table mb-0">
                             <thead>
-                                <tr><th>Name</th><th>Type</th><th>Uploaded By</th><th>Date</th><th>Status</th><th>Actions</th></tr>
+                                <tr>
+                                    <th>Name</th><th>Type</th>
+                                    <th>Uploaded</th><th>Uploader</th><th>Status</th><th>Actions</th>
+                                </tr>
                             </thead>
                             <tbody>
-                                {filtered.length === 0
-                                    ? <tr><td colSpan={6} className="text-center text-secondary py-4">No documents found</td></tr>
-                                    : filtered.map(d => (
-                                        <tr key={d.id}>
-                                            <td>
-                                                <div className="d-flex align-items-center gap-2">
-                                                    <i className="bi bi-file-earmark text-secondary" />
-                                                    <span>{d.fileName}</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span className={`role-badge ${TYPE_BADGE[getFileType(d.fileType)] || ''}`}>
-                                                    {getFileType(d.fileType)}
-                                                </span>
-                                            </td>
-                                            <td style={{ color: '#64748b' }}>{d.uploaderName || d.uploadedBy}</td>
-                                            <td style={{ color: '#64748b' }}>{formatDate(d.uploadDate)}</td>
-                                            <td>
-                                                <span className={d.reviewStatus === 'approved' ? 'status-active' : 'status-blocked'}>
-                                                    {d.reviewStatus}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <button className="btn-del" onClick={() => handleDelete(d.documentId)}>
-                                                    <i className="bi bi-trash3" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                }
+                                {filtered.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="text-center text-secondary py-4">
+                                            No documents found
+                                        </td>
+                                    </tr>
+                                ) : filtered.map(d => (
+                                    <tr key={d.documentId}>
+                                        <td>
+                                            <div className="d-flex align-items-center gap-2">
+                                                <i className="bi bi-file-earmark text-secondary" />
+                                                <span>{d.fileName}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span className={`role-badge ${TYPE_BADGE[getFileType(d.fileType)] || ''}`}>
+                                                {getFileType(d.fileType)}
+                                            </span>
+                                        </td>
+                                        <td style={{ color: '#64748b' }}>{formatDate(d.uploadDate)}</td>
+                                        <td style={{ color: '#64748b' }}>{d.uploaderName || d.uploadedBy}</td>
+                                        <td>
+                                            <span className={d.reviewStatus === 'approved' ? 'status-active' : 'status-blocked'}>
+                                                {d.reviewStatus}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <Button
+                                                variant="link"
+                                                className="btn-del p-0"
+                                                onClick={() => handleDelete(d.documentId)}
+                                            >
+                                                <i className="bi bi-trash3" />
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
-                        </table>
+                        </Table>
                     </div>
                 </div>
             </div>
