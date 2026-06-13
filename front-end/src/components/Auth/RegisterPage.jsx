@@ -12,6 +12,38 @@ export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
 
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = result.user;
+
+      const res = await fetch(`${API}/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: firebaseUser.email,
+          fullName: firebaseUser.displayName,
+          uid: firebaseUser.uid,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        setError(data.message || "Đăng nhập Google thất bại");
+        return;
+      }
+
+      sessionStorage.setItem("currentUser", JSON.stringify(data.user));
+      sessionStorage.setItem("showDashboard", "true");
+      onLoginSuccess?.(data.user.role, data.user);
+
+    } catch (err) {
+      setError("Đăng nhập Google thất bại. Vui lòng thử lại.");
+      console.error(err);
+    }
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
@@ -59,38 +91,6 @@ export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin
       setError("Không thể kết nối server.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const firebaseUser = result.user;
-
-      const res = await fetch(`${API}/auth/google-login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: firebaseUser.email,
-          fullName: firebaseUser.displayName,
-          uid: firebaseUser.uid,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!data.success) {
-        setError(data.message || "Đăng nhập Google thất bại");
-        return;
-      }
-
-      sessionStorage.setItem("currentUser", JSON.stringify(data.user));
-      sessionStorage.setItem("showDashboard", "true");
-      onLoginSuccess?.(data.user.role, data.user);
-
-    } catch (err) {
-      setError("Đăng nhập Google thất bại. Vui lòng thử lại.");
-      console.error(err);
     }
   };
 
