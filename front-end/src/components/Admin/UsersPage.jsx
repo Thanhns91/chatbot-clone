@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Button, Col, Form, Modal, Row, Table } from 'react-bootstrap'
+import Swal from 'sweetalert2'
+import { toast } from 'react-toastify'
 
 const API = 'http://localhost:3000'
 
@@ -35,34 +37,66 @@ export default function UsersPage() {
 
     useEffect(() => { fetchUsers() }, [])
 
-    const toggleBlock = async (id, currentStatus) => {
-        const newStatus = currentStatus === 'active' ? 'blocked' : 'active'
-        try {
-            await fetch(`${API}/users/${id}/status`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus }),
-            })
-            setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus } : u))
-        } catch (err) {
-            console.error(err)
-        }
-    }
+    
 
-    const deleteUser = async (id) => {
-        if (!confirm('Bạn có chắc muốn xóa user này?')) return
-        try {
-            const res = await fetch(`${API}/users/${id}`, { method: 'DELETE' })
-            const data = await res.json()
-            if (data.success) {
-                setUsers(prev => prev.filter(u => u.id !== id))
-            } else {
-                alert(data.message)
-            }
-        } catch (err) {
-            console.error(err)
+   const deleteUser = async (id) => {
+    const result = await Swal.fire({
+        title: 'Xóa người dùng?',
+        text: 'Bạn có chắc muốn xóa user này?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Xóa',
+        cancelButtonText: 'Hủy'
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+        const res = await fetch(`${API}/users/${id}`, {
+            method: 'DELETE'
+        })
+
+        const data = await res.json()
+
+        if (data.success) {
+            setUsers(prev => prev.filter(u => u.id !== id))
+
+            // Toast góc phải
+            toast.success('Xóa user thành công!')
+        } else {
+            toast.error(data.message || 'Xóa user thất bại!')
         }
+    } catch (err) {
+        toast.error('Không thể kết nối server!')
     }
+}
+const toggleBlock = async (id, currentStatus) => {
+    const newStatus = currentStatus === 'active' ? 'blocked' : 'active'
+
+    try {
+        await fetch(`${API}/users/${id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        })
+
+        setUsers(prev =>
+            prev.map(u =>
+                u.id === id ? { ...u, status: newStatus } : u
+            )
+        )
+
+        toast.success(
+            newStatus === 'blocked'
+                ? 'Block user thành công!'
+                : 'Unblock user thành công!'
+        )
+    } catch (err) {
+        toast.error('Thao tác thất bại!')
+    }
+}
 
     const createTeacher = async () => {
         if (!form.name.trim() || !form.email.trim()) return
@@ -89,6 +123,7 @@ export default function UsersPage() {
             setSubmitting(false)
         }
     }
+    
 
     const STATS = [
         { label: 'Total Users', val: users.length, color: '#2563eb', iconBg: '#dbeafe', icon: 'bi-people-fill' },

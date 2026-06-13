@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button, Col, Form, Row, Table } from 'react-bootstrap'
+import Swal from 'sweetalert2'
+import { toast } from 'react-toastify'
 
 const TYPE_BADGE = { PDF: 'badge-pdf', DOCX: 'badge-docx', XLSX: 'badge-xlsx' }
 const API = 'http://localhost:3000'
@@ -8,7 +10,6 @@ export default function DocumentsPage({ currentUser }) {
     const [docs, setDocs] = useState([])
     const [search, setSearch] = useState('')
     const [uploading, setUploading] = useState(false)
-    const [error, setError] = useState('')
     const fileRef = useRef()
 
     const fetchDocs = async () => {
@@ -54,7 +55,6 @@ export default function DocumentsPage({ currentUser }) {
         if (!file) return
 
         setUploading(true)
-        setError('')
 
         const user = currentUser || JSON.parse(sessionStorage.getItem('currentUser') || '{}')
         const role = user?.role === 'admin' ? 'teacher' : (user?.role || 'teacher')
@@ -73,11 +73,12 @@ export default function DocumentsPage({ currentUser }) {
 
             if (data.documentId) {
                 await fetchDocs()
+                toast.success('Upload tài liệu thành công!')
             } else {
-                setError(data.error || 'Upload thất bại')
+                toast.error(data.error || 'Upload thất bại')
             }
         } catch (err) {
-            setError('Không thể kết nối server')
+            toast.error('Không thể kết nối server')
         } finally {
             setUploading(false)
             fileRef.current.value = ''
@@ -85,7 +86,18 @@ export default function DocumentsPage({ currentUser }) {
     }
 
     const handleDelete = async (documentId) => {
-        if (!confirm('Bạn có chắc muốn xóa document này?')) return
+        const result = await Swal.fire({
+            title: 'Xóa tài liệu?',
+            text: 'Bạn có chắc muốn xóa document này?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy'
+        })
+
+        if (!result.isConfirmed) return
 
         try {
             const res = await fetch(`${API}/documents/${documentId}`, {
@@ -94,9 +106,12 @@ export default function DocumentsPage({ currentUser }) {
             const data = await res.json()
             if (data.success) {
                 setDocs(prev => prev.filter(d => d.documentId !== documentId))
+                toast.success('Xóa tài liệu thành công!')
+            } else {
+                toast.error(data.message || 'Xóa thất bại')
             }
         } catch (err) {
-            setError('Xóa thất bại')
+            toast.error('Không thể kết nối server!')
         }
     }
 
@@ -120,7 +135,6 @@ export default function DocumentsPage({ currentUser }) {
                     </div>
 
                     <div>
-                        {error && <span style={{ color: '#b91c1c', fontSize: 13, marginRight: 12 }}>❌ {error}</span>}
                         <input
                             type="file"
                             ref={fileRef}

@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react'
+<<<<<<< HEAD
+=======
+import { Row, Col } from 'react-bootstrap'
+>>>>>>> 5b6acb6 (update admin notification)
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
 
 const API = 'http://localhost:3000'
 
+<<<<<<< HEAD
+=======
+const ACTIVITY_COLORS = {
+    admin: '#dc2626',
+    teacher: '#2563eb',
+    student: '#16a34a',
+}
+
+>>>>>>> 5b6acb6 (update admin notification)
 export default function HomePage() {
     const [tab, setTab] = useState('members')
     const [stats, setStats] = useState({ members: 0, teachers: 0, documents: 0 })
@@ -10,7 +23,10 @@ export default function HomePage() {
     const [recentUsers, setRecentUsers] = useState([])
 
     useEffect(() => {
+<<<<<<< HEAD
         // Fetch stats
+=======
+>>>>>>> 5b6acb6 (update admin notification)
         fetch(`${API}/users/stats`)
             .then(r => r.json())
             .then(data => {
@@ -21,14 +37,20 @@ export default function HomePage() {
             })
             .catch(console.error)
 
+<<<<<<< HEAD
         // Fetch recent users
+=======
+>>>>>>> 5b6acb6 (update admin notification)
         fetch(`${API}/users`)
             .then(r => r.json())
             .then(data => setRecentUsers(data.slice(0, 5)))
             .catch(console.error)
     }, [])
 
+<<<<<<< HEAD
     // Build chart data - fill missing dates with 0
+=======
+>>>>>>> 5b6acb6 (update admin notification)
     const buildChartData = (rawData) => {
         const map = {}
         rawData.forEach(d => {
@@ -82,7 +104,11 @@ export default function HomePage() {
                     <div className="d-flex align-items-start justify-content-between mb-3">
                         <div className="d-flex gap-2">
                             {Object.keys(TAB_META).map(t => (
-                                <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
+                                <button
+                                    key={t}
+                                    className={`tab-btn ${tab === t ? 'active' : ''}`}
+                                    onClick={() => setTab(t)}
+                                >
                                     {t.charAt(0).toUpperCase() + t.slice(1)}
                                 </button>
                             ))}
@@ -112,15 +138,25 @@ export default function HomePage() {
                                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
                                 formatter={v => [v, 'Count']}
                                 labelFormatter={l => l}
+<<<<<<< HEAD
+=======
                             />
-                            <Area type="monotone" dataKey="v" stroke="#818cf8" strokeWidth={1.5}
-                                fill="url(#grad)" dot={false} activeDot={{ r: 4, fill: '#7c3aed' }} />
+                            <Area
+                                type="monotone"
+                                dataKey="v"
+                                stroke="#818cf8"
+                                strokeWidth={1.5}
+                                fill="url(#grad)"
+                                dot={false}
+                                activeDot={{ r: 4, fill: '#7c3aed' }}
+>>>>>>> 5b6acb6 (update admin notification)
+                            />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
 
-                <div className="row g-3">
-                    <div className="col-md-6">
+                <Row className="g-3">
+                    <Col md={6}>
                         <div className="a-card h-100">
                             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Recent Users</div>
                             {recentUsers.length === 0 ? (
@@ -137,18 +173,28 @@ export default function HomePage() {
                                 </div>
                             ))}
                         </div>
-                    </div>
-                    <div className="col-md-6">
+                    </Col>
+                    <Col md={6}>
                         <div className="a-card h-100">
                             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Overview</div>
                             {OVERVIEW.map(item => (
                                 <div key={item.label} className="d-flex align-items-center gap-3 py-2 border-bottom">
                                     <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
                                     <div className="ov-bar-wrap">
+<<<<<<< HEAD
                                         <div className="ov-bar" style={{
                                             width: `${Math.min((item.count / maxOverview) * 100, 100)}%`,
                                             background: item.color
                                         }} />
+=======
+                                        <div
+                                            className="ov-bar"
+                                            style={{
+                                                width: `${Math.min((item.count / maxOverview) * 100, 100)}%`,
+                                                background: item.color,
+                                            }}
+                                        />
+>>>>>>> 5b6acb6 (update admin notification)
                                     </div>
                                     <span style={{ fontSize: 13, fontWeight: 600, minWidth: 36, textAlign: 'right' }}>
                                         {item.count >= 1000 ? `${(item.count / 1000).toFixed(1)}k` : item.count}
@@ -156,8 +202,8 @@ export default function HomePage() {
                                 </div>
                             ))}
                         </div>
-                    </div>
-                </div>
+                    </Col>
+                </Row>
             </div>
         </>
     )
