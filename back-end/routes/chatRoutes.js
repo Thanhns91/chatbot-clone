@@ -1,5 +1,4 @@
 import express from "express";
-
 import { qdrant, COLLECTION_NAME } from "../qdrant.js";
 import { embedText } from "../huggingface.js";
 import { generateAnswer } from "../groq.js";
@@ -7,21 +6,21 @@ import { generateAnswer } from "../groq.js";
 const router = express.Router();
 
 function getKeywords(message) {
-  return message
+  return String(message || "")
     .toLowerCase()
-    .replace(/[^\w\s]/g, "")
+    .normalize("NFC")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
+    .map((w) => w.trim())
     .filter((w) => w.length > 3);
 }
 
 function keywordScore(text, keywords) {
-  const lower = text.toLowerCase();
+  const lower = String(text || "").toLowerCase();
   let score = 0;
 
   for (const keyword of keywords) {
-    if (lower.includes(keyword)) {
-      score += 1;
-    }
+    if (lower.includes(keyword)) score += 1;
   }
 
   return score;
@@ -29,7 +28,7 @@ function keywordScore(text, keywords) {
 
 router.post("/", async (req, res) => {
   try {
-    const { documentId, message } = req.body;
+    const { documentId, message, approvedAnswers = [] } = req.body;
 
     if (!documentId || !message) {
       return res.status(400).json({
@@ -38,13 +37,12 @@ router.post("/", async (req, res) => {
     }
 
     const keywords = getKeywords(message);
-
-    // 1. Vector search
     const vector = await embedText(message);
 
     const vectorResults = await qdrant.search(COLLECTION_NAME, {
       vector,
       limit: 10,
+      with_payload: true,
       filter: {
         must: [
           {
@@ -57,7 +55,6 @@ router.post("/", async (req, res) => {
       },
     });
 
-    // 2. Keyword search: lấy toàn bộ chunk của document
     const scrollResult = await qdrant.scroll(COLLECTION_NAME, {
       limit: 1000,
       with_payload: true,
@@ -76,18 +73,36 @@ router.post("/", async (req, res) => {
 
     const allChunks = scrollResult.points || [];
 
-    // 3. Chấm điểm keyword cho tất cả chunk
+    if (allChunks.length === 0) {
+      return res.json({
+        answer: "Tài liệu không có thông tin này.",
+        outOfScope: true,
+      });
+    }
+
     const keywordResults = allChunks
       .map((point) => ({
         id: point.id,
         payload: point.payload,
-        score: keywordScore(point.payload.text, keywords),
+        keywordScore: keywordScore(point.payload?.text, keywords),
+        score: keywordScore(point.payload?.text, keywords),
       }))
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score)
+      .filter((item) => item.keywordScore > 0)
+      .sort((a, b) => b.keywordScore - a.keywordScore)
       .slice(0, 5);
 
-    // 4. Gộp vector + keyword, bỏ trùng
+    const topVectorScore = vectorResults[0]?.score || 0;
+    const hasKeywordMatch = keywordResults.length > 0;
+    const hasStrongSemanticMatch = topVectorScore >= 0.35;
+
+    if (!hasKeywordMatch && !hasStrongSemanticMatch) {
+      return res.json({
+        answer: "Tài liệu không có thông tin này.",
+        outOfScope: true,
+        score: topVectorScore,
+      });
+    }
+
     const mergedMap = new Map();
 
     for (const item of keywordResults) {
@@ -104,26 +119,40 @@ router.post("/", async (req, res) => {
 
     const context = finalChunks
       .map((item, index) => {
-        return `CHUNK ${index + 1}:\n${item.payload.text}`;
+        return `CHUNK ${index + 1}:\n${item.payload?.text || ""}`;
       })
       .join("\n\n---\n\n");
 
-    console.log("VECTOR RESULT:", vectorResults.length);
-    console.log("KEYWORD RESULT:", keywordResults.length);
-    console.log("FINAL CONTEXT:", context);
+    const approvedContext = Array.isArray(approvedAnswers)
+      ? approvedAnswers
+          .slice(-5)
+          .map((item, index) => {
+            return `APPROVED ${index + 1}
+QUESTION: ${item.question || ""}
+ANSWER: ${item.answer || ""}`;
+          })
+          .join("\n\n")
+      : "";
 
- const prompt = `
-Bạn là chatbot hỏi đáp tài liệu.
+    const prompt = `
+Bạn là chatbot hỏi đáp dựa trên tài liệu đã upload.
 
-Dựa vào CONTEXT bên dưới, hãy trả lời QUESTION.
+NHIỆM VỤ:
+Trả lời QUESTION dựa trên CONTEXT TỪ TÀI LIỆU.
 
-QUY TẮC:
-- Nếu CONTEXT có thông tin liên quan, hãy trả lời bằng thông tin đó.
-- Không được bịa thêm ngoài CONTEXT.
+QUY TẮC BẮT BUỘC:
+- Chỉ được dùng thông tin có trong CONTEXT TỪ TÀI LIỆU.
+- Không được dùng kiến thức bên ngoài.
+- Không được tự giải toán, viết code, viết công thức, hoặc trả lời kiến thức chung nếu CONTEXT không có.
+- APPROVED ANSWERS chỉ là các câu trả lời trước đó user đã đánh dấu phù hợp để học cách trình bày. Nó không phải nguồn kiến thức mới.
+- Nếu CONTEXT không có thông tin trực tiếp để trả lời QUESTION, chỉ trả lời đúng một câu:
+"Tài liệu không có thông tin này."
 - Trả lời bằng tiếng Việt.
-- Nếu QUESTION là một cụm gần giống trong CONTEXT, hãy giải thích hoặc liệt kê nội dung ngay sau cụm đó.
 
-CONTEXT:
+APPROVED ANSWERS:
+${approvedContext || "Không có."}
+
+CONTEXT TỪ TÀI LIỆU:
 ${context}
 
 QUESTION:
@@ -135,7 +164,13 @@ ANSWER:
     const answer = await generateAnswer(prompt);
 
     res.json({
-      answer: answer || "Không có phản hồi",
+      answer: answer || "Tài liệu không có thông tin này.",
+      outOfScope: answer?.includes("Tài liệu không có thông tin này.") || false,
+      evidence: finalChunks.map((item) => ({
+        chunkIndex: item.payload?.chunkIndex,
+        text: item.payload?.text,
+        score: item.score || item.keywordScore || 0,
+      })),
     });
   } catch (error) {
     console.log(error);

@@ -1,9 +1,17 @@
 const API_URL = "http://localhost:3000";
 
-export async function uploadFile(file) {
+export async function uploadFile(file, options = {}) {
   const formData = new FormData();
 
   formData.append("file", file);
+
+  if (options.uploadedBy) {
+    formData.append("uploadedBy", options.uploadedBy);
+  }
+
+  if (options.uploaderId) {
+    formData.append("uploaderId", options.uploaderId);
+  }
 
   const res = await fetch(`${API_URL}/upload`, {
     method: "POST",
@@ -13,7 +21,7 @@ export async function uploadFile(file) {
   return res.json();
 }
 
-export async function sendMessage(documentId, message) {
+export async function sendMessage(documentId, message, approvedAnswers = []) {
   const res = await fetch(`${API_URL}/chat`, {
     method: "POST",
     headers: {
@@ -22,6 +30,7 @@ export async function sendMessage(documentId, message) {
     body: JSON.stringify({
       documentId,
       message,
+      approvedAnswers,
     }),
   });
 
@@ -91,12 +100,9 @@ export async function updateUserRole(userId, role) {
 }
 
 export async function deleteUser(userId) {
-  const response = await fetch(
-    `http://localhost:3000/users/${userId}`,
-    {
-      method: "DELETE",
-    }
-  );
+  const response = await fetch(`http://localhost:3000/users/${userId}`, {
+    method: "DELETE",
+  });
 
   return await response.json();
 }
@@ -138,6 +144,44 @@ export async function saveChatMessage(sessionId, sender, message) {
       sender,
       message,
     }),
+  });
+
+  return res.json();
+}
+
+export async function updateChatSession(sessionId, data) {
+  const res = await fetch(`${API_URL}/chat-history/sessions/${sessionId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  return res.json();
+}
+
+export async function deleteChatSession(sessionId) {
+  const res = await fetch(`${API_URL}/chat-history/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+
+  return res.json();
+}
+
+export async function getDocuments() {
+  const res = await fetch(`${API_URL}/documents`);
+
+  return res.json();
+}
+
+export async function uploadAvatar(userId, file) {
+  const formData = new FormData();
+  formData.append("avatar", file);
+
+  const res = await fetch(`${API_URL}/users/${userId}/avatar`, {
+    method: "POST",
+    body: formData,
   });
 
   return res.json();

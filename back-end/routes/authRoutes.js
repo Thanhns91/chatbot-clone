@@ -19,28 +19,39 @@ router.post("/register", async (req, res) => {
     const { fullName, email, password } = req.body;
 
     if (!fullName || !email || !password) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing required fields" });
     }
 
     const [existingUsers] = await pool.query(
-      "SELECT userId FROM Users WHERE email = ?", [email]
+      "SELECT userId FROM Users WHERE email = ?",
+      [email],
     );
 
     if (existingUsers.length > 0) {
-      return res.status(400).json({ success: false, message: "Email already exists" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email already exists" });
     }
 
     const passwordHash = password;
 
     await pool.query(
       `INSERT INTO Users (fullName, email, passwordHash, role, status) VALUES (?, ?, ?, 'student', 'active')`,
-      [fullName, email, passwordHash]
+      [fullName, email, passwordHash],
     );
 
     res.json({ success: true, message: "Register successful" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ success: false, message: "Register failed", detail: error.message });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Register failed",
+        detail: error.message,
+      });
   }
 });
 
@@ -49,22 +60,30 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const [users] = await pool.query("SELECT * FROM Users WHERE email = ?", [email]);
+    const [users] = await pool.query("SELECT * FROM Users WHERE email = ?", [
+      email,
+    ]);
 
     if (users.length === 0) {
-      return res.status(400).json({ success: false, message: "Email or password is incorrect" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email or password is incorrect" });
     }
 
     const user = users[0];
 
     if (user.status === "blocked") {
-      return res.status(403).json({ success: false, message: "Your account is blocked" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Your account is blocked" });
     }
 
-     const isMatch = password === user.passwordHash;
+    const isMatch = password === user.passwordHash;
 
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Email or password is incorrect" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email or password is incorrect" });
     }
 
     res.json({
@@ -76,11 +95,15 @@ router.post("/login", async (req, res) => {
         email: user.email,
         role: user.role,
         status: user.status,
+        avatar_url: user.avatar_url || "",
+        avatarUrl: user.avatar_url || "",
       },
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ success: false, message: "Login failed", detail: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Login failed", detail: error.message });
   }
 });
 
@@ -90,15 +113,21 @@ router.post("/google-login", async (req, res) => {
     const { email, fullName, uid } = req.body;
 
     if (!email || !fullName) {
-      return res.status(400).json({ success: false, message: "Thiếu thông tin" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu thông tin" });
     }
 
-    const [existing] = await pool.query("SELECT * FROM Users WHERE email = ?", [email]);
+    const [existing] = await pool.query("SELECT * FROM Users WHERE email = ?", [
+      email,
+    ]);
 
     if (existing.length > 0) {
       const user = existing[0];
       if (user.status === "blocked") {
-        return res.status(403).json({ success: false, message: "Your account is blocked" });
+        return res
+          .status(403)
+          .json({ success: false, message: "Your account is blocked" });
       }
       return res.json({
         success: true,
@@ -116,10 +145,12 @@ router.post("/google-login", async (req, res) => {
     // Tạo mới với role student
     await pool.query(
       `INSERT INTO Users (fullName, email, passwordHash, role, status) VALUES (?, ?, '', 'student', 'active')`,
-      [fullName, email]
+      [fullName, email],
     );
 
-    const [newUser] = await pool.query("SELECT * FROM Users WHERE email = ?", [email]);
+    const [newUser] = await pool.query("SELECT * FROM Users WHERE email = ?", [
+      email,
+    ]);
 
     res.json({
       success: true,
@@ -134,7 +165,9 @@ router.post("/google-login", async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ success: false, message: "Lỗi server", detail: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Lỗi server", detail: error.message });
   }
 });
 
@@ -144,20 +177,27 @@ router.post("/admin/create-teacher", async (req, res) => {
     const { fullName, email } = req.body;
 
     if (!fullName || !email) {
-      return res.status(400).json({ success: false, message: "Thiếu họ tên hoặc email" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu họ tên hoặc email" });
     }
 
-    const [existing] = await pool.query("SELECT userId FROM Users WHERE email = ?", [email]);
+    const [existing] = await pool.query(
+      "SELECT userId FROM Users WHERE email = ?",
+      [email],
+    );
 
     if (existing.length > 0) {
-      return res.status(400).json({ success: false, message: "Email đã tồn tại" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email đã tồn tại" });
     }
 
     const defaultPassword = "12345";
 
     await pool.query(
       `INSERT INTO Users (fullName, email, passwordHash, role, status) VALUES (?, ?, ?, 'teacher', 'active')`,
-      [fullName, email, defaultPassword]
+      [fullName, email, defaultPassword],
     );
 
     await transporter.sendMail({
@@ -182,10 +222,19 @@ router.post("/admin/create-teacher", async (req, res) => {
       `,
     });
 
-    res.json({ success: true, message: `Tạo tài khoản và gửi mail đến ${email} thành công!` });
+    res.json({
+      success: true,
+      message: `Tạo tài khoản và gửi mail đến ${email} thành công!`,
+    });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ success: false, message: "Tạo tài khoản thất bại", detail: error.message });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Tạo tài khoản thất bại",
+        detail: error.message,
+      });
   }
 });
 

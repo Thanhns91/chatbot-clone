@@ -73,9 +73,43 @@ router.post("/", upload.single("file"), async (req, res) => {
     const fileType = req.file.mimetype;
     const uploadedBy = req.body.uploadedBy || "student";
     const uploaderId = req.body.uploaderId || 1;
-    const reviewStatus =
-      uploadedBy === "teacher" ? "approved" : "private";
+    const reviewStatus = uploadedBy === "teacher" ? "approved" : "private";
 
+    // Check file trùng trong thư viện
+    const [existingDocs] = await pool.query(
+      `
+  SELECT 
+    documentId,
+    fileName,
+    fileType,
+    uploaderId,
+    uploadedBy,
+    reviewStatus,
+    uploadDate
+  FROM Documents
+  WHERE fileName = ?
+    AND uploadStatus = 'success'
+    AND (
+      uploaderId = ?
+      OR (uploadedBy = 'teacher' AND reviewStatus = 'approved')
+    )
+  LIMIT 1
+  `,
+      [fileName, uploaderId],
+    );
+
+    if (existingDocs.length > 0) {
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      return res.status(409).json({
+        success: false,
+        duplicate: true,
+        message: "File đã có sẵn trong thư viện.",
+        document: existingDocs[0],
+      });
+    }
     const text = await extractText(req.file.path, fileName);
 
     const chunks = semanticChunk(text);
@@ -117,14 +151,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       )
       VALUES (?, ?, ?, ?, ?, 'success', ?)
       `,
-      [
-        documentId,
-        fileName,
-        fileType,
-        uploaderId,
-        uploadedBy,
-        reviewStatus,
-      ]
+      [documentId, fileName, fileType, uploaderId, uploadedBy, reviewStatus],
     );
 
     documents.push({

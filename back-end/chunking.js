@@ -1,62 +1,117 @@
-export function semanticChunk(text) {
-  // 1. Làm sạch text
-  const cleanText = text
+export function semanticChunk(text, options = {}) {
+  const maxChars = options.maxChars || 1000;
+  const overlapChars = options.overlapChars || 180;
+
+  const cleanText = String(text || "")
     .replace(/\r/g, "")
     .replace(/-\n/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .replace(/[ \t]+/g, " ")
     .trim();
 
-  // 2. Tách theo đoạn văn
+  if (!cleanText) return [];
+
   const paragraphs = cleanText
     .split(/\n\s*\n/)
     .map((p) => p.replace(/\n/g, " ").trim())
-    .filter((p) => p.length > 50);
+    .filter(Boolean);
 
   const chunks = [];
+  let current = "";
 
-  const maxLength = 900;
-  const overlap = 150;
+  const getTailByWords = (source, limit) => {
+    const words = source.trim().split(/\s+/);
+    const tail = [];
+    let total = 0;
 
-  let currentChunk = "";
+    for (let i = words.length - 1; i >= 0; i--) {
+      total += words[i].length + 1;
+      if (total > limit) break;
+      tail.unshift(words[i]);
+    }
 
-  for (const paragraph of paragraphs) {
-    // 3. Nếu đoạn còn vừa thì gom vào chunk hiện tại
-    if ((currentChunk + " " + paragraph).length <= maxLength) {
-      currentChunk += " " + paragraph;
-    } else {
-      // 4. Đẩy chunk cũ vào list
-      if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim());
+    return tail.join(" ").trim();
+  };
+
+  const splitSentences = (paragraph) => {
+    const sentences = paragraph.match(/[^.!?。！？;:]+[.!?。！？;:]?/g);
+    return sentences?.map((s) => s.trim()).filter(Boolean) || [paragraph];
+  };
+
+  const splitLongTextByWords = (longText) => {
+    const words = longText.split(/\s+/).filter(Boolean);
+    const result = [];
+
+    let start = 0;
+
+    while (start < words.length) {
+      let end = start;
+      let length = 0;
+
+      while (end < words.length && length + words[end].length + 1 <= maxChars) {
+        length += words[end].length + 1;
+        end++;
       }
 
-      // 5. Nếu paragraph quá dài thì cắt nhỏ có overlap
-      if (paragraph.length > maxLength) {
-        let start = 0;
+      if (end === start) end++;
 
-        while (start < paragraph.length) {
-          const chunk = paragraph
-            .slice(start, start + maxLength)
-            .trim();
+      const chunk = words.slice(start, end).join(" ").trim();
+      if (chunk) result.push(chunk);
 
-          if (chunk.length > 100) {
-            chunks.push(chunk);
-          }
+      if (end >= words.length) break;
 
-          start += maxLength - overlap;
-        }
+      let overlapStart = end;
+      let overlapLength = 0;
 
-        currentChunk = "";
+      while (overlapStart > start && overlapLength < overlapChars) {
+        overlapStart--;
+        overlapLength += words[overlapStart].length + 1;
+      }
+
+      start = Math.max(overlapStart, start + 1);
+    }
+
+    return result;
+  };
+
+  const pushCurrent = () => {
+    const value = current.trim();
+    if (value) chunks.push(value);
+    current = "";
+  };
+
+  for (const paragraph of paragraphs) {
+    const sentences = splitSentences(paragraph);
+
+    for (const sentence of sentences) {
+      if (sentence.length > maxChars) {
+        pushCurrent();
+
+        const longChunks = splitLongTextByWords(sentence);
+        chunks.push(...longChunks);
+        continue;
+      }
+
+      if (!current) {
+        current = sentence;
+        continue;
+      }
+
+      const next = `${current} ${sentence}`.trim();
+
+      if (next.length <= maxChars) {
+        current = next;
       } else {
-        currentChunk = paragraph;
+        const tail = getTailByWords(current, overlapChars);
+        chunks.push(current.trim());
+        current = tail ? `${tail} ${sentence}`.trim() : sentence;
       }
     }
   }
 
-  // 6. Thêm chunk cuối
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
-  }
+  pushCurrent();
 
-  return chunks;
+  return chunks
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 30);
 }

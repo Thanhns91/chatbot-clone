@@ -1,51 +1,97 @@
-import { useState, useRef, useEffect } from 'react'
-import Button from 'react-bootstrap/Button'
-import './Member.scss'
+import { useEffect, useRef, useState } from "react";
+import Button from "react-bootstrap/Button";
+import SettingsModal from "../Layout/SettingModel/SettingsModal";
+import "./Member.scss";
 
-const UserAvatar = ({ user, onLogout }) => {
-    const [open, setOpen] = useState(false)
-    const ref = useRef(null)
-    const initial = user?.name?.charAt(0).toUpperCase() || 'U'
+const UserAvatar = ({ user, onLogout, onUserUpdated }) => {
+  const [open, setOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const ref = useRef(null);
 
-    // Đóng menu khi click ra ngoài
-    useEffect(() => {
-        const handler = (e) => {
-            if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-        }
-        document.addEventListener('mousedown', handler)
-        return () => document.removeEventListener('mousedown', handler)
-    }, [])
+  const displayName = user?.name || user?.fullName || user?.email || "User";
 
-    return (
-        <div className="member-avatar__wrap" ref={ref}>
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handler);
+
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <>
+      <div className="member-avatar__wrap" ref={ref}>
+        <Button
+          className="member-avatar__btn"
+          onClick={() => setOpen((v) => !v)}
+          title={displayName}
+        >
+          {user?.avatar_url || user?.avatarUrl ? (
+            <img
+              src={user.avatar_url || user.avatarUrl}
+              alt="avatar"
+              className="member-avatar__img"
+            />
+          ) : (
+            displayName.charAt(0).toUpperCase()
+          )}
+        </Button>
+
+        {open && (
+          <div className="member-avatar__menu">
+            <div className="member-avatar__info">
+              <strong>{displayName}</strong>
+              <span>{user?.email}</span>
+              <span className="member-avatar__role-badge">
+                {user?.role || "student"}
+              </span>
+            </div>
+
+            <hr className="member-avatar__divider" />
+
             <Button
-                className="member-avatar__btn"
-                onClick={() => setOpen((v) => !v)}
-                title={user?.name}
+              variant="outline-secondary"
+              className="member-avatar__logout"
+              onClick={() => {
+                setOpen(false);
+                setShowSettings(true);
+              }}
             >
-                {initial}
+              <i className="ti ti-settings me-2" />
+              Settings
             </Button>
 
-            {open && (
-                <div className="member-avatar__menu">
-                    <div className="member-avatar__info">
-                        <strong>{user?.name}</strong>
-                        <span>{user?.email}</span>
-                        <span className="member-avatar__role-badge">{user?.role}</span>
-                    </div>
-                    <hr className="member-avatar__divider" />
-                    <Button
-                        variant="outline-secondary"
-                        className="member-avatar__logout"
-                        onClick={() => { setOpen(false); onLogout() }}
-                    >
-                        <i className="ti ti-logout me-2" />
-                        Logout
-                    </Button>
-                </div>
-            )}
-        </div>
-    )
-}
+            <Button
+              variant="outline-secondary"
+              className="member-avatar__logout"
+              onClick={() => {
+                setOpen(false);
+                onLogout?.();
+              }}
+            >
+              <i className="ti ti-logout me-2" />
+              Logout
+            </Button>
+          </div>
+        )}
+      </div>
 
-export default UserAvatar
+      {showSettings && (
+        <SettingsModal
+          user={user}
+          onClose={() => setShowSettings(false)}
+          onSave={(updatedUser) => {
+            onUserUpdated?.(updatedUser);
+            setShowSettings(false);
+          }}
+        />
+      )}
+    </>
+  );
+};
+
+export default UserAvatar;

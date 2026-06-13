@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import './ChatLayout.scss';
-import Sidebar from './Sidebar/Sidebar';
-import Header from './Header/Header';
-import LibraryPanel from './LibraryPanel/LibraryPanel';
+import React, { useState } from 'react'
+import './ChatLayout.scss'
+import Sidebar from './Sidebar/Sidebar'
+import Header from './Header/Header'
+import LibraryPanel from './LibraryPanel/LibraryPanel'
 
 const ChatLayout = ({
   children,
@@ -11,16 +11,22 @@ const ChatLayout = ({
   activeId,
   onSelect,
   onNew,
+  onDelete,
   headerRight,
   currentUser,
+  documents = [],
+  selectedDocument,
+  onSelectDocument,
 }) => {
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false)
 
   const handleToggleStar = (id) => {
     setConversations?.((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, starred: !c.starred } : c))
-    );
-  };
+      prev.map((c) =>
+        String(c.id) === String(id) ? { ...c, starred: !c.starred } : c
+      )
+    )
+  }
 
   return (
     <div className="chat-layout">
@@ -30,6 +36,7 @@ const ChatLayout = ({
         onSelect={onSelect}
         onNew={onNew}
         onToggleStar={handleToggleStar}
+        onDelete={onDelete}
       />
 
       <main className="chat-layout__main">
@@ -41,18 +48,22 @@ const ChatLayout = ({
         />
 
         <div className="chat-layout__body">
-          <div className="chat-layout__content">
-            {children}
-          </div>
+          <div className="chat-layout__content">{children}</div>
 
           <LibraryPanel
             open={libraryOpen}
             onClose={() => setLibraryOpen(false)}
+            documents={documents}
+            selectedDocument={selectedDocument}
+            onSelectDocument={async (doc) => {
+              await onSelectDocument?.(doc)
+              setLibraryOpen(false)
+            }}
           />
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default ChatLayout;
+export default ChatLayout
