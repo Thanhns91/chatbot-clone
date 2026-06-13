@@ -14,11 +14,7 @@ function Header({ libraryOpen, onToggleLibrary, headerRight, currentUser }) {
       <Navbar className="chat-header">
         <Container fluid className="header-container">
           <Navbar.Brand className="brand">
-            <img
-              src={logo7}
-              alt="logo"
-              className="brand__logo"
-            />
+            <img src={logo7} alt="logo" className="brand__logo" />
             <span>AI Learning</span>
           </Navbar.Brand>
 
@@ -41,7 +37,11 @@ function Header({ libraryOpen, onToggleLibrary, headerRight, currentUser }) {
               <i className="bi bi-gear"></i>
             </Button>
 
-            <Button variant="link" className="header-icon-btn" title="Notifications">
+            <Button
+              variant="link"
+              className="header-icon-btn"
+              title="Notifications"
+            >
               <i className="bi bi-bell"></i>
             </Button>
 

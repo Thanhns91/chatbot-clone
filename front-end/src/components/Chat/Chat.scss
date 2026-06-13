@@ -1,14 +1,14 @@
 // ── Variables ──
-$brand:        #5239ef;
-$brand-hover:  #4228de;
-$teal:         #0db5ad;
-$teal-hover:   #079c95;
-$text-dark:    #1a2a3a;
-$text-mid:     #415879;
-$text-muted:   #8a96a8;
-$border:       #e3e8f0;
-$bg-white:     #ffffff;
-$bg-light:     #f1f5f9;
+$brand: #5239ef;
+$brand-hover: #4228de;
+$teal: #0db5ad;
+$teal-hover: #079c95;
+$text-dark: #1a2a3a;
+$text-mid: #415879;
+$text-muted: #8a96a8;
+$border: #e3e8f0;
+$bg-white: #ffffff;
+$bg-light: #f1f5f9;
 $radius-bubble: 18px;
 
 // ── Welcome screen ──
@@ -122,7 +122,9 @@ $radius-bubble: 18px;
     flex-direction: column;
     gap: 16px;
 
-    &::-webkit-scrollbar { width: 5px; }
+    &::-webkit-scrollbar {
+      width: 5px;
+    }
     &::-webkit-scrollbar-thumb {
       background: #cbd5e1;
       border-radius: 10px;
@@ -137,13 +139,23 @@ $radius-bubble: 18px;
   gap: 4px;
   animation: msgIn 0.2s ease both;
 
-  &--user { align-items: flex-end; }
-  &--ai   { align-items: flex-start; }
+  &--user {
+    align-items: flex-end;
+  }
+  &--ai {
+    align-items: flex-start;
+  }
 }
 
 @keyframes msgIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message-sender {
@@ -152,7 +164,9 @@ $radius-bubble: 18px;
   color: $brand;
   padding: 0 4px;
 
-  &--user { color: $text-muted; }
+  &--user {
+    color: $text-muted;
+  }
 }
 
 .message-bubble {

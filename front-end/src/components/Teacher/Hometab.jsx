@@ -6,21 +6,38 @@ import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import {
-  AreaChart, Area, XAxis, YAxis,
-  Tooltip, ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 
 /* ── Per-tab chart data ── */
 const TAB_DATA = {
   Materials: {
     chartData: [
-      { day: "Apr", v: 3 }, { day: "",    v: 5 }, { day: "",    v: 2 },
-      { day: "14",  v: 7 }, { day: "",    v: 4 }, { day: "",    v: 6 },
-      { day: "21",  v: 8 }, { day: "",    v: 3 }, { day: "28",  v: 5 },
-      { day: "May", v: 6 }, { day: "",    v: 9 }, { day: "7",   v: 4 },
-      { day: "",    v: 7 }, { day: "14",  v: 5 }, { day: "",    v: 8 },
-      { day: "21",  v: 10 },{ day: "28",  v: 6 }, { day: "Jun", v: 9 },
-      { day: "",    v: 7 }, { day: "1",   v: 11 },
+      { day: "Apr", v: 3 },
+      { day: "", v: 5 },
+      { day: "", v: 2 },
+      { day: "14", v: 7 },
+      { day: "", v: 4 },
+      { day: "", v: 6 },
+      { day: "21", v: 8 },
+      { day: "", v: 3 },
+      { day: "28", v: 5 },
+      { day: "May", v: 6 },
+      { day: "", v: 9 },
+      { day: "7", v: 4 },
+      { day: "", v: 7 },
+      { day: "14", v: 5 },
+      { day: "", v: 8 },
+      { day: "21", v: 10 },
+      { day: "28", v: 6 },
+      { day: "Jun", v: 9 },
+      { day: "", v: 7 },
+      { day: "1", v: 11 },
     ],
     stroke: "#6366f1",
     gradColor: "#6366f1",
@@ -32,13 +49,26 @@ const TAB_DATA = {
   },
   "Student Files": {
     chartData: [
-      { day: "Apr", v: 8  }, { day: "",    v: 12 }, { day: "",    v: 6  },
-      { day: "14",  v: 15 }, { day: "",    v: 10 }, { day: "",    v: 18 },
-      { day: "21",  v: 9  }, { day: "",    v: 14 }, { day: "28",  v: 20 },
-      { day: "May", v: 11 }, { day: "",    v: 16 }, { day: "7",   v: 13 },
-      { day: "",    v: 22 }, { day: "14",  v: 17 }, { day: "",    v: 19 },
-      { day: "21",  v: 25 }, { day: "28",  v: 21 }, { day: "Jun", v: 18 },
-      { day: "",    v: 23 }, { day: "1",   v: 28 },
+      { day: "Apr", v: 8 },
+      { day: "", v: 12 },
+      { day: "", v: 6 },
+      { day: "14", v: 15 },
+      { day: "", v: 10 },
+      { day: "", v: 18 },
+      { day: "21", v: 9 },
+      { day: "", v: 14 },
+      { day: "28", v: 20 },
+      { day: "May", v: 11 },
+      { day: "", v: 16 },
+      { day: "7", v: 13 },
+      { day: "", v: 22 },
+      { day: "14", v: 17 },
+      { day: "", v: 19 },
+      { day: "21", v: 25 },
+      { day: "28", v: 21 },
+      { day: "Jun", v: 18 },
+      { day: "", v: 23 },
+      { day: "1", v: 28 },
     ],
     stroke: "#22c55e",
     gradColor: "#22c55e",
@@ -51,14 +81,46 @@ const TAB_DATA = {
 };
 
 const studentUploads = [
-  { color: "#22c55e", bgAlpha: "#22c55e18", icon: "bi bi-file-earmark-pdf",  name: "Emma Larson",  file: "Chapter5_Summary.pdf",  date: "Jun 1, 2026",  size: "1.2 MB" },
-  { color: "#3b82f6", bgAlpha: "#3b82f618", icon: "bi bi-file-earmark-word", name: "Liam Park",    file: "Essay_Draft_v2.docx",   date: "May 30, 2026", size: "540 KB" },
-  { color: "#f59e0b", bgAlpha: "#f59e0b18", icon: "bi bi-file-earmark-play", name: "Sofia Nguyen", file: "Lab_Recording.mp4",     date: "May 28, 2026", size: "32 MB"  },
-  { color: "#8b5cf6", bgAlpha: "#8b5cf618", icon: "bi bi-file-earmark-text", name: "James Carter", file: "Homework_Unit3.txt",    date: "May 27, 2026", size: "84 KB"  },
+  {
+    color: "#22c55e",
+    bgAlpha: "#22c55e18",
+    icon: "bi bi-file-earmark-pdf",
+    name: "Emma Larson",
+    file: "Chapter5_Summary.pdf",
+    date: "Jun 1, 2026",
+    size: "1.2 MB",
+  },
+  {
+    color: "#3b82f6",
+    bgAlpha: "#3b82f618",
+    icon: "bi bi-file-earmark-word",
+    name: "Liam Park",
+    file: "Essay_Draft_v2.docx",
+    date: "May 30, 2026",
+    size: "540 KB",
+  },
+  {
+    color: "#f59e0b",
+    bgAlpha: "#f59e0b18",
+    icon: "bi bi-file-earmark-play",
+    name: "Sofia Nguyen",
+    file: "Lab_Recording.mp4",
+    date: "May 28, 2026",
+    size: "32 MB",
+  },
+  {
+    color: "#8b5cf6",
+    bgAlpha: "#8b5cf618",
+    icon: "bi bi-file-earmark-text",
+    name: "James Carter",
+    file: "Homework_Unit3.txt",
+    date: "May 27, 2026",
+    size: "84 KB",
+  },
 ];
 
 const overview = [
-  { label: "Materials",     value: 18,  max: 30,  color: "#6366f1" },
+  { label: "Materials", value: 18, max: 30, color: "#6366f1" },
   { label: "Student Files", value: 137, max: 150, color: "#22c55e" },
 ];
 
@@ -69,7 +131,10 @@ const SmoothCursor = ({ points, height, stroke }) => {
   return (
     <g>
       <line
-        x1={x} y1={0} x2={x} y2={height}
+        x1={x}
+        y1={0}
+        x2={x}
+        y2={height}
         stroke={stroke}
         strokeWidth={1.5}
         strokeDasharray="5 4"
@@ -105,7 +170,9 @@ const HomeTab = () => {
               {tabs.map((t) => (
                 <Button
                   key={t}
-                  variant={activeDataTab === t ? "primary" : "outline-secondary"}
+                  variant={
+                    activeDataTab === t ? "primary" : "outline-secondary"
+                  }
                   className="td-tab"
                   onClick={() => setActiveDataTab(t)}
                 >
@@ -120,7 +187,9 @@ const HomeTab = () => {
           </div>
 
           <Card.Title className="td-chart-title">{tab.chartTitle}</Card.Title>
-          <Card.Subtitle className="td-chart-sub mb-2 text-muted">{tab.chartSub}</Card.Subtitle>
+          <Card.Subtitle className="td-chart-sub mb-2 text-muted">
+            {tab.chartSub}
+          </Card.Subtitle>
 
           <div className="td-chart-wrap">
             <ResponsiveContainer width="100%" height="100%">
@@ -130,8 +199,16 @@ const HomeTab = () => {
               >
                 <defs>
                   <linearGradient id={tab.gradId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor={tab.gradColor} stopOpacity={0.25} />
-                    <stop offset="95%" stopColor={tab.gradColor} stopOpacity={0.02} />
+                    <stop
+                      offset="5%"
+                      stopColor={tab.gradColor}
+                      stopOpacity={0.25}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={tab.gradColor}
+                      stopOpacity={0.02}
+                    />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -169,7 +246,11 @@ const HomeTab = () => {
             <Card.Body>
               <div className="td-activity-header">
                 <span className="td-section-label">Student Uploads</span>
-                <Button variant="outline-secondary" size="sm" className="td-preview-btn">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="td-preview-btn"
+                >
                   <i className="bi bi-eye"></i> View All
                 </Button>
               </div>

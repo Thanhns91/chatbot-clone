@@ -1,5 +1,5 @@
 // ── Variables ─────────────────────────────────
-$purple: #2563EB;
+$purple: #2563eb;
 $purple-hover: #1d4ed8;
 $purple-light: #eff6ff;
 $purple-mid: #60a5fa;
@@ -13,575 +13,581 @@ $bg-main: #f8fafc;
 $red: #dc2626;
 $green: #16a34a;
 
-// ── Layout ─────────────────────────────────────
+// ── Layout ─────────────────────────────────────a
 .admin-wrapper {
-    display: flex;
-    min-height: 100vh;
-    background: #ffffff;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+  display: flex;
+  min-height: 100vh;
+  background: #ffffff;
+  font-family: "Segoe UI", system-ui, sans-serif;
 }
 
 // ── Sidebar ─────────────────────────────────────
 .admin-sidebar {
-    width: $sidebar-w;
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    z-index: 100;
-    overflow: hidden;
-    background: #ffffff;
-    border-right: 1px solid $border-color;
+  width: $sidebar-w;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow: hidden;
+  background: #ffffff;
+  border-right: 1px solid $border-color;
 }
 
 .sidebar-brand {
-    padding: 20px 18px 16px;
-    border-bottom: 1px solid $border-color;
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid $border-color;
 }
 
 .brand-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: $purple;
-    color: #fff;
-    font-weight: 700;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba($purple, 0.3);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: $purple;
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba($purple, 0.3);
 }
 
 .brand-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: $text-dark;
-    line-height: 1.2;
+  font-size: 14px;
+  font-weight: 700;
+  color: $text-dark;
+  line-height: 1.2;
 }
 
 .brand-sub {
-    font-size: 11px;
-    color: $purple;
+  font-size: 11px;
+  color: $purple;
 }
 
 .sidebar-nav {
-    flex: 1;
-    padding: 14px 10px;
+  flex: 1;
+  padding: 14px 10px;
 }
 
 .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    color: #475569;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 2px;
 
-    &:hover {
-        background: #f1f5f9;
-        color: $text-dark;
-    }
+  &:hover {
+    background: #f1f5f9;
+    color: $text-dark;
+  }
 
-    &.active {
-        background: $purple-light;
-        color: $purple;
-        font-weight: 600;
-        border: 1px solid rgba($purple, 0.15);
-    }
+  &.active {
+    background: $purple-light;
+    color: $purple;
+    font-weight: 600;
+    border: 1px solid rgba($purple, 0.15);
+  }
 
-    i {
-        font-size: 18px;
-        width: 20px;
-        flex-shrink: 0;
-    }
+  i {
+    font-size: 18px;
+    width: 20px;
+    flex-shrink: 0;
+  }
 }
 
 .sidebar-footer {
-    padding: 14px 16px;
-    border-top: 1px solid $border-color;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    overflow: hidden;
+  padding: 14px 16px;
+  border-top: 1px solid $border-color;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .footer-avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: $purple;
-    color: #fff;
-    font-size: 13px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba($purple, 0.25);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: $purple;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba($purple, 0.25);
 }
 
 .footer-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: $text-dark;
-    line-height: 1.2;
-    white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-dark;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .footer-role {
-    font-size: 11px;
-    color: $purple;
-    white-space: nowrap;
+  font-size: 11px;
+  color: $purple;
+  white-space: nowrap;
 }
 
 // ── Logout button ────────────────────────────────
 .logout-btn {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    border: 1.5px solid $border-color;
-    border-radius: 8px;
-    background: #ffffff;
-    color: $text-secondary;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    cursor: pointer;
-    transition: all 0.2s;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1.5px solid $border-color;
+  border-radius: 8px;
+  background: #ffffff;
+  color: $text-secondary;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
 
-    &:hover {
-        background: rgba(#ef4444, 0.08);
-        border-color: #ef4444;
-        color: #ef4444;
-    }
+  &:hover {
+    background: rgba(#ef4444, 0.08);
+    border-color: #ef4444;
+    color: #ef4444;
+  }
 }
 
 // ── Main area ────────────────────────────────────
 .admin-main {
-    margin-left: $sidebar-w;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    background: $bg-main;
+  margin-left: $sidebar-w;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: $bg-main;
 }
 
 .admin-topbar {
-    background: #ffffff;
-    border-bottom: 1px solid $border-color;
-    padding: 14px 28px;
-    position: sticky;
-    top: 0;
-    z-index: 50;
+  background: #ffffff;
+  border-bottom: 1px solid $border-color;
+  padding: 14px 28px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 
-    h1 {
-        font-size: 20px;
-        font-weight: 700;
-        color: $text-dark;
-        margin: 0;
-    }
+  h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: $text-dark;
+    margin: 0;
+  }
 
-    p {
-        font-size: 12px;
-        color: $purple-mid;
-        margin: 0;
-    }
+  p {
+    font-size: 12px;
+    color: $purple-mid;
+    margin: 0;
+  }
 }
 
 .admin-body {
-    padding: 24px 28px;
+  padding: 24px 28px;
 }
 
 // ── Cards ────────────────────────────────────────
 .a-card {
-    background: #ffffff;
-    border: 1px solid $border-color;
-    border-radius: 16px;
-    padding: 20px 22px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  border: 1px solid $border-color;
+  border-radius: 16px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .stat-card {
-    background: #ffffff;
-    border: 1px solid $border-color;
-    border-radius: 16px;
-    padding: 18px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    transition: box-shadow 0.2s, transform 0.2s;
+  background: #ffffff;
+  border: 1px solid $border-color;
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s;
 
-    &:hover {
-        box-shadow: 0 4px 16px rgba($purple, 0.1);
-        transform: translateY(-2px);
-    }
+  &:hover {
+    box-shadow: 0 4px 16px rgba($purple, 0.1);
+    transform: translateY(-2px);
+  }
 }
 
 .stat-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: $text-muted;
-    margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: $text-muted;
+  margin-bottom: 6px;
 }
 
 .stat-val {
-    font-size: 30px;
-    font-weight: 700;
-    line-height: 1;
-    color: $text-dark;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  color: $text-dark;
 }
 
 .stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
 }
 
 // ── Tab buttons ──────────────────────────────────
 .tab-btn {
-    padding: 6px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    border: 1px solid transparent;
-    background: none;
-    color: $text-muted;
-    cursor: pointer;
-    transition: all 0.15s;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  background: none;
+  color: $text-muted;
+  cursor: pointer;
+  transition: all 0.15s;
 
-    &:hover {
-        background: #f1f5f9;
-        color: #475569;
-    }
+  &:hover {
+    background: #f1f5f9;
+    color: #475569;
+  }
 
-    &.active {
-        background: #ffffff;
-        border-color: $border-color;
-        color: $purple;
-        font-weight: 600;
-        box-shadow: 0 1px 4px rgba($purple, 0.1);
-    }
+  &.active {
+    background: #ffffff;
+    border-color: $border-color;
+    color: $purple;
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba($purple, 0.1);
+  }
 }
 
 // ── Chart dates ──────────────────────────────────
 .chart-dates {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: $text-muted;
-    margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: $text-muted;
+  margin-top: 6px;
 }
 
 // ── Overview bar ─────────────────────────────────
 .ov-bar-wrap {
-    width: 90px;
-    height: 6px;
-    background: $border-color;
-    border-radius: 3px;
-    overflow: hidden;
+  width: 90px;
+  height: 6px;
+  background: $border-color;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
 .ov-bar {
-    height: 100%;
-    border-radius: 3px;
+  height: 100%;
+  border-radius: 3px;
 }
 
 // ── Activity dot ─────────────────────────────────
 .act-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 // ── Table ────────────────────────────────────────
 .admin-table {
-    th {
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: $text-muted;
-        padding: 10px 12px;
-        border-bottom: 1px solid $border-color;
-        background: transparent;
-    }
+  th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: $text-muted;
+    padding: 10px 12px;
+    border-bottom: 1px solid $border-color;
+    background: transparent;
+  }
 
-    td {
-        padding: 12px;
-        vertical-align: middle;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 14px;
-        color: $text-dark;
-    }
+  td {
+    padding: 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    color: $text-dark;
+  }
 
-    tbody {
-        tr {
-            &:hover td {
-                background: $bg-main;
-            }
+  tbody {
+    tr {
+      &:hover td {
+        background: $bg-main;
+      }
 
-            &:last-child td {
-                border-bottom: none;
-            }
-        }
+      &:last-child td {
+        border-bottom: none;
+      }
     }
+  }
 }
 
 // ── Badges ───────────────────────────────────────
 .role-badge {
-    display: inline-block;
-    padding: 3px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .badge-teacher {
-    background: $purple-light;
-    color: $purple;
+  background: $purple-light;
+  color: $purple;
 }
 
 .badge-member {
-    background: #f0fdf4;
-    color: $green;
+  background: #f0fdf4;
+  color: $green;
 }
 
 .badge-pdf {
-    background: #fef2f2;
-    color: $red;
+  background: #fef2f2;
+  color: $red;
 }
 
 .badge-docx {
-    background: $purple-light;
-    color: $purple;
+  background: $purple-light;
+  color: $purple;
 }
 
 .badge-xlsx {
-    background: #f0fdf4;
-    color: $green;
+  background: #f0fdf4;
+  color: $green;
 }
 
 .status-active {
-    color: $green;
-    font-weight: 600;
+  color: $green;
+  font-weight: 600;
 }
 
 .status-blocked {
-    color: $red;
-    font-weight: 600;
+  color: $red;
+  font-weight: 600;
 }
 
 // ── Buttons ──────────────────────────────────────
 .btn-purple {
-    background: $purple;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 8px 18px;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.15s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: 0 4px 12px rgba($purple, 0.25);
+  background: $purple;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 18px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba($purple, 0.25);
 
-    &:hover {
-        background: $purple-hover;
-        color: #fff;
-        box-shadow: 0 6px 16px rgba($purple, 0.35);
-        transform: translateY(-1px);
-    }
+  &:hover {
+    background: $purple-hover;
+    color: #fff;
+    box-shadow: 0 6px 16px rgba($purple, 0.35);
+    transform: translateY(-1px);
+  }
 }
 
 .btn-block {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border: 1px solid rgba(#ef4444, 0.3);
-    border-radius: 6px;
-    background: rgba(#ef4444, 0.05);
-    color: $red;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid rgba(#ef4444, 0.3);
+  border-radius: 6px;
+  background: rgba(#ef4444, 0.05);
+  color: $red;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
 
-    &:hover {
-        background: rgba(#ef4444, 0.12);
-    }
+  &:hover {
+    background: rgba(#ef4444, 0.12);
+  }
 }
 
 .btn-del {
-    background: none;
-    border: none;
-    color: $red;
-    font-size: 17px;
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 4px;
-    transition: background 0.15s;
+  background: none;
+  border: none;
+  color: $red;
+  font-size: 17px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.15s;
 
-    &:hover {
-        background: rgba(#ef4444, 0.1);
-    }
+  &:hover {
+    background: rgba(#ef4444, 0.1);
+  }
 }
 
 // ── AI Settings ──────────────────────────────────
 .setting-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 10px;
-    background: $purple-light;
-    color: $purple;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: $purple-light;
+  color: $purple;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
 }
 
 .setting-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: $text-muted;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: $text-muted;
 }
 
 .range-val {
-    font-size: 15px;
-    font-weight: 700;
-    color: $purple;
+  font-size: 15px;
+  font-weight: 700;
+  color: $purple;
 }
 
 .form-range {
-    accent-color: $purple;
+  accent-color: $purple;
 }
 
 .form-select,
 .form-control {
-    border: 1px solid $border-color !important;
-    border-radius: 10px !important;
-    background: #ffffff !important;
+  border: 1px solid $border-color !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
 
-    &:focus {
-        border-color: $purple !important;
-        box-shadow: 0 0 0 3px rgba($purple, 0.12) !important;
-    }
+  &:focus {
+    border-color: $purple !important;
+    box-shadow: 0 0 0 3px rgba($purple, 0.12) !important;
+  }
 }
 
 .info-box {
-    background: $purple-light;
-    border: 1px solid rgba($purple, 0.15);
-    border-radius: 14px;
-    padding: 16px 18px;
+  background: $purple-light;
+  border: 1px solid rgba($purple, 0.15);
+  border-radius: 14px;
+  padding: 16px 18px;
 }
 
 // ── Search box ───────────────────────────────────
 .search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #eef2f7;
-    border: none;
-    border-radius: 10px;
-    padding: 8px 14px;
-    width: 220px;
-    transition: background 0.15s, box-shadow 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #eef2f7;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  width: 220px;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
 
-    &:focus-within {
-        background: #ffffff;
-        box-shadow: 0 0 0 3px rgba($purple, 0.1);
+  &:focus-within {
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba($purple, 0.1);
+  }
+
+  &__icon {
+    color: #94a3b8;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  &__input {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    font-size: 14px;
+    color: $text-dark;
+    flex: 1;
+
+    &::placeholder {
+      color: #94a3b8;
     }
 
-    &__icon {
-        color: #94a3b8;
-        font-size: 14px;
-        flex-shrink: 0;
+    &:focus {
+      background: transparent !important;
+      box-shadow: none !important;
+      border: none !important;
     }
-
-    &__input {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        font-size: 14px;
-        color: $text-dark;
-        flex: 1;
-
-        &::placeholder {
-            color: #94a3b8;
-        }
-
-        &:focus {
-            background: transparent !important;
-            box-shadow: none !important;
-            border: none !important;
-        }
-    }
+  }
 }
 
 // ── Modal ────────────────────────────────────────
 .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.3);
-    backdrop-filter: blur(4px);
-    z-index: 1050;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(4px);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-box {
-    background: #ffffff;
-    border: 1px solid $border-color;
-    border-radius: 18px;
-    padding: 28px;
-    width: 420px;
-    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.15);
+  background: #ffffff;
+  border: 1px solid $border-color;
+  border-radius: 18px;
+  padding: 28px;
+  width: 420px;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.15);
 }
 
 // ── Scrollbar ────────────────────────────────────
 ::-webkit-scrollbar {
-    width: 6px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: transparent;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: $border-color;
-    border-radius: 3px;
+  background: $border-color;
+  border-radius: 3px;
 
-    &:hover {
-        background: #cbd5e1;
-    }
+  &:hover {
+    background: #cbd5e1;
+  }
 }

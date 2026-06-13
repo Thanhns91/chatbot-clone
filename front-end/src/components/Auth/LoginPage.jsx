@@ -4,7 +4,11 @@ import { login } from "../../services/authService";
 import { auth, googleProvider } from "../../fireBase/firebase";
 import { signInWithPopup } from "firebase/auth";
 
-export default function LoginPage({ onCancel, onLoginSuccess, onSwitchToRegister }) {
+export default function LoginPage({
+  onCancel,
+  onLoginSuccess,
+  onSwitchToRegister,
+}) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ email: "", password: "" });
@@ -45,7 +49,6 @@ export default function LoginPage({ onCancel, onLoginSuccess, onSwitchToRegister
       sessionStorage.setItem("currentUser", JSON.stringify(data.user));
       sessionStorage.setItem("showDashboard", "true");
       onLoginSuccess?.(data.user.role, data.user);
-
     } catch (err) {
       setError("Đăng nhập Google thất bại. Vui lòng thử lại.");
       console.error(err);
@@ -53,7 +56,10 @@ export default function LoginPage({ onCancel, onLoginSuccess, onSwitchToRegister
   };
 
   return (
-    <div className="auth-overlay" onClick={(e) => e.target === e.currentTarget && onCancel?.()}>
+    <div
+      className="auth-overlay"
+      onClick={(e) => e.target === e.currentTarget && onCancel?.()}
+    >
       <div className="auth-card">
         <button className="auth-close" onClick={onCancel}>
           <i className="bi bi-x"></i>
@@ -66,8 +72,17 @@ export default function LoginPage({ onCancel, onLoginSuccess, onSwitchToRegister
         <h1 className="auth-title">Welcome back</h1>
         <p className="auth-subtitle">Sign in to your AI Learning account</p>
 
-        <button type="button" className="auth-google" onClick={handleGoogleLogin}>
-          <img src="/src/assets/images/4.png" alt="Google" width={20} height={20} />
+        <button
+          type="button"
+          className="auth-google"
+          onClick={handleGoogleLogin}
+        >
+          <img
+            src="/src/assets/images/4.png"
+            alt="Google"
+            width={20}
+            height={20}
+          />
           Continue with Google
         </button>
 
@@ -87,28 +102,50 @@ export default function LoginPage({ onCancel, onLoginSuccess, onSwitchToRegister
         <form className="auth-form" onSubmit={handleSignIn}>
           <div className="auth-field">
             <label className="auth-label">Email</label>
-            <input type="email" className="auth-input" placeholder="you@example.com"
-              value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <input
+              type="email"
+              className="auth-input"
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              required
+            />
           </div>
 
           <div className="auth-field">
             <label className="auth-label">Password</label>
             <div className="auth-input-wrap">
-              <input type={showPassword ? "text" : "password"}
+              <input
+                type={showPassword ? "text" : "password"}
                 className="auth-input auth-input--password"
-                value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-              <button type="button" className="auth-eye" onClick={() => setShowPassword((v) => !v)}>
-                <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}></i>
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required
+              />
+              <button
+                type="button"
+                className="auth-eye"
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                <i
+                  className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}
+                ></i>
               </button>
             </div>
           </div>
 
-          <button type="submit" className="auth-submit">Sign In</button>
+          <button type="submit" className="auth-submit">
+            Sign In
+          </button>
         </form>
 
         <p className="auth-switch">
           Don&apos;t have an account?{" "}
-          <button type="button" className="auth-switch__link" onClick={onSwitchToRegister}>
+          <button
+            type="button"
+            className="auth-switch__link"
+            onClick={onSwitchToRegister}
+          >
             Register now
           </button>
         </p>

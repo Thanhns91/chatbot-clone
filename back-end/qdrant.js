@@ -13,7 +13,7 @@ export async function createCollection() {
   const collections = await qdrant.getCollections();
 
   const exists = collections.collections.find(
-    (c) => c.name === COLLECTION_NAME
+    (c) => c.name === COLLECTION_NAME,
   );
 
   if (!exists) {

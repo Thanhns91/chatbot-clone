@@ -8,9 +8,15 @@ export default function UploadMaterials() {
     <Card
       className={`td-upload-zone border-0 ${dragOver ? "td-upload-zone--active" : ""}`}
       onClick={() => document.getElementById("td-file-input").click()}
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
       onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => { e.preventDefault(); setDragOver(false); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+      }}
     >
       <Card.Body className="d-flex flex-column align-items-center gap-3 py-5">
         <div className="td-upload-icon">

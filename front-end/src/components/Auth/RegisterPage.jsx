@@ -5,12 +5,21 @@ import { signInWithPopup } from "firebase/auth";
 
 const API = "http://localhost:3000";
 
-export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin }) {
+export default function RegisterPage({
+  onCancel,
+  onLoginSuccess,
+  onSwitchToLogin,
+}) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirm: "",
+  });
 
   const handleGoogleLogin = async () => {
     try {
@@ -37,7 +46,6 @@ export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin
       sessionStorage.setItem("currentUser", JSON.stringify(data.user));
       sessionStorage.setItem("showDashboard", "true");
       onLoginSuccess?.(data.user.role, data.user);
-
     } catch (err) {
       setError("Đăng nhập Google thất bại. Vui lòng thử lại.");
       console.error(err);
@@ -86,7 +94,6 @@ export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin
         sessionStorage.setItem("showDashboard", "true");
         onLoginSuccess?.(loginData.user.role, loginData.user);
       }
-
     } catch (err) {
       setError("Không thể kết nối server.");
     } finally {
@@ -95,7 +102,10 @@ export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin
   };
 
   return (
-    <div className="auth-overlay" onClick={(e) => e.target === e.currentTarget && onCancel?.()}>
+    <div
+      className="auth-overlay"
+      onClick={(e) => e.target === e.currentTarget && onCancel?.()}
+    >
       <div className="auth-card">
         <button className="auth-close" onClick={onCancel}>
           <i className="bi bi-x"></i>
@@ -106,10 +116,21 @@ export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin
         </div>
 
         <h1 className="auth-title">Create an account</h1>
-        <p className="auth-subtitle">Sign up to start learning with AI Learning</p>
+        <p className="auth-subtitle">
+          Sign up to start learning with AI Learning
+        </p>
 
-        <button type="button" className="auth-google" onClick={handleGoogleLogin}>
-          <img src="/src/assets/images/4.png" alt="Google" width={20} height={20} />
+        <button
+          type="button"
+          className="auth-google"
+          onClick={handleGoogleLogin}
+        >
+          <img
+            src="/src/assets/images/4.png"
+            alt="Google"
+            width={20}
+            height={20}
+          />
           Continue with Google
         </button>
 
@@ -129,24 +150,46 @@ export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin
         <form className="auth-form" onSubmit={handleRegister}>
           <div className="auth-field">
             <label className="auth-label">Full name</label>
-            <input type="text" className="auth-input" placeholder="John Smith"
-              value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <input
+              type="text"
+              className="auth-input"
+              placeholder="John Smith"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
           </div>
 
           <div className="auth-field">
             <label className="auth-label">Email</label>
-            <input type="email" className="auth-input" placeholder="you@example.com"
-              value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <input
+              type="email"
+              className="auth-input"
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              required
+            />
           </div>
 
           <div className="auth-field">
             <label className="auth-label">Password</label>
             <div className="auth-input-wrap">
-              <input type={showPassword ? "text" : "password"}
+              <input
+                type={showPassword ? "text" : "password"}
                 className="auth-input auth-input--password"
-                value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-              <button type="button" className="auth-eye" onClick={() => setShowPassword((v) => !v)}>
-                <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}></i>
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required
+              />
+              <button
+                type="button"
+                className="auth-eye"
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                <i
+                  className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}
+                ></i>
               </button>
             </div>
           </div>
@@ -154,11 +197,21 @@ export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin
           <div className="auth-field">
             <label className="auth-label">Confirm password</label>
             <div className="auth-input-wrap">
-              <input type={showConfirm ? "text" : "password"}
+              <input
+                type={showConfirm ? "text" : "password"}
                 className="auth-input auth-input--password"
-                value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} required />
-              <button type="button" className="auth-eye" onClick={() => setShowConfirm((v) => !v)}>
-                <i className={showConfirm ? "bi bi-eye-slash" : "bi bi-eye"}></i>
+                value={form.confirm}
+                onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+                required
+              />
+              <button
+                type="button"
+                className="auth-eye"
+                onClick={() => setShowConfirm((v) => !v)}
+              >
+                <i
+                  className={showConfirm ? "bi bi-eye-slash" : "bi bi-eye"}
+                ></i>
               </button>
             </div>
           </div>
@@ -170,7 +223,11 @@ export default function RegisterPage({ onCancel, onLoginSuccess, onSwitchToLogin
 
         <p className="auth-switch">
           Already have an account?{" "}
-          <button type="button" className="auth-switch__link" onClick={onSwitchToLogin}>
+          <button
+            type="button"
+            className="auth-switch__link"
+            onClick={onSwitchToLogin}
+          >
             Sign in
           </button>
         </p>

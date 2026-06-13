@@ -6,12 +6,12 @@
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background-image: url('./src/assets/images/2.png');
+  background-image: url("./src/assets/images/2.png");
   background-size: cover;
   background-position: center;
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     background: rgba(180, 195, 230, 0.35);
@@ -45,7 +45,7 @@
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    color: #2563EB;
+    color: #2563eb;
     flex-shrink: 0;
   }
 
@@ -87,7 +87,9 @@
     color: #1a1f3a;
     font-size: 13.5px;
     outline: none;
-    transition: border-color 0.15s, background 0.15s;
+    transition:
+      border-color 0.15s,
+      background 0.15s;
 
     &::placeholder {
       color: #8a96a8;
@@ -148,7 +150,9 @@
     font-size: 13px;
     padding-top: 40px;
 
-    p { margin: 0; }
+    p {
+      margin: 0;
+    }
   }
 
   &__empty-icon {
@@ -163,7 +167,10 @@
     cursor: pointer;
     font-size: 13.5px;
     color: #1a1f3a;
-    transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+    transition:
+      background 0.15s,
+      box-shadow 0.15s,
+      transform 0.15s;
     background: transparent;
     border: 1.5px solid transparent;
     display: flex;
@@ -174,8 +181,14 @@
     animation: itemIn 0.2s ease both;
 
     @keyframes itemIn {
-      from { opacity: 0; transform: translateX(-6px); }
-      to   { opacity: 1; transform: translateX(0); }
+      from {
+        opacity: 0;
+        transform: translateX(-6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
     }
 
     &:hover {
@@ -233,7 +246,7 @@
     font-weight: 700;
     padding: 1px 7px;
     border-radius: 20px;
-    background: #2563EB;
+    background: #2563eb;
     color: white;
     display: flex;
     align-items: center;
@@ -272,7 +285,9 @@
     font-size: 14px;
     flex-shrink: 0;
     line-height: 1;
-    transition: color 0.15s, transform 0.15s;
+    transition:
+      color 0.15s,
+      transform 0.15s;
     opacity: 0;
 
     &--on {
@@ -295,7 +310,7 @@
     padding: 14px;
     border-radius: 14px;
     border: none;
-    background: #2563EB;
+    background: #2563eb;
     color: #ffffff;
     font-size: 15px;
     font-weight: 600;
@@ -303,7 +318,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    transition:
+      background 0.2s,
+      transform 0.1s,
+      box-shadow 0.2s;
     box-shadow: 0 4px 18px rgba(37, 99, 235, 0.35);
 
     &:hover {

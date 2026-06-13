@@ -135,11 +135,7 @@ const ChatArea = ({
       });
 
       if (result.duplicate) {
-        showToast(
-          "warning",
-          "File already exists!",
-          
-        );
+        showToast("warning", "File already exists!");
         return;
       }
 
@@ -171,11 +167,7 @@ const ChatArea = ({
         return [uploadedDocument, ...prev];
       });
 
-      showToast(
-        "success",
-        "File already exists!"
-        
-      );
+      showToast("success", "File already exists!");
 
       onConversationUpdated?.({
         id: conversationId,

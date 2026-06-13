@@ -49,7 +49,9 @@ $overlay-bg: rgba(15, 23, 42, 0.45);
   width: 100%;
   max-width: 420px;
   border-radius: 12px;
-  box-shadow: 0 8px 40px $primary-shadow, 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 8px 40px $primary-shadow,
+    0 2px 12px rgba(0, 0, 0, 0.08);
   animation: slideUp 0.28s cubic-bezier(0.34, 1.2, 0.64, 1);
   max-height: 90vh;
   overflow-y: auto;
@@ -83,7 +85,9 @@ $overlay-bg: rgba(15, 23, 42, 0.45);
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 
   &:hover {
     background: #e2e8f0;
@@ -136,7 +140,10 @@ $overlay-bg: rgba(15, 23, 42, 0.45);
   color: #1e293b;
   cursor: pointer;
   margin-bottom: 16px;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
 
   &:hover {
     border-color: #c7d2fe;
@@ -206,7 +213,10 @@ $overlay-bg: rgba(15, 23, 42, 0.45);
   background: $bg-input;
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background 0.15s;
 
   &:focus {
     border-color: $primary;
@@ -256,7 +266,10 @@ $overlay-bg: rgba(15, 23, 42, 0.45);
   font-size: 14.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    transform 0.1s,
+    box-shadow 0.15s;
 
   &:hover {
     background: $primary-hover;
@@ -319,7 +332,9 @@ $overlay-bg: rgba(15, 23, 42, 0.45);
     cursor: pointer;
     font-size: 13px;
     margin-bottom: 6px;
-    transition: border-color 0.15s, background 0.15s;
+    transition:
+      border-color 0.15s,
+      background 0.15s;
 
     &:last-child {
       margin-bottom: 0;

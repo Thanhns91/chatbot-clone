@@ -45,13 +45,11 @@ router.post("/register", async (req, res) => {
     res.json({ success: true, message: "Register successful" });
   } catch (error) {
     console.log(error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Register failed",
-        detail: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Register failed",
+      detail: error.message,
+    });
   }
 });
 
@@ -228,13 +226,11 @@ router.post("/admin/create-teacher", async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Tạo tài khoản thất bại",
-        detail: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Tạo tài khoản thất bại",
+      detail: error.message,
+    });
   }
 });
 

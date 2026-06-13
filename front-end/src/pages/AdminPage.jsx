@@ -1,34 +1,34 @@
-import { useNavigate, useParams } from 'react-router-dom'
-import { logout } from '../services/authService'
-import '../components/Admin/Admin.scss'
+import { useNavigate, useParams } from "react-router-dom";
+import { logout } from "../services/authService";
+import "../components/Admin/Admin.scss";
 
-import Sidebar from '../components/Admin/Sidebar'
-import HomeScreen from '../components/Admin/HomeScreen'
-import UsersPage from '../components/Admin/UsersPage'
-import DocumentsPage from '../components/Admin/DocumentsPage'
-import AISettingsPage from '../components/Admin/AISettingsPage'
+import Sidebar from "../components/Admin/Sidebar";
+import HomeScreen from "../components/Admin/HomeScreen";
+import UsersPage from "../components/Admin/UsersPage";
+import DocumentsPage from "../components/Admin/DocumentsPage";
+import AISettingsPage from "../components/Admin/AISettingsPage";
 
 const PAGES = {
   home: HomeScreen,
   users: UsersPage,
   documents: DocumentsPage,
   ai: AISettingsPage,
-}
+};
 
 export default function AdminPage() {
-  const { page = 'home' } = useParams()
-  const navigate = useNavigate()
+  const { page = "home" } = useParams();
+  const navigate = useNavigate();
 
-  const Page = PAGES[page] || HomeScreen
+  const Page = PAGES[page] || HomeScreen;
 
-  const handleNav = (id) => navigate(`/admin/${id}`)
+  const handleNav = (id) => navigate(`/admin/${id}`);
 
   const handleLogout = () => {
-    logout()
-    localStorage.removeItem('currentUser')
-    sessionStorage.clear()
-    navigate('/')
-  }
+    logout();
+    localStorage.removeItem("currentUser");
+    sessionStorage.clear();
+    navigate("/");
+  };
 
   return (
     <div className="admin-wrapper">
@@ -37,5 +37,5 @@ export default function AdminPage() {
         <Page />
       </div>
     </div>
-  )
+  );
 }

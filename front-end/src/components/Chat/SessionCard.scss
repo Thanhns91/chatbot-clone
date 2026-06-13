@@ -1,9 +1,9 @@
 // ── Variables ──
-$brand:      #2563EB;
+$brand: #2563eb;
 $brand-light: #eff6ff;
-$text-dark:  #1a1f3a;
+$text-dark: #1a1f3a;
 $text-muted: #8a96a8;
-$border:     #e8edf4;
+$border: #e8edf4;
 
 .session-card {
   display: flex;
@@ -19,7 +19,9 @@ $border:     #e8edf4;
   animation: cardFadeIn 0.25s ease both;
 
   &:hover {
-    .session-card__edit-btn { opacity: 1; }
+    .session-card__edit-btn {
+      opacity: 1;
+    }
   }
 
   // ── Left ──
@@ -44,7 +46,9 @@ $border:     #e8edf4;
     letter-spacing: -0.02em;
     cursor: default;
 
-    &--starred { color: $brand; }
+    &--starred {
+      color: $brand;
+    }
   }
 
   &__title-input {
@@ -67,7 +71,9 @@ $border:     #e8edf4;
     color: #b0bec5;
     font-size: 14px;
     border-radius: 6px;
-    transition: color 0.15s, background 0.15s;
+    transition:
+      color 0.15s,
+      background 0.15s;
     opacity: 0;
 
     &:hover {
@@ -84,10 +90,15 @@ $border:     #e8edf4;
     font-size: 13px;
     color: $text-muted;
 
-    strong { color: #5a6a7a; font-weight: 500; }
+    strong {
+      color: #5a6a7a;
+      font-weight: 500;
+    }
   }
 
-  &__clock { font-size: 14px; }
+  &__clock {
+    font-size: 14px;
+  }
 
   &__badge-starred {
     margin-left: 6px;
@@ -120,7 +131,9 @@ $border:     #e8edf4;
     justify-content: center;
     color: #b0bec5;
     font-size: 16px;
-    transition: background 0.15s, color 0.15s;
+    transition:
+      background 0.15s,
+      color 0.15s;
 
     &:hover {
       background: #f4f4f8;
@@ -139,6 +152,12 @@ $border:     #e8edf4;
 }
 
 @keyframes cardFadeIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

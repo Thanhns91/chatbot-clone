@@ -24,7 +24,9 @@ const SessionCard = ({ title, createdAt, starred, onStar, onDelete }) => {
               autoFocus
             />
           ) : (
-            <h2 className={`session-card__title ${starred ? "session-card__title--starred" : ""}`}>
+            <h2
+              className={`session-card__title ${starred ? "session-card__title--starred" : ""}`}
+            >
               {localTitle}
             </h2>
           )}
@@ -43,9 +45,7 @@ const SessionCard = ({ title, createdAt, starred, onStar, onDelete }) => {
           <strong>{createdAt || "Today"}</strong>
 
           {starred && (
-            <Badge className="session-card__badge-starred">
-              ⭐ Starred
-            </Badge>
+            <Badge className="session-card__badge-starred">⭐ Starred</Badge>
           )}
         </div>
       </div>

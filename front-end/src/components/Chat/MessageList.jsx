@@ -29,7 +29,9 @@ const MessageList = ({ conversation, onStar, onDelete }) => {
             {msg.role === "user" && (
               <div className="message-sender message-sender--user">You</div>
             )}
-            <div className={`message-bubble ${msg.role === "user" ? "message-bubble--user" : "message-bubble--ai"}`}>
+            <div
+              className={`message-bubble ${msg.role === "user" ? "message-bubble--user" : "message-bubble--ai"}`}
+            >
               {msg.content}
             </div>
           </div>

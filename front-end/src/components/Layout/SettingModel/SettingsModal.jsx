@@ -18,7 +18,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
 
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(
-    user?.avatar_url || user?.avatarUrl || ""
+    user?.avatar_url || user?.avatarUrl || "",
   );
   const [saving, setSaving] = useState(false);
 
@@ -116,7 +116,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
           throw new Error(
             avatarResult.detail ||
               avatarResult.message ||
-              "Upload avatar failed."
+              "Upload avatar failed.",
           );
         }
 

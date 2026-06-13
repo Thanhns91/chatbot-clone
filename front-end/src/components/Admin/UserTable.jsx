@@ -1,13 +1,9 @@
-import { Table, Button, Form } from 'react-bootstrap'
+import { Table, Button, Form } from "react-bootstrap";
 
-const ROLES = ['Admin', 'Teacher', 'Member', 'Student']
+const ROLES = ["Admin", "Teacher", "Member", "Student"];
 
 function StatusBadge({ status }) {
-  return (
-    <span className={`ad-status ad-status--${status}`}>
-      {status}
-    </span>
-  )
+  return <span className={`ad-status ad-status--${status}`}>{status}</span>;
 }
 
 function RoleSelect({ userId, currentRole, onChangeRole }) {
@@ -15,23 +11,30 @@ function RoleSelect({ userId, currentRole, onChangeRole }) {
     <Form.Select
       className={`ad-role-select ad-role-select--${currentRole.toLowerCase()}`}
       value={currentRole}
-      onChange={e => onChangeRole(userId, e.target.value)}
+      onChange={(e) => onChangeRole(userId, e.target.value)}
       size="sm"
     >
-      {ROLES.map(r => (
-        <option key={r} value={r}>{r}</option>
+      {ROLES.map((r) => (
+        <option key={r} value={r}>
+          {r}
+        </option>
       ))}
     </Form.Select>
-  )
+  );
 }
 
-export default function UserTable({ users = [], onChangeRole, onToggleBlock, onDeleteUser }) {
-  const visibleUsers = users
+export default function UserTable({
+  users = [],
+  onChangeRole,
+  onToggleBlock,
+  onDeleteUser,
+}) {
+  const visibleUsers = users;
 
-  const formatDate = dateString => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleDateString()
-  }
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
     <>
@@ -53,10 +56,12 @@ export default function UserTable({ users = [], onChangeRole, onToggleBlock, onD
             </tr>
           </thead>
           <tbody>
-            {visibleUsers.map(u => (
+            {visibleUsers.map((u) => (
               <tr key={u.id}>
-                <td style={{ fontWeight: 500 }}>{u.name || u.fullName || '-'}</td>
-                <td style={{ color: 'var(--text-secondary)' }}>{u.email}</td>
+                <td style={{ fontWeight: 500 }}>
+                  {u.name || u.fullName || "-"}
+                </td>
+                <td style={{ color: "var(--text-secondary)" }}>{u.email}</td>
                 <td>
                   <RoleSelect
                     userId={u.id}
@@ -64,21 +69,22 @@ export default function UserTable({ users = [], onChangeRole, onToggleBlock, onD
                     onChangeRole={onChangeRole}
                   />
                 </td>
-                <td style={{ color: 'var(--text-secondary)' }}>
+                <td style={{ color: "var(--text-secondary)" }}>
                   {formatDate(u.joinDate || u.createdAt)}
                 </td>
                 <td>
                   <StatusBadge status={u.status} />
                 </td>
                 <td>
-                  {u.status === 'active' ? (
+                  {u.status === "active" ? (
                     <Button
                       variant="outline-danger"
                       size="sm"
                       className="ad-block-btn me-2"
                       onClick={() => onToggleBlock(u.id, u.status)}
                     >
-                      <i className="bi bi-slash-circle me-1" />Block
+                      <i className="bi bi-slash-circle me-1" />
+                      Block
                     </Button>
                   ) : (
                     <Button
@@ -87,7 +93,8 @@ export default function UserTable({ users = [], onChangeRole, onToggleBlock, onD
                       className="ad-unblock-btn me-2"
                       onClick={() => onToggleBlock(u.id, u.status)}
                     >
-                      <i className="bi bi-check-circle me-1" />Unblock
+                      <i className="bi bi-check-circle me-1" />
+                      Unblock
                     </Button>
                   )}
                   <Button
@@ -96,7 +103,8 @@ export default function UserTable({ users = [], onChangeRole, onToggleBlock, onD
                     className="ad-delete-btn text-danger p-0"
                     onClick={() => onDeleteUser(u.id)}
                   >
-                    <i className="bi bi-trash me-1" />Delete
+                    <i className="bi bi-trash me-1" />
+                    Delete
                   </Button>
                 </td>
               </tr>
@@ -105,5 +113,5 @@ export default function UserTable({ users = [], onChangeRole, onToggleBlock, onD
         </Table>
       </div>
     </>
-  )
+  );
 }

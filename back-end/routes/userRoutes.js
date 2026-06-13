@@ -46,7 +46,7 @@ const uploadAvatarToCloudinary = (buffer) => {
       (error, result) => {
         if (error) return reject(error);
         resolve(result);
-      }
+      },
     );
 
     Readable.from(buffer).pipe(stream);
@@ -162,7 +162,7 @@ router.post("/:id/avatar", avatarUpload.single("avatar"), async (req, res) => {
       SET avatar_url = ?
       WHERE userId = ?
       `,
-      [cloudinaryResult.secure_url, id]
+      [cloudinaryResult.secure_url, id],
     );
 
     const [rows] = await pool.query(
@@ -180,7 +180,7 @@ router.post("/:id/avatar", avatarUpload.single("avatar"), async (req, res) => {
       FROM Users
       WHERE userId = ?
       `,
-      [id]
+      [id],
     );
 
     res.json({

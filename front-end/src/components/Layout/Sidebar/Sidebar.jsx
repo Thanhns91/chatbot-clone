@@ -15,7 +15,7 @@ const Sidebar = ({
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const filtered = conversations.filter((c) =>
-    c.title?.toLowerCase().includes(search.toLowerCase())
+    c.title?.toLowerCase().includes(search.toLowerCase()),
   );
 
   const starred = filtered.filter((c) => c.starred);
@@ -161,14 +161,11 @@ const Sidebar = ({
               <i className="ti ti-trash"></i>
             </div>
 
-            <h3 className="sidebar-delete-modal__title">
-              Xóa đoạn chat này?
-            </h3>
+            <h3 className="sidebar-delete-modal__title">Xóa đoạn chat này?</h3>
 
             <p className="sidebar-delete-modal__text">
-              Đoạn chat{" "}
-              <strong>{deleteTarget.title || "New Chat"}</strong> sẽ bị xóa khỏi
-              lịch sử. Hành động này không thể hoàn tác.
+              Đoạn chat <strong>{deleteTarget.title || "New Chat"}</strong> sẽ
+              bị xóa khỏi lịch sử. Hành động này không thể hoàn tác.
             </p>
 
             <div className="sidebar-delete-modal__actions">

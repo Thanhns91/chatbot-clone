@@ -47,7 +47,9 @@
     font-size: 20px;
     text-decoration: none;
     border-radius: 10px;
-    transition: background 0.15s, color 0.15s;
+    transition:
+      background 0.15s,
+      color 0.15s;
 
     &:hover {
       background: #f4f4f8;

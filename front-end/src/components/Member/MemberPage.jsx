@@ -19,11 +19,11 @@ const MemberPage = () => {
 
   const [user, setUser] = useState(() =>
     JSON.parse(
-        localStorage.getItem('currentUser') ||
-            sessionStorage.getItem('currentUser') ||
-            'null'
-    )
-)
+      localStorage.getItem("currentUser") ||
+        sessionStorage.getItem("currentUser") ||
+        "null",
+    ),
+  );
 
   const userId = user?.userId;
 
@@ -239,16 +239,16 @@ const MemberPage = () => {
   };
 
   const handleUserUpdated = (updatedUser) => {
-    setUser(updatedUser)
+    setUser(updatedUser);
 
-    if (localStorage.getItem('currentUser')) {
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser))
+    if (localStorage.getItem("currentUser")) {
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
     }
 
-    if (sessionStorage.getItem('currentUser')) {
-        sessionStorage.setItem('currentUser', JSON.stringify(updatedUser))
+    if (sessionStorage.getItem("currentUser")) {
+      sessionStorage.setItem("currentUser", JSON.stringify(updatedUser));
     }
-}
+  };
 
   const handleLogout = () => {
     logout();
@@ -270,12 +270,12 @@ const MemberPage = () => {
       selectedDocument={selectedDocument}
       onSelectDocument={handleSelectDocumentFromLibrary}
       headerRight={
-    <UserAvatar
-        user={user}
-        onLogout={handleLogout}
-        onUserUpdated={handleUserUpdated}
-    />
-}
+        <UserAvatar
+          user={user}
+          onLogout={handleLogout}
+          onUserUpdated={handleUserUpdated}
+        />
+      }
     >
       {loadingSessions ? (
         <div className="member-chat__body">

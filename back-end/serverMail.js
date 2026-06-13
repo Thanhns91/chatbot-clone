@@ -1,4 +1,3 @@
-
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -38,7 +37,7 @@ app.post("/api/auth/admin/create-teacher", async (req, res) => {
 
     const [existing] = await pool.query(
       "SELECT userId FROM Users WHERE email = ?",
-      [email]
+      [email],
     );
 
     if (existing.length > 0) {
@@ -53,7 +52,7 @@ app.post("/api/auth/admin/create-teacher", async (req, res) => {
     await pool.query(
       `INSERT INTO Users (fullName, email, passwordHash, role, status)
        VALUES (?, ?, ?, 'teacher', 'active')`,
-      [fullName, email, defaultPassword]
+      [fullName, email, defaultPassword],
     );
 
     await transporter.sendMail({

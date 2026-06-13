@@ -12,7 +12,11 @@ const ProfileTab = ({ user }) => {
   const [theme, setTheme] = useState("light");
   const [showModal, setShowModal] = useState(false);
   const [pwData, setPwData] = useState({ current: "", newPw: "", confirm: "" });
-  const [showPw, setShowPw] = useState({ current: false, newPw: false, confirm: false });
+  const [showPw, setShowPw] = useState({
+    current: false,
+    newPw: false,
+    confirm: false,
+  });
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState(false);
 
@@ -53,12 +57,14 @@ const ProfileTab = ({ user }) => {
           <Card.Title className="fw-bold mb-4">Personal Information</Card.Title>
 
           <div className="d-flex align-items-center gap-3 mb-4">
-            <div className="td-profile-avatar">
-              {initial}
-            </div>
+            <div className="td-profile-avatar">{initial}</div>
             <div>
               <div className="d-flex gap-2">
-                <Button variant="outline-secondary" size="sm" className="d-flex align-items-center gap-2">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="d-flex align-items-center gap-2"
+                >
                   <i className="bi bi-camera"></i> Change Photo
                 </Button>
                 <Button
@@ -76,11 +82,17 @@ const ProfileTab = ({ user }) => {
           <Row className="g-3">
             <Col md={6}>
               <Form.Label>Full Name</Form.Label>
-              <Form.Control type="text" defaultValue={user?.name || "Teacher User"} />
+              <Form.Control
+                type="text"
+                defaultValue={user?.name || "Teacher User"}
+              />
             </Col>
             <Col md={6}>
               <Form.Label>Email</Form.Label>
-              <Form.Control type="email" defaultValue={user?.email || "teacher@ailearning.edu"} />
+              <Form.Control
+                type="email"
+                defaultValue={user?.email || "teacher@ailearning.edu"}
+              />
             </Col>
             <Col md={6}>
               <Form.Label>School</Form.Label>
@@ -118,8 +130,20 @@ const ProfileTab = ({ user }) => {
 
           <Row className="g-3">
             {[
-              { key: "light", emoji: "☀️", name: "Light", desc: "Default theme",    bgClass: "td-theme-preview--light" },
-              { key: "dark",  emoji: "🌙", name: "Dark",  desc: "Easy on the eyes", bgClass: "td-theme-preview--dark"  },
+              {
+                key: "light",
+                emoji: "☀️",
+                name: "Light",
+                desc: "Default theme",
+                bgClass: "td-theme-preview--light",
+              },
+              {
+                key: "dark",
+                emoji: "🌙",
+                name: "Dark",
+                desc: "Easy on the eyes",
+                bgClass: "td-theme-preview--dark",
+              },
             ].map(({ key, emoji, name, desc, bgClass }) => (
               <Col md={6} key={key}>
                 <Card
@@ -155,7 +179,7 @@ const ProfileTab = ({ user }) => {
           <div className="d-flex flex-column gap-3">
             {[
               { field: "current", label: "Current Password" },
-              { field: "newPw",   label: "New Password"     },
+              { field: "newPw", label: "New Password" },
               { field: "confirm", label: "Confirm New Password" },
             ].map(({ field, label }) => (
               <div key={field}>
@@ -165,13 +189,19 @@ const ProfileTab = ({ user }) => {
                     type={showPw[field] ? "text" : "password"}
                     placeholder="••••••••"
                     value={pwData[field]}
-                    onChange={(e) => setPwData({ ...pwData, [field]: e.target.value })}
+                    onChange={(e) =>
+                      setPwData({ ...pwData, [field]: e.target.value })
+                    }
                   />
                   <Button
                     variant="outline-secondary"
-                    onClick={() => setShowPw({ ...showPw, [field]: !showPw[field] })}
+                    onClick={() =>
+                      setShowPw({ ...showPw, [field]: !showPw[field] })
+                    }
                   >
-                    <i className={`bi ${showPw[field] ? "bi-eye-slash" : "bi-eye"}`}></i>
+                    <i
+                      className={`bi ${showPw[field] ? "bi-eye-slash" : "bi-eye"}`}
+                    ></i>
                   </Button>
                 </InputGroup>
               </div>
@@ -179,19 +209,33 @@ const ProfileTab = ({ user }) => {
           </div>
 
           {pwData.newPw.length > 0 && (
-            <div className={`mt-2 small ${pwData.newPw.length < 8 ? "text-danger" : "text-success"}`}>
+            <div
+              className={`mt-2 small ${pwData.newPw.length < 8 ? "text-danger" : "text-success"}`}
+            >
               {pwData.newPw.length < 8
                 ? "⚠ At least 8 characters required"
                 : "✓ Password length looks good"}
             </div>
           )}
 
-          {pwError   && <Alert variant="danger"  className="mt-3 py-2 mb-0">{pwError}</Alert>}
-          {pwSuccess && <Alert variant="success" className="mt-3 py-2 mb-0">✓ Password changed successfully!</Alert>}
+          {pwError && (
+            <Alert variant="danger" className="mt-3 py-2 mb-0">
+              {pwError}
+            </Alert>
+          )}
+          {pwSuccess && (
+            <Alert variant="success" className="mt-3 py-2 mb-0">
+              ✓ Password changed successfully!
+            </Alert>
+          )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="outline-secondary" onClick={handleClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleChangePw}>Update Password</Button>
+          <Button variant="outline-secondary" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleChangePw}>
+            Update Password
+          </Button>
         </Modal.Footer>
       </Modal>
     </>

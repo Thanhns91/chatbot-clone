@@ -1,22 +1,22 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ToastContainer } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
-import HomePage from './pages/HomePage'
-import AdminPage from './pages/AdminPage'
-import TeacherPage from './pages/TeacherPage'
-import MemberPage from './components/Member/MemberPage'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import HomePage from "./pages/HomePage";
+import AdminPage from "./pages/AdminPage";
+import TeacherPage from "./pages/TeacherPage";
+import MemberPage from "./components/Member/MemberPage";
+import "./App.css";
 
 function App() {
   return (
     <BrowserRouter>
-   <ToastContainer
-  position="top-right"
-  autoClose={3000}
-  newestOnTop
-  closeOnClick
-  pauseOnHover
-/>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+      />
       <Routes>
         <Route path="/" element={<HomePage />} />
 
@@ -25,15 +25,21 @@ function App() {
         <Route path="/admin/:page" element={<AdminPage />} />
 
         {/* Teacher */}
-        <Route path="/teacher" element={<Navigate to="/teacher/home" replace />} />
+        <Route
+          path="/teacher"
+          element={<Navigate to="/teacher/home" replace />}
+        />
         <Route path="/teacher/:page" element={<TeacherPage />} />
 
         {/* Member — /u/:username/chat và /u/:username/chat/:conversationId */}
         <Route path="/u/:username/chat" element={<MemberPage />} />
-        <Route path="/u/:username/chat/:conversationId" element={<MemberPage />} />
+        <Route
+          path="/u/:username/chat/:conversationId"
+          element={<MemberPage />}
+        />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

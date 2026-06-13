@@ -35,7 +35,7 @@ router.get("/sessions/:userId", async (req, res) => {
       WHERE cs.userId = ?
       ORDER BY cs.updatedAt DESC, cs.createdAt DESC
       `,
-      [userId]
+      [userId],
     );
 
     const formatted = sessions.map((s) => ({
@@ -75,7 +75,7 @@ router.post("/sessions", async (req, res) => {
       INSERT INTO ChatSessions (userId, documentId, title)
       VALUES (?, ?, ?)
       `,
-      [userId, documentId || null, title || "New Chat"]
+      [userId, documentId || null, title || "New Chat"],
     );
 
     res.json({
@@ -105,7 +105,7 @@ router.put("/sessions/:sessionId", async (req, res) => {
         SET documentId = ?, title = ?
         WHERE sessionId = ?
         `,
-        [documentId || null, title || "New Chat", sessionId]
+        [documentId || null, title || "New Chat", sessionId],
       );
     } else if (documentId !== undefined) {
       await pool.query(
@@ -114,7 +114,7 @@ router.put("/sessions/:sessionId", async (req, res) => {
         SET documentId = ?
         WHERE sessionId = ?
         `,
-        [documentId || null, sessionId]
+        [documentId || null, sessionId],
       );
     } else if (title !== undefined) {
       await pool.query(
@@ -123,7 +123,7 @@ router.put("/sessions/:sessionId", async (req, res) => {
         SET title = ?
         WHERE sessionId = ?
         `,
-        [title || "New Chat", sessionId]
+        [title || "New Chat", sessionId],
       );
     }
 
@@ -150,7 +150,7 @@ router.delete("/sessions/:sessionId", async (req, res) => {
       DELETE FROM ChatSessions
       WHERE sessionId = ?
       `,
-      [sessionId]
+      [sessionId],
     );
 
     res.json({
@@ -178,7 +178,7 @@ router.get("/messages/:sessionId", async (req, res) => {
       WHERE sessionId = ?
       ORDER BY createdAt ASC
       `,
-      [sessionId]
+      [sessionId],
     );
 
     res.json(messages);
@@ -208,7 +208,7 @@ router.post("/messages", async (req, res) => {
       INSERT INTO ChatMessages (sessionId, sender, message)
       VALUES (?, ?, ?)
       `,
-      [sessionId, sender, message]
+      [sessionId, sender, message],
     );
 
     await pool.query(
@@ -217,7 +217,7 @@ router.post("/messages", async (req, res) => {
       SET updatedAt = NOW()
       WHERE sessionId = ?
       `,
-      [sessionId]
+      [sessionId],
     );
 
     res.json({

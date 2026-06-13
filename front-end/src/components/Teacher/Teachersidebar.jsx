@@ -6,9 +6,9 @@ const TeacherSidebar = ({ user, page, setPage, onLogout }) => {
   const initial = user?.name?.charAt(0).toUpperCase() || "T";
 
   const navItems = [
-    { key: "home",      icon: "bi bi-house",            label: "Home"         },
+    { key: "home", icon: "bi bi-house", label: "Home" },
     { key: "materials", icon: "bi bi-journal-bookmark", label: "My Materials" },
-    { key: "profile",   icon: "bi bi-person",           label: "Profile"      },
+    { key: "profile", icon: "bi bi-person", label: "Profile" },
   ];
 
   return (
@@ -42,7 +42,9 @@ const TeacherSidebar = ({ user, page, setPage, onLogout }) => {
       <div className="td-sidebar__footer">
         <div className="td-sidebar__user-avatar">{initial}</div>
         <div className="td-sidebar__user-info">
-          <div className="td-sidebar__user-name">{user?.name || "Teacher User"}</div>
+          <div className="td-sidebar__user-name">
+            {user?.name || "Teacher User"}
+          </div>
           <div className="td-sidebar__user-role">Teacher</div>
         </div>
         <Button
