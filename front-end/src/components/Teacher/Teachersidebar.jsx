@@ -1,19 +1,28 @@
-import React from "react";
-import Nav from "react-bootstrap/Nav";
 import Button from "react-bootstrap/Button";
 
-const TeacherSidebar = ({ user, page, setPage, onLogout }) => {
-  const initial = user?.name?.charAt(0).toUpperCase() || "T";
+const NAV = [
+  {
+    id: "home",
+    icon: "bi-house-door-fill",
+    label: "Home",
+  },
+  {
+    id: "materials",
+    icon: "bi-folder2-open",
+    label: "My Materials",
+  },
+  {
+    id: "profile",
+    icon: "bi-person",
+    label: "Profile",
+  },
+];
 
-  const navItems = [
-    { key: "home", icon: "bi bi-house", label: "Home" },
-    { key: "materials", icon: "bi bi-journal-bookmark", label: "My Materials" },
-    { key: "profile", icon: "bi bi-person", label: "Profile" },
-  ];
+export default function TeacherSidebar({ user, page, setPage, onLogout }) {
+  const initial = user?.name?.charAt(0).toUpperCase() || "T";
 
   return (
     <aside className="td-sidebar">
-      {/* Brand */}
       <div className="td-sidebar__brand">
         <div className="td-sidebar__avatar">{initial}</div>
         <div>
@@ -22,31 +31,30 @@ const TeacherSidebar = ({ user, page, setPage, onLogout }) => {
         </div>
       </div>
 
-      {/* Nav */}
-      <Nav className="td-sidebar__nav flex-column">
-        {navItems.map(({ key, icon, label }) => (
-          <Nav.Item key={key}>
-            <Nav.Link
-              as="button"
-              className={`td-nav-item ${page === key ? "td-nav-item--active" : ""}`}
-              onClick={() => setPage(key)}
-            >
-              <i className={icon}></i>
-              {label}
-            </Nav.Link>
-          </Nav.Item>
+      <nav className="td-sidebar__nav">
+        {NAV.map((n) => (
+          <button
+            key={n.id}
+            type="button"
+            className={`td-nav-item ${page === n.id ? "active" : ""}`}
+            onClick={() => setPage(n.id)}
+          >
+            <i className={`bi ${n.icon}`} />
+            {n.label}
+          </button>
         ))}
-      </Nav>
+      </nav>
 
-      {/* Footer */}
       <div className="td-sidebar__footer">
         <div className="td-sidebar__user-avatar">{initial}</div>
+
         <div className="td-sidebar__user-info">
           <div className="td-sidebar__user-name">
             {user?.name || "Teacher User"}
           </div>
           <div className="td-sidebar__user-role">Teacher</div>
         </div>
+
         <Button
           variant="outline-secondary"
           size="sm"
@@ -54,12 +62,10 @@ const TeacherSidebar = ({ user, page, setPage, onLogout }) => {
           onClick={onLogout}
           title="Logout"
         >
-          <i className="bi bi-box-arrow-right"></i>
+          <i className="bi bi-box-arrow-right" />
           Logout
         </Button>
       </div>
     </aside>
   );
-};
-
-export default TeacherSidebar;
+}

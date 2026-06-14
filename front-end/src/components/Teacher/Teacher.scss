@@ -1,27 +1,25 @@
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 // ── Variables ──
-$brand: #2563eb;
-$brand-hover: #1d4ed8;
-$brand-light: #eff6ff;
-$sidebar-w: 240px;
+$brand:        #2563EB;
+$brand-hover:  #1d4ed8;
+$brand-light:  #eff6ff;
+$sidebar-w:    240px;
 
-$border: #e2e8f0;
-$text-dark: #1e293b;
-$text-mid: #475569;
-$text-muted: #94a3b8;
-$bg-main: #f8fafc;
-$radius-card: 16px;
-$radius-btn: 10px;
+$border:       #e2e8f0;
+$text-dark:    #1e293b;
+$text-mid:     #475569;
+$text-muted:   #94a3b8;
+$bg-main:      #f8fafc;
+$radius-card:  16px;
+$radius-btn:   10px;
 
 // ── Layout ──
 .td-root {
   display: flex;
   min-height: 100vh;
   background: #ffffff;
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
 // ── Sidebar ──
@@ -133,7 +131,7 @@ $radius-btn: 10px;
     color: #64748b;
     font-size: 13px;
     font-weight: 600;
-    font-family: "Segoe UI", system-ui, sans-serif;
+    font-family: 'Segoe UI', system-ui, sans-serif;
     cursor: pointer;
     transition: all 0.2s;
     flex-shrink: 0;
@@ -149,41 +147,38 @@ $radius-btn: 10px;
 
 // ── Nav item ──
 .td-nav-item {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  color: $text-mid;
+  gap: 12px;
+
+  border: none;
+  background: transparent;
+
+  color: #64748b;
   font-size: 14px;
   font-weight: 500;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    color 0.15s;
-  border: none;
-  background: none;
-  width: 100%;
-  text-align: left;
-  margin-bottom: 2px;
 
-  &:hover {
-    background: #f1f5f9;
-    color: $text-dark;
-  }
+  padding: 12px 16px;
+  border-radius: 12px;
 
-  &--active {
-    background: $brand-light;
-    color: $brand;
-    font-weight: 600;
-    border: 1px solid rgba(37, 99, 235, 0.15);
-  }
+  transition: all 0.2s ease;
 
   i {
     font-size: 18px;
-    width: 20px;
-    flex-shrink: 0;
   }
+
+  &:hover {
+    background: #eff6ff;
+    color: #2563eb;
+  }
+}
+
+.td-nav-item.active {
+  background: #eff6ff;
+  color: #2563EB;
+  font-weight: 600;
+  border: 1px solid rgba(37, 99, 235, 0.15);
 }
 
 // ── Main area ──
@@ -226,19 +221,10 @@ $radius-btn: 10px;
   overflow-y: auto;
   padding: 24px 28px;
 
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: $border;
-    border-radius: 3px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: #cbd5e1;
-  }
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: $border; border-radius: 3px; }
+  &::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
 
   // ── Profile tab — react-bootstrap overrides ──
   .card {
@@ -280,9 +266,7 @@ $radius-btn: 10px;
     }
   }
 
-  .border-primary {
-    border-color: $brand !important;
-  }
+  .border-primary { border-color: $brand !important; }
 }
 
 // ── Card ──
@@ -294,11 +278,7 @@ $radius-btn: 10px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   margin-bottom: 20px;
 
-  &::after {
-    content: "";
-    display: table;
-    clear: both;
-  }
+  &::after { content: ""; display: table; clear: both; }
 }
 
 // ── Tab buttons ──
@@ -503,9 +483,7 @@ $radius-btn: 10px;
   align-items: center;
   gap: 12px;
   margin-bottom: 20px;
-  transition:
-    border-color 0.2s,
-    background 0.2s;
+  transition: border-color 0.2s, background 0.2s;
   cursor: pointer;
 
   &:hover,
@@ -528,28 +506,10 @@ $radius-btn: 10px;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
-.td-upload-text {
-  font-size: 14px;
-  color: $text-mid;
-  margin: 0;
-  font-weight: 500;
-}
-.td-upload-hint {
-  font-size: 12px;
-  color: $text-muted;
-  margin: 0;
-}
-.td-upload-title {
-  font-size: 14px;
-  color: $text-mid;
-  margin: 0;
-  font-weight: 500;
-}
-.td-upload-sub {
-  font-size: 12px;
-  color: $text-muted;
-  margin: 0;
-}
+.td-upload-text  { font-size: 14px; color: $text-mid; margin: 0; font-weight: 500; }
+.td-upload-hint  { font-size: 12px; color: $text-muted; margin: 0; }
+.td-upload-title { font-size: 14px; color: $text-mid; margin: 0; font-weight: 500; }
+.td-upload-sub   { font-size: 12px; color: $text-muted; margin: 0; }
 
 .td-select-btn {
   padding: 8px 24px;
@@ -563,9 +523,7 @@ $radius-btn: 10px;
   transition: background 0.15s;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 
-  &:hover {
-    background: $brand-hover;
-  }
+  &:hover { background: $brand-hover; }
 }
 
 // ── File list ──
@@ -576,9 +534,7 @@ $radius-btn: 10px;
   padding: 12px 0;
   border-bottom: 1px solid #f1f5f9;
 
-  &:last-child {
-    border-bottom: none;
-  }
+  &:last-child { border-bottom: none; }
 }
 
 .td-file-icon {
@@ -591,37 +547,20 @@ $radius-btn: 10px;
   font-size: 17px;
   flex-shrink: 0;
 
-  &--pdf {
-    background: #fef2f2;
-    color: #dc2626;
-  }
-  &--mp4 {
-    background: $brand-light;
-    color: $brand;
-  }
-  &--docx {
-    background: $brand-light;
-    color: $brand;
-  }
+  &--pdf  { background: #fef2f2; color: #dc2626; }
+  &--mp4  { background: $brand-light; color: $brand; }
+  &--docx { background: $brand-light; color: $brand; }
 }
 
-.td-file-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: $text-dark;
-}
-.td-file-meta {
-  font-size: 12px;
-  color: $text-muted;
-  margin-top: 2px;
-}
+.td-file-name { font-size: 14px; font-weight: 500; color: $text-dark; }
+.td-file-meta { font-size: 12px; color: $text-muted; margin-top: 2px; }
 
 // ── Chart tooltip ──
 .td-chart-tooltip {
   background: #fff;
   border: none;
   border-radius: 10px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.10);
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 600;
@@ -653,9 +592,7 @@ $radius-btn: 10px;
   border: 1.5px solid #e2e8f0 !important;
   border-radius: 14px !important;
   overflow: hidden;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   box-shadow: none !important;
 
   &:hover {
@@ -749,7 +686,7 @@ $radius-btn: 10px;
       &.btn-primary {
         background: #fff !important;
         border-color: #e2e8f0 !important;
-        color: #2563eb !important;
+        color: #2563EB !important;
         font-weight: 600;
         box-shadow: 0 1px 4px rgba(37, 99, 235, 0.1) !important;
       }
@@ -766,5 +703,169 @@ $radius-btn: 10px;
         }
       }
     }
+  }
+}
+
+//Teacher dashboard giống Admin nhưng tách ra cho sạch
+
+// ── Teacher Home Dashboard: Admin-like style ──
+.td-dashboard-chart {
+  margin-bottom: 20px;
+}
+
+.td-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: $text-dark;
+  margin-bottom: 12px;
+}
+
+.td-empty-text {
+  font-size: 13px;
+  color: $text-muted;
+  margin: 0;
+}
+
+// CSS overview cho giống admin
+.td-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.td-act-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.td-activity-text {
+  font-size: 13px;
+  color: $text-dark;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.td-activity-date {
+  font-size: 12px;
+  color: $text-muted;
+  flex-shrink: 0;
+}
+
+.td-overview-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.td-overview-name {
+  font-size: 13px;
+  color: $text-dark;
+  flex: 1;
+}
+
+.td-overview-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-dark;
+  min-width: 36px;
+  text-align: right;
+}
+
+.td-overview-admin-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.td-overview-admin-name {
+  font-size: 14px;
+  color: #1e293b;
+  flex: 1;
+}
+
+.td-overview-admin-bar-wrap {
+  width: 90px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.td-overview-admin-bar {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.td-overview-admin-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  min-width: 34px;
+  text-align: right;
+}
+
+/* ── Sidebar nav giống Admin ── */
+.td-sidebar__nav {
+  flex: 1;
+  padding: 14px 10px;
+}
+
+.td-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 2px;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+  }
+
+  &.active {
+    background: #eff6ff;
+    color: #2563eb;
+    font-weight: 600;
+    border: 1px solid rgba(37, 99, 235, 0.15);
+  }
+
+  i {
+    font-size: 18px;
+    width: 20px;
+    flex-shrink: 0;
   }
 }

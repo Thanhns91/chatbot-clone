@@ -186,3 +186,13 @@ export async function uploadAvatar(userId, file) {
 
   return res.json();
 }
+
+export async function getTeacherStats() {
+  const res = await fetch(`${API_URL}/documents/teacher-stats`);
+
+  if (!res.ok) {
+    throw new Error("Cannot load teacher stats");
+  }
+
+  return res.json();
+}
