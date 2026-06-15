@@ -7,8 +7,6 @@ const TYPE_BADGE = {
   PDF: "badge-pdf",
   DOC: "badge-docx",
   DOCX: "badge-docx",
-  XLS: "badge-xlsx",
-  XLSX: "badge-xlsx",
 };
 
 const API = "http://localhost:3000";
@@ -52,16 +50,6 @@ export default function DocumentsPage({ currentUser }) {
 
     if (name.endsWith(".doc")) return "DOC";
 
-    if (
-      type.includes("sheet") ||
-      type.includes("xlsx") ||
-      name.endsWith(".xlsx")
-    ) {
-      return "XLSX";
-    }
-
-    if (name.endsWith(".xls")) return "XLS";
-
     return "OTHER";
   };
 
@@ -71,14 +59,14 @@ export default function DocumentsPage({ currentUser }) {
   };
 
   const getDocumentUrl = (d) => {
-  if (!d.fileUrl) return "#";
+    if (!d.fileUrl) return "#";
 
-  if (d.fileUrl.startsWith("http")) {
-    return d.fileUrl;
-  }
+    if (d.fileUrl.startsWith("http")) {
+      return d.fileUrl;
+    }
 
-  return `${API}${d.fileUrl}`;
-};
+    return `${API}${d.fileUrl}`;
+  };
 
   const canViewFile = (d) => {
     return getFileType(d.fileType, d.fileName) === "PDF";
@@ -105,6 +93,22 @@ export default function DocumentsPage({ currentUser }) {
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    const allowedExtensions = [".pdf", ".doc", ".docx"];
+    const fileName = file.name.toLowerCase();
+    const isAllowed = allowedExtensions.some((ext) =>
+      fileName.endsWith(ext)
+    );
+
+    if (!isAllowed) {
+      toast.error("Chỉ cho phép upload file PDF, DOC, DOCX");
+
+      if (fileRef.current) {
+        fileRef.current.value = "";
+      }
+
+      return;
+    }
 
     setUploading(true);
 
@@ -175,6 +179,7 @@ export default function DocumentsPage({ currentUser }) {
         toast.error(data.message || "Xóa thất bại");
       }
     } catch (err) {
+      console.error(err);
       toast.error("Không thể kết nối server!");
     }
   };
@@ -204,7 +209,7 @@ export default function DocumentsPage({ currentUser }) {
               type="file"
               ref={fileRef}
               style={{ display: "none" }}
-              accept=".pdf,.doc,.docx,.xlsx,.xls"
+              accept=".pdf,.doc,.docx"
               onChange={handleUpload}
             />
 
@@ -326,26 +331,26 @@ export default function DocumentsPage({ currentUser }) {
                         <td>
                           <div className="d-flex align-items-center gap-3">
                             {isViewable ? (
-  <Button
-    variant="link"
-    className="p-0"
-    title="View document"
-    onClick={() => window.open(fileUrl, "_blank")}
-  >
-    <i className="bi bi-eye" />
-  </Button>
-) : (
-  <span
-    title="This file type cannot be previewed"
-    style={{
-      color: "#94a3b8",
-      cursor: "not-allowed",
-      fontSize: 16,
-    }}
-  >
-    <i className="bi bi-eye-slash" />
-  </span>
-)}
+                              <Button
+                                variant="link"
+                                className="p-0"
+                                title="View document"
+                                onClick={() => window.open(fileUrl, "_blank")}
+                              >
+                                <i className="bi bi-eye" />
+                              </Button>
+                            ) : (
+                              <span
+                                title="This file type cannot be previewed"
+                                style={{
+                                  color: "#94a3b8",
+                                  cursor: "not-allowed",
+                                  fontSize: 16,
+                                }}
+                              >
+                                <i className="bi bi-eye-slash" />
+                              </span>
+                            )}
 
                             <a
                               href={fileUrl}
