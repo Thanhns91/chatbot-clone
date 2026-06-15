@@ -71,14 +71,14 @@ export default function DocumentsPage({ currentUser }) {
   };
 
   const getDocumentUrl = (d) => {
-    if (!d.fileUrl) return "#";
+  if (!d.fileUrl) return "#";
 
-    if (d.fileUrl.startsWith("http")) {
-      return d.fileUrl;
-    }
+  if (d.fileUrl.startsWith("http")) {
+    return d.fileUrl;
+  }
 
-    return `${API}${d.fileUrl}`;
-  };
+  return `${API}${d.fileUrl}`;
+};
 
   const canViewFile = (d) => {
     return getFileType(d.fileType, d.fileName) === "PDF";

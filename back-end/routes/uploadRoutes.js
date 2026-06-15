@@ -11,19 +11,18 @@ import pool from "../db.js";
 import { qdrant, COLLECTION_NAME } from "../qdrant.js";
 import { semanticChunk } from "../chunking.js";
 import { embedText } from "../huggingface.js";
+import cloudinary from "../cloudinary.js";
 
 const router = express.Router();
 
 export const documents = [];
 
-// Tạo thư mục uploads nếu chưa có
 const uploadDir = path.join(process.cwd(), "uploads");
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Lưu file với tên an toàn
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -55,9 +54,9 @@ async function extractText(filePath, originalName) {
     });
 
     return result.value;
-    
-
-    return text;
+  }
+  if (ext === "doc") {
+    throw new Error("File .doc chưa hỗ trợ đọc nội dung. Hãy đổi sang .docx.");
   }
 
   throw new Error("Unsupported file type");
@@ -75,6 +74,22 @@ function createContentHash(text) {
     .digest("hex");
 }
 
+async function uploadToCloudinary(filePath, fileName) {
+  const ext = path.extname(fileName).replace(".", "").toLowerCase();
+  const publicId = `${Date.now()}-${uuidv4()}-${path.parse(fileName).name}`;
+
+  const result = await cloudinary.uploader.upload(filePath, {
+    resource_type: "raw",
+    folder: "chatbot-documents",
+    public_id: publicId,
+    use_filename: true,
+    unique_filename: true,
+    format: ext,
+  });
+
+  return result.secure_url;
+}
+
 router.post("/", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -88,15 +103,11 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     const fileName = req.file.originalname;
     const fileType = req.file.mimetype;
-    const savedFileName = req.file.filename;
-    const fileUrl = `/uploads/${savedFileName}`;
-
     const uploadedBy = req.body.uploadedBy || "student";
     const uploaderId = Number(req.body.uploaderId) || 1;
 
     const reviewStatus = uploadedBy === "teacher" ? "approved" : "private";
 
-    // Đọc nội dung file trước để check trùng nội dung
     const text = await extractText(req.file.path, fileName);
 
     if (!text || !text.trim()) {
@@ -105,7 +116,9 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     const contentHash = createContentHash(text);
 
-    // Check trùng theo tên file hoặc nội dung file
+    console.log("UPLOAD FILE:", fileName);
+    console.log("CONTENT HASH:", contentHash);
+
     const [existingDocs] = await pool.query(
       `
       SELECT 
@@ -124,13 +137,9 @@ router.post("/", upload.single("file"), async (req, res) => {
           fileName = ?
           OR contentHash = ?
         )
-        AND (
-          uploaderId = ?
-          OR (uploadedBy = 'teacher' AND reviewStatus = 'approved')
-        )
       LIMIT 1
       `,
-      [fileName, contentHash, uploaderId]
+      [fileName, contentHash]
     );
 
     if (existingDocs.length > 0) {
@@ -168,7 +177,6 @@ router.post("/", upload.single("file"), async (req, res) => {
         payload: {
           documentId,
           fileName,
-          fileUrl,
           uploadedBy,
           text: chunks[i],
           chunkIndex: i,
@@ -179,6 +187,8 @@ router.post("/", upload.single("file"), async (req, res) => {
     await qdrant.upsert(COLLECTION_NAME, {
       points,
     });
+
+    const fileUrl = await uploadToCloudinary(req.file.path, fileName);
 
     await pool.query(
       `
@@ -216,6 +226,10 @@ router.post("/", upload.single("file"), async (req, res) => {
       uploadedBy,
       createdAt: new Date().toISOString(),
     });
+
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
 
     res.json({
       success: true,
