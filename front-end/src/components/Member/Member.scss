@@ -953,3 +953,63 @@ html[data-theme="dark"] {
     color: #94a3b8 !important;
   }
 }
+
+
+html[data-theme="dark"] {
+  .chat-layout__main,
+  .chat-layout__body,
+  .chat-layout__content {
+    background: #0f172a !important;
+  }
+
+  // NAVBAR / HEADER TOP
+  .header,
+  .chat-header,
+  .chat-layout__header,
+  .navbar,
+  .topbar {
+    background: #0f172a !important;
+    border-bottom: 1px solid #1e293b !important;
+    color: #e5e7eb !important;
+  }
+
+  .header *,
+  .chat-header *,
+  .chat-layout__header *,
+  .navbar *,
+  .topbar * {
+    color: #e5e7eb !important;
+  }
+
+  .header button,
+  .chat-header button,
+  .chat-layout__header button,
+  .navbar button,
+  .topbar button {
+    background: transparent !important;
+    color: #cbd5e1 !important;
+    border-color: transparent !important;
+  }
+
+  .header button:hover,
+  .chat-header button:hover,
+  .chat-layout__header button:hover,
+  .navbar button:hover,
+  .topbar button:hover {
+    background: #1e293b !important;
+    color: #ffffff !important;
+  }
+
+  .header i,
+  .chat-header i,
+  .chat-layout__header i,
+  .navbar i,
+  .topbar i {
+    color: #cbd5e1 !important;
+  }
+
+  .member-avatar__btn.btn {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
