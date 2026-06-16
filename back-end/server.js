@@ -13,9 +13,19 @@ import userRoutes from "./routes/userRoutes.js";
 import chatHistoryRoutes from "./routes/chatHistoryRoutes.js";
 import swaggerSpec from "./swagger.js";
 
+
 dotenv.config();
 
 const app = express();
+
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
+
+app.use(express.json());
 
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
