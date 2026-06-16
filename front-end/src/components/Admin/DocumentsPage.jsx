@@ -3,7 +3,12 @@ import { Button, Col, Form, Row, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 
-const TYPE_BADGE = { PDF: "badge-pdf", DOCX: "badge-docx", XLSX: "badge-xlsx" };
+const TYPE_BADGE = {
+  PDF: "badge-pdf",
+  DOC: "badge-docx",
+  DOCX: "badge-docx",
+};
+
 const API = "http://localhost:3000";
 
 export default function DocumentsPage({ currentUser }) {
@@ -16,7 +21,10 @@ export default function DocumentsPage({ currentUser }) {
     try {
       const res = await fetch(`${API}/documents`);
       const data = await res.json();
-      if (data.success) setDocs(data.data);
+
+      if (data.success) {
+        setDocs(data.data);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -26,11 +34,22 @@ export default function DocumentsPage({ currentUser }) {
     fetchDocs();
   }, []);
 
-  const getFileType = (fileType) => {
-    if (!fileType) return "OTHER";
-    if (fileType.includes("pdf")) return "PDF";
-    if (fileType.includes("word") || fileType.includes("docx")) return "DOCX";
-    if (fileType.includes("sheet") || fileType.includes("xlsx")) return "XLSX";
+  const getFileType = (fileType, fileName = "") => {
+    const type = fileType?.toLowerCase() || "";
+    const name = fileName?.toLowerCase() || "";
+
+    if (type.includes("pdf") || name.endsWith(".pdf")) return "PDF";
+
+    if (
+      type.includes("word") ||
+      type.includes("docx") ||
+      name.endsWith(".docx")
+    ) {
+      return "DOCX";
+    }
+
+    if (name.endsWith(".doc")) return "DOC";
+
     return "OTHER";
   };
 
@@ -39,13 +58,30 @@ export default function DocumentsPage({ currentUser }) {
     return new Date(dateStr).toISOString().split("T")[0];
   };
 
+  const getDocumentUrl = (d) => {
+    if (!d.fileUrl) return "#";
+
+    if (d.fileUrl.startsWith("http")) {
+      return d.fileUrl;
+    }
+
+    return `${API}${d.fileUrl}`;
+  };
+
+  const canViewFile = (d) => {
+    return getFileType(d.fileType, d.fileName) === "PDF";
+  };
+
   const filtered = docs.filter((d) =>
-    d.fileName?.toLowerCase().includes(search.toLowerCase()),
+    d.fileName?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const pdfCount = docs.filter((d) => getFileType(d.fileType) === "PDF").length;
+  const pdfCount = docs.filter(
+    (d) => getFileType(d.fileType, d.fileName) === "PDF"
+  ).length;
+
   const otherCount = docs.filter(
-    (d) => getFileType(d.fileType) !== "PDF",
+    (d) => getFileType(d.fileType, d.fileName) !== "PDF"
   ).length;
 
   const STATS = [
@@ -58,10 +94,27 @@ export default function DocumentsPage({ currentUser }) {
     const file = e.target.files[0];
     if (!file) return;
 
+    const allowedExtensions = [".pdf", ".doc", ".docx"];
+    const fileName = file.name.toLowerCase();
+    const isAllowed = allowedExtensions.some((ext) =>
+      fileName.endsWith(ext)
+    );
+
+    if (!isAllowed) {
+      toast.error("Chỉ cho phép upload file PDF, DOC, DOCX");
+
+      if (fileRef.current) {
+        fileRef.current.value = "";
+      }
+
+      return;
+    }
+
     setUploading(true);
 
     const user =
       currentUser || JSON.parse(sessionStorage.getItem("currentUser") || "{}");
+
     const role = user?.role === "admin" ? "teacher" : user?.role || "teacher";
 
     const formData = new FormData();
@@ -74,19 +127,27 @@ export default function DocumentsPage({ currentUser }) {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
 
-      if (data.documentId) {
+      const data = await res.json();
+      console.log("UPLOAD RESPONSE:", data);
+
+      if (res.ok && (data.success || data.documentId || data.data?.documentId)) {
         await fetchDocs();
         toast.success("Upload tài liệu thành công!");
       } else {
-        toast.error(data.error || "Upload thất bại");
+        toast.error(
+          data.error || data.message || data.detail || "Upload thất bại"
+        );
       }
     } catch (err) {
+      console.error("UPLOAD ERROR:", err);
       toast.error("Không thể kết nối server");
     } finally {
       setUploading(false);
-      fileRef.current.value = "";
+
+      if (fileRef.current) {
+        fileRef.current.value = "";
+      }
     }
   };
 
@@ -108,7 +169,9 @@ export default function DocumentsPage({ currentUser }) {
       const res = await fetch(`${API}/documents/${documentId}`, {
         method: "DELETE",
       });
+
       const data = await res.json();
+
       if (data.success) {
         setDocs((prev) => prev.filter((d) => d.documentId !== documentId));
         toast.success("Xóa tài liệu thành công!");
@@ -116,6 +179,7 @@ export default function DocumentsPage({ currentUser }) {
         toast.error(data.message || "Xóa thất bại");
       }
     } catch (err) {
+      console.error(err);
       toast.error("Không thể kết nối server!");
     }
   };
@@ -131,6 +195,7 @@ export default function DocumentsPage({ currentUser }) {
         <div className="d-flex align-items-center justify-content-between mb-4">
           <div className="search-box">
             <i className="bi bi-search search-box__icon" />
+
             <Form.Control
               className="search-box__input"
               placeholder="Search"
@@ -144,9 +209,10 @@ export default function DocumentsPage({ currentUser }) {
               type="file"
               ref={fileRef}
               style={{ display: "none" }}
-              accept=".pdf,.docx,.xlsx,.xls"
+              accept=".pdf,.doc,.docx"
               onChange={handleUpload}
             />
+
             <button
               className="btn-purple"
               onClick={() => fileRef.current.click()}
@@ -164,6 +230,7 @@ export default function DocumentsPage({ currentUser }) {
               <div className="stat-card">
                 <div>
                   <div className="stat-label">{s.label}</div>
+
                   <div className="stat-val" style={{ color: s.color }}>
                     {s.val}
                   </div>
@@ -177,6 +244,7 @@ export default function DocumentsPage({ currentUser }) {
           <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16 }}>
             All Documents
           </div>
+
           <div className="table-responsive">
             <Table className="admin-table mb-0">
               <thead>
@@ -189,6 +257,7 @@ export default function DocumentsPage({ currentUser }) {
                   <th>Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
@@ -197,49 +266,114 @@ export default function DocumentsPage({ currentUser }) {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((d) => (
-                    <tr key={d.documentId}>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <i className="bi bi-file-earmark text-secondary" />
-                          <span>{d.fileName}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span
-                          className={`role-badge ${TYPE_BADGE[getFileType(d.fileType)] || ""}`}
-                        >
-                          {getFileType(d.fileType)}
-                        </span>
-                      </td>
-                      <td style={{ color: "#64748b" }}>
-                        {formatDate(d.uploadDate)}
-                      </td>
-                      <td style={{ color: "#64748b" }}>
-                        {d.uploaderName || d.uploadedBy}
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            d.reviewStatus === "approved"
-                              ? "status-active"
-                              : "status-blocked"
-                          }
-                        >
-                          {d.reviewStatus}
-                        </span>
-                      </td>
-                      <td>
-                        <Button
-                          variant="link"
-                          className="btn-del p-0"
-                          onClick={() => handleDelete(d.documentId)}
-                        >
-                          <i className="bi bi-trash3" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
+                  filtered.map((d) => {
+                    const fileType = getFileType(d.fileType, d.fileName);
+                    const fileUrl = getDocumentUrl(d);
+                    const isViewable = canViewFile(d);
+
+                    return (
+                      <tr key={d.documentId}>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <i className="bi bi-file-earmark text-secondary" />
+
+                            {isViewable ? (
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  textDecoration: "none",
+                                  color: "#2563eb",
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {d.fileName}
+                              </a>
+                            ) : (
+                              <span style={{ fontWeight: 500 }}>
+                                {d.fileName}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td>
+                          <span
+                            className={`role-badge ${
+                              TYPE_BADGE[fileType] || ""
+                            }`}
+                          >
+                            {fileType}
+                          </span>
+                        </td>
+
+                        <td style={{ color: "#64748b" }}>
+                          {formatDate(d.uploadDate)}
+                        </td>
+
+                        <td style={{ color: "#64748b" }}>
+                          {d.uploaderName || d.uploadedBy}
+                        </td>
+
+                        <td>
+                          <span
+                            className={
+                              d.reviewStatus === "approved"
+                                ? "status-active"
+                                : "status-blocked"
+                            }
+                          >
+                            {d.reviewStatus}
+                          </span>
+                        </td>
+
+                        <td>
+                          <div className="d-flex align-items-center gap-3">
+                            {isViewable ? (
+                              <Button
+                                variant="link"
+                                className="p-0"
+                                title="View document"
+                                onClick={() => window.open(fileUrl, "_blank")}
+                              >
+                                <i className="bi bi-eye" />
+                              </Button>
+                            ) : (
+                              <span
+                                title="This file type cannot be previewed"
+                                style={{
+                                  color: "#94a3b8",
+                                  cursor: "not-allowed",
+                                  fontSize: 16,
+                                }}
+                              >
+                                <i className="bi bi-eye-slash" />
+                              </span>
+                            )}
+
+                            <a
+                              href={fileUrl}
+                              download={d.fileName}
+                              title="Download document"
+                              style={{ color: "#16a34a" }}
+                            >
+                              <i className="bi bi-download" />
+                            </a>
+
+                            <Button
+                              variant="link"
+                              className="btn-del p-0"
+                              title="Delete document"
+                              onClick={() => handleDelete(d.documentId)}
+                            >
+                              <i className="bi bi-trash3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </Table>
