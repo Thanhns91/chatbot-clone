@@ -49,13 +49,11 @@ const swaggerSpec = {
   info: {
     title: "AI Learning Chatbot API",
     version: "1.0.0",
-    description:
-      "Swagger documentation for AI Learning Chatbot backend APIs.",
+    description: "Swagger documentation for AI Learning Chatbot backend APIs.",
   },
   servers: [
     {
-      url: "http://localhost:3000",
-      description: "Local backend server",
+      url: process.env.SERVER_URL || "http://localhost:3000",
     },
   ],
   tags: [
