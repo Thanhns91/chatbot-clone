@@ -21,16 +21,39 @@ const upload = multer({
   dest: "uploads/",
 });
 
-function getContentHash(filePath) {
-  const buffer = fs.readFileSync(filePath);
-  return crypto.createHash("sha256").update(buffer).digest("hex");
+function cleanupFile(filePath) {
+  if (filePath && fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+}
+
+function normalizeTextForHash(text) {
+  return String(text || "")
+    .replace(/\u0000/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function createContentHash(text) {
+  const normalizedText = normalizeTextForHash(text);
+
+  return crypto
+    .createHash("sha256")
+    .update(normalizedText, "utf8")
+    .digest("hex");
 }
 
 async function uploadDocumentToCloudinary(filePath, documentId, fileName) {
+  const safeName = fileName
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[^\w-]+/g, "-")
+    .slice(0, 80);
+
   const result = await cloudinary.uploader.upload(filePath, {
     folder: "ai-learning/documents",
     resource_type: "raw",
-    public_id: documentId,
+    public_id: `${documentId}-${safeName}`,
     use_filename: false,
     unique_filename: false,
     overwrite: true,
@@ -83,6 +106,64 @@ async function extractText(filePath, originalName) {
   throw new Error("Unsupported file type");
 }
 
+async function getDuplicateInfo(contentHash) {
+  const [existingDocs] = await pool.query(
+    `
+    SELECT
+      documentId,
+      fileName,
+      fileType,
+      fileUrl,
+      contentHash,
+      versionGroupId,
+      versionNo,
+      vectorDocumentId,
+      originalDocumentId,
+      uploaderId,
+      uploadedBy,
+      reviewStatus,
+      uploadDate
+    FROM Documents
+    WHERE uploadStatus = 'success'
+      AND contentHash = ?
+    ORDER BY isDuplicate ASC, versionNo ASC, uploadDate ASC
+    LIMIT 1
+    `,
+    [contentHash]
+  );
+
+  if (existingDocs.length === 0) {
+    return null;
+  }
+
+  const originalDoc = existingDocs[0];
+
+  const versionGroupId = originalDoc.versionGroupId || originalDoc.documentId;
+
+  const vectorDocumentId =
+    originalDoc.vectorDocumentId || originalDoc.documentId;
+
+  const originalDocumentId =
+    originalDoc.originalDocumentId || originalDoc.documentId;
+
+  const [versionRows] = await pool.query(
+    `
+    SELECT COALESCE(MAX(versionNo), 0) + 1 AS nextVersion
+    FROM Documents
+    WHERE versionGroupId = ?
+    `,
+    [versionGroupId]
+  );
+
+  return {
+    originalDoc,
+    versionGroupId,
+    vectorDocumentId,
+    originalDocumentId,
+    nextVersion: Number(versionRows[0]?.nextVersion || 2),
+  };
+}
+
 router.post("/", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -95,52 +176,12 @@ router.post("/", upload.single("file"), async (req, res) => {
     const fileName = req.file.originalname;
     const fileType = req.file.mimetype;
     const uploadedBy = req.body.uploadedBy || "student";
-    const uploaderId = req.body.uploaderId || 1;
+    const uploaderId = Number(req.body.uploaderId) || 1;
     const reviewStatus = uploadedBy === "teacher" ? "approved" : "private";
+    const allowVersion =
+      req.body.allowVersion === "true" || req.body.allowVersion === true;
 
-    const contentHash = getContentHash(req.file.path);
-
-    const [existingDocs] = await pool.query(
-      `
-      SELECT 
-        documentId,
-        fileName,
-        fileType,
-        fileUrl,
-        contentHash,
-        uploaderId,
-        uploadedBy,
-        reviewStatus,
-        uploadDate
-      FROM Documents
-      WHERE uploadStatus = 'success'
-        AND (
-          contentHash = ?
-          OR (
-            fileName = ?
-            AND (
-              uploaderId = ?
-              OR (uploadedBy = 'teacher' AND reviewStatus = 'approved')
-            )
-          )
-        )
-      LIMIT 1
-      `,
-      [contentHash, fileName, uploaderId],
-    );
-
-    if (existingDocs.length > 0) {
-      if (req.file?.path && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
-      return res.status(409).json({
-        success: false,
-        duplicate: true,
-        message: "File đã có sẵn trong thư viện.",
-        document: existingDocs[0],
-      });
-    }
+    const documentId = uuidv4();
 
     const text = await extractText(req.file.path, fileName);
 
@@ -148,13 +189,131 @@ router.post("/", upload.single("file"), async (req, res) => {
       throw new Error("Cannot extract text from this file.");
     }
 
+    const contentHash = createContentHash(text);
+
+    const duplicateInfo = await getDuplicateInfo(contentHash);
+
+    if (duplicateInfo) {
+      const {
+        originalDoc,
+        versionGroupId,
+        vectorDocumentId,
+        originalDocumentId,
+        nextVersion,
+      } = duplicateInfo;
+
+      if (!allowVersion) {
+        cleanupFile(req.file.path);
+
+        return res.json({
+          success: true,
+          duplicate: true,
+          needConfirm: true,
+          versionCreated: false,
+          duplicateType: "content",
+          message: `File content already exists. Do you want to save it as Version ${nextVersion}?`,
+          currentFileName: fileName,
+          existingFileName: originalDoc.fileName,
+          nextVersion,
+          versionGroupId,
+          vectorDocumentId,
+          originalDocumentId,
+        });
+      }
+
+      const fileUrl = await uploadDocumentToCloudinary(
+        req.file.path,
+        documentId,
+        fileName
+      );
+
+      await pool.query(
+        `
+        INSERT INTO Documents
+        (
+          documentId,
+          fileName,
+          fileType,
+          fileUrl,
+          contentHash,
+          uploaderId,
+          uploadedBy,
+          uploadStatus,
+          reviewStatus,
+          errorMessage,
+          versionGroupId,
+          versionNo,
+          vectorDocumentId,
+          isDuplicate,
+          originalDocumentId
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, NULL, ?, ?, ?, TRUE, ?)
+        `,
+        [
+          documentId,
+          fileName,
+          fileType,
+          fileUrl,
+          contentHash,
+          uploaderId,
+          uploadedBy,
+          reviewStatus,
+          versionGroupId,
+          nextVersion,
+          vectorDocumentId,
+          originalDocumentId,
+        ]
+      );
+
+      documents.push({
+        documentId,
+        fileName,
+        fileUrl,
+        contentHash,
+        uploadedBy,
+        reviewStatus,
+        versionGroupId,
+        versionNo: nextVersion,
+        vectorDocumentId,
+        isDuplicate: true,
+        createdAt: new Date().toISOString(),
+      });
+
+      cleanupFile(req.file.path);
+
+      return res.json({
+        success: true,
+        duplicate: true,
+        needConfirm: false,
+        versionCreated: true,
+        duplicateType: "content",
+        message: `Saved as Version ${nextVersion}.`,
+        documentId,
+        fileName,
+        fileType,
+        fileUrl,
+        contentHash,
+        uploadedBy,
+        reviewStatus,
+        versionGroupId,
+        versionNo: nextVersion,
+        vectorDocumentId,
+        isDuplicate: true,
+        originalDocumentId,
+        totalChunks: 0,
+      });
+    }
+
     const chunks = semanticChunk(text);
-    const documentId = uuidv4();
+
+    if (!chunks || chunks.length === 0) {
+      throw new Error("Cannot create chunks from this document.");
+    }
 
     const fileUrl = await uploadDocumentToCloudinary(
       req.file.path,
       documentId,
-      fileName,
+      fileName
     );
 
     const points = [];
@@ -167,8 +326,10 @@ router.post("/", upload.single("file"), async (req, res) => {
         vector,
         payload: {
           documentId,
+          vectorDocumentId: documentId,
           fileName,
           uploadedBy,
+          uploaderId,
           text: chunks[i],
           chunkIndex: i,
         },
@@ -191,9 +352,15 @@ router.post("/", upload.single("file"), async (req, res) => {
         uploaderId,
         uploadedBy,
         uploadStatus,
-        reviewStatus
+        reviewStatus,
+        errorMessage,
+        versionGroupId,
+        versionNo,
+        vectorDocumentId,
+        isDuplicate,
+        originalDocumentId
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, NULL, ?, 1, ?, FALSE, NULL)
       `,
       [
         documentId,
@@ -204,39 +371,53 @@ router.post("/", upload.single("file"), async (req, res) => {
         uploaderId,
         uploadedBy,
         reviewStatus,
-      ],
+        documentId,
+        documentId,
+      ]
     );
 
     documents.push({
       documentId,
       fileName,
       fileUrl,
+      contentHash,
       uploadedBy,
+      reviewStatus,
+      versionGroupId: documentId,
+      versionNo: 1,
+      vectorDocumentId: documentId,
+      isDuplicate: false,
       createdAt: new Date().toISOString(),
     });
 
-    if (req.file?.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
+    cleanupFile(req.file.path);
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Upload success",
+      duplicate: false,
+      needConfirm: false,
+      versionCreated: false,
+      message: `Uploaded "${fileName}" successfully.`,
       documentId,
       fileName,
       fileType,
       fileUrl,
+      contentHash,
       uploadedBy,
+      reviewStatus,
+      versionGroupId: documentId,
+      versionNo: 1,
+      vectorDocumentId: documentId,
+      isDuplicate: false,
+      originalDocumentId: null,
       totalChunks: chunks.length,
     });
   } catch (error) {
     console.log(error);
 
-    if (req.file?.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
+    cleanupFile(req.file?.path);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: "Upload failed",
       detail: error.message,

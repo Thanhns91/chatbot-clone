@@ -33,19 +33,26 @@ const ChatArea = ({
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [toast, setToast] = useState(null);
+  const [versionModal, setVersionModal] = useState(null);
 
-  const showToast = (type, title, message) => {
+  const showToast = (type, title, message = "") => {
+    const toastId = Date.now();
+
     setToast({
-      id: Date.now(),
+      id: toastId,
       type,
       title,
       message,
     });
 
     setTimeout(() => {
-      setToast(null);
+      setToast((current) => {
+        if (current?.id === toastId) return null;
+        return current;
+      });
     }, 3200);
   };
+
   useEffect(() => {
     const loadMessages = async () => {
       if (!conversationId) {
@@ -113,26 +120,37 @@ const ChatArea = ({
 
   const handleChooseFile = () => {
     if (!conversationId) {
-      alert("Bạn cần tạo New Chat trước khi upload tài liệu.");
+      showToast(
+        "warning",
+        "New chat required",
+        "Bạn cần tạo New Chat trước khi upload tài liệu."
+      );
       return;
     }
 
     fileInputRef.current?.click();
   };
 
- const handleUpload = async (event) => {
-  const file = event.target.files?.[0];
-  if (!file || !conversationId) return;
-
-  try {
-    setUploading(true);
-
+  const uploadDocumentToServer = async (file, allowVersion = false) => {
     const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
 
     const result = await uploadFile(file, {
       uploadedBy,
       uploaderId: user?.userId,
+      allowVersion,
     });
+
+    if (result.duplicate && result.needConfirm) {
+      setVersionModal({
+        file,
+        currentFileName: result.currentFileName || file.name,
+        existingFileName: result.existingFileName || "existing document",
+        nextVersion: result.nextVersion || 2,
+        message: result.message || "",
+      });
+
+      return;
+    }
 
     if (result.error || result.success === false) {
       throw new Error(result.detail || result.message || result.error);
@@ -150,7 +168,9 @@ const ChatArea = ({
       totalChunks: result.totalChunks,
       uploaderId: user?.userId,
       uploadedBy,
-      reviewStatus: result.reviewStatus || (uploadedBy === "teacher" ? "approved" : "private"),
+      reviewStatus:
+        result.reviewStatus ||
+        (uploadedBy === "teacher" ? "approved" : "private"),
       versionNo: result.versionNo || 1,
       versionGroupId: result.versionGroupId,
       vectorDocumentId: result.vectorDocumentId,
@@ -170,39 +190,82 @@ const ChatArea = ({
       return [uploadedDocument, ...prev];
     });
 
-    if (result.duplicate) {
+    if (result.versionCreated) {
       showToast(
         "success",
-        "File already exists!",
-        `Saved as Version ${result.versionNo || 2} in your library.`
+        "Version created!",
+        `"${result.fileName}" saved as Version ${result.versionNo}.`
       );
     } else {
-      showToast("success", "Upload successful!");
+      showToast(
+        "success",
+        "Upload successful!",
+        `"${result.fileName}" has been added to your library.`
+      );
     }
 
     onConversationUpdated?.({
       id: conversationId,
       documentId: result.documentId,
       fileName: result.fileName,
-      preview: result.duplicate
-        ? `Saved as Version ${result.versionNo || 2}: ${result.fileName}`
+      preview: result.versionCreated
+        ? `Saved as Version ${result.versionNo}: ${result.fileName}`
         : result.fileName,
-      messageCount: (activeConversation?.messageCount || 0) + 1,
+      messageCount: activeConversation?.messageCount || 0,
     });
-  } catch (error) {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: makeId(),
-        role: "system",
-        content: `Upload thất bại: ${error.message}`,
-      },
-    ]);
-  } finally {
-    setUploading(false);
-    event.target.value = "";
-  }
-};
+  };
+
+  const handleUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !conversationId) return;
+
+    try {
+      setUploading(true);
+      await uploadDocumentToServer(file, false);
+    } catch (error) {
+      showToast(
+        "error",
+        "Upload failed",
+        error.message || "Cannot upload this file."
+      );
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleConfirmCreateVersion = async () => {
+    if (!versionModal?.file) return;
+
+    try {
+      setUploading(true);
+
+      const file = versionModal.file;
+      setVersionModal(null);
+
+      await uploadDocumentToServer(file, true);
+    } catch (error) {
+      showToast(
+        "error",
+        "Create version failed",
+        error.message || "Cannot create new version."
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCancelCreateVersion = () => {
+    if (!versionModal) return;
+
+    showToast(
+      "warning",
+      "Duplicate content detected!",
+      `"${versionModal.currentFileName || versionModal.file?.name}" has the same content as "${versionModal.existingFileName}" but a different file name. It was not saved.`
+    );
+
+    setVersionModal(null);
+  };
 
   const handleSend = async () => {
     const userText = message.trim();
@@ -253,7 +316,7 @@ const ChatArea = ({
       const result = await sendMessage(
         selectedDocument.documentId,
         userText,
-        approvedAnswers,
+        approvedAnswers
       );
 
       const aiAnswer = result.answer || "Không có phản hồi.";
@@ -298,8 +361,8 @@ const ChatArea = ({
   const handleToggleApproved = (aiMessage) => {
     setMessages((prev) =>
       prev.map((msg) =>
-        msg.id === aiMessage.id ? { ...msg, approved: !msg.approved } : msg,
-      ),
+        msg.id === aiMessage.id ? { ...msg, approved: !msg.approved } : msg
+      )
     );
 
     setApprovedAnswers((prev) => {
@@ -357,6 +420,53 @@ const ChatArea = ({
           </div>
 
           <div className="member-toast__progress" />
+        </div>
+      )}
+
+      {versionModal && (
+        <div className="version-modal">
+          <div className="version-modal__card">
+            <div className="version-modal__icon">
+              <i className="bi bi-files"></i>
+            </div>
+
+            <h3>Duplicate content detected</h3>
+
+            <p>
+              File{" "}
+              <strong>
+                {versionModal.currentFileName || versionModal.file?.name}
+              </strong>{" "}
+              has the same content as{" "}
+              <strong>{versionModal.existingFileName}</strong>, but the file
+              name is different.
+            </p>
+
+            <p>
+              Do you want to save it as{" "}
+              <strong>Version {versionModal.nextVersion}</strong>?
+            </p>
+
+            <div className="version-modal__actions">
+              <button
+                type="button"
+                className="version-modal__btn version-modal__btn--cancel"
+                onClick={handleCancelCreateVersion}
+                disabled={uploading}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                className="version-modal__btn version-modal__btn--confirm"
+                onClick={handleConfirmCreateVersion}
+                disabled={uploading}
+              >
+                {uploading ? "Saving..." : "Add Version"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

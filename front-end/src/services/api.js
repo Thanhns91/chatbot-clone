@@ -13,6 +13,8 @@ export async function uploadFile(file, options = {}) {
     formData.append("uploaderId", options.uploaderId);
   }
 
+  formData.append("allowVersion", options.allowVersion ? "true" : "false");
+
   const res = await fetch(`${API_URL}/upload`, {
     method: "POST",
     body: formData,
@@ -37,12 +39,13 @@ export async function sendMessage(documentId, message, approvedAnswers = []) {
   return res.json();
 }
 
-export async function uploadTeacherFile(file, uploaderId) {
+export async function uploadTeacherFile(file, uploaderId, options = {}) {
   const formData = new FormData();
 
   formData.append("file", file);
   formData.append("uploadedBy", "teacher");
   formData.append("uploaderId", uploaderId || "");
+  formData.append("allowVersion", options.allowVersion ? "true" : "false");
 
   const res = await fetch(`${API_URL}/upload`, {
     method: "POST",
@@ -76,7 +79,6 @@ export async function deleteDocument(documentId) {
 
 export async function getTeacherDocuments() {
   const res = await fetch(`${API_URL}/documents`);
-
   return res.json();
 }
 
@@ -123,11 +125,11 @@ export async function updateUserRole(userId, role) {
 }
 
 export async function deleteUser(userId) {
-  const response = await fetch(`http://localhost:3000/users/${userId}`, {
+  const response = await fetch(`${API_URL}/users/${userId}`, {
     method: "DELETE",
   });
 
-  return await response.json();
+  return response.json();
 }
 
 export async function getChatSessions(userId) {
@@ -194,6 +196,16 @@ export async function deleteChatSession(sessionId) {
 
 export async function getDocuments() {
   const res = await fetch(`${API_URL}/documents`);
+  return res.json();
+}
+
+export async function getLibraryDocuments(userId, role) {
+  const safeUserId = encodeURIComponent(userId);
+  const safeRole = encodeURIComponent(role);
+
+  const res = await fetch(
+    `${API_URL}/documents/library?userId=${safeUserId}&role=${safeRole}`
+  );
 
   return res.json();
 }
