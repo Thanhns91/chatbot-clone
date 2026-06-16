@@ -1,14 +1,9 @@
 import express from "express";
 import pool from "../db.js";
 import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
+import cloudinary from "../cloudinary.js";
 import { Readable } from "stream";
 const router = express.Router();
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
@@ -143,97 +138,275 @@ router.put("/:id/role", async (req, res) => {
   }
 });
 
-router.post("/admin/create-teacher", async (req, res) => {
-  const { fullName, email } = req.body;
-
+router.post("/:id/avatar", avatarUpload.single("avatar"), async (req, res) => {
   try {
-    if (!fullName || !email) {
+    const { id } = req.params;
+
+    if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu tên hoặc email",
+        message: "No avatar uploaded",
       });
     }
 
-    const [existing] = await pool.query(
-      "SELECT userId FROM Users WHERE email = ?",
-      [email]
+    const cloudinaryResult = await uploadAvatarToCloudinary(req.file.buffer);
+
+    await pool.query(
+      `
+      UPDATE Users
+      SET avatar_url = ?
+      WHERE userId = ?
+      `,
+      [cloudinaryResult.secure_url, id],
     );
 
-    if (existing.length > 0) {
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        userId,
+        fullName,
+        fullName AS name,
+        email,
+        role,
+        status,
+        avatar_url,
+        avatar_url AS avatarUrl,
+        createdAt
+      FROM Users
+      WHERE userId = ?
+      `,
+      [id],
+    );
+
+    res.json({
+      success: true,
+      message: "Avatar updated successfully",
+      avatar_url: cloudinaryResult.secure_url,
+      avatarUrl: cloudinaryResult.secure_url,
+      user: rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Upload avatar failed",
+      detail: error.message,
+    });
+  }
+});
+
+// GET profile by user id
+router.get("/:id/profile", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        userId,
+        fullName,
+        fullName AS name,
+        email,
+        role,
+        status,
+        avatar_url,
+        avatar_url AS avatarUrl,
+        createdAt
+      FROM Users
+      WHERE userId = ?
+      `,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      user: rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Cannot load profile",
+      detail: error.message,
+    });
+  }
+});
+
+// UPDATE profile: fullName + email
+router.put("/:id/profile", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fullName, email } = req.body;
+
+    if (!fullName || !email) {
       return res.status(400).json({
         success: false,
-        message: "Email này đã tồn tại",
+        message: "Full name and email are required",
+      });
+    }
+
+    const [existingEmail] = await pool.query(
+      `
+      SELECT userId
+      FROM Users
+      WHERE email = ?
+        AND userId <> ?
+      `,
+      [email, id]
+    );
+
+    if (existingEmail.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists",
       });
     }
 
     await pool.query(
-      `INSERT INTO Users (fullName, email, passwordHash, role, status)
-       VALUES (?, ?, ?, 'teacher', 'active')`,
-      [fullName, email, ""]
+      `
+      UPDATE Users
+      SET fullName = ?, email = ?
+      WHERE userId = ?
+      `,
+      [fullName, email, id]
     );
 
-    return res.json({
-      success: true,
-      message: "Tạo teacher thành công",
-    });
-  } catch (err) {
-    console.error("Create teacher error:", err);
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        userId,
+        fullName,
+        fullName AS name,
+        email,
+        role,
+        status,
+        avatar_url,
+        avatar_url AS avatarUrl,
+        createdAt
+      FROM Users
+      WHERE userId = ?
+      `,
+      [id]
+    );
 
-    return res.status(500).json({
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: rows[0],
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
       success: false,
-      message: err.message,
+      message: "Update profile failed",
+      detail: error.message,
+    });
+  }
+});
+
+// CHANGE password
+router.put("/:id/password", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required",
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 8 characters",
+      });
+    }
+
+    const [rows] = await pool.query(
+      `
+      SELECT userId, passwordHash
+      FROM Users
+      WHERE userId = ?
+      `,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = rows[0];
+
+    if (currentPassword !== user.passwordHash) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    await pool.query(
+      `
+      UPDATE Users
+      SET passwordHash = ?
+      WHERE userId = ?
+      `,
+      [newPassword, id]
+    );
+
+    res.json({
+      success: true,
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Change password failed",
+      detail: error.message,
     });
   }
 });
 
 // DELETE user
 router.delete("/:id", async (req, res) => {
-  const { id } = req.params;
-  const conn = await pool.getConnection();
-
   try {
-    await conn.beginTransaction();
+    const { id } = req.params;
+    const [rows] = await pool.query("SELECT role FROM Users WHERE userId = ?", [
+      id,
+    ]);
 
-    await conn.query(
-      `DELETE FROM ChatMessages
-       WHERE sessionId IN (
-         SELECT sessionId FROM ChatSessions WHERE userId = ?
-       )`,
-      [id]
-    );
-
-    await conn.query("DELETE FROM ChatSessions WHERE userId = ?", [id]);
-
-    await conn.query("DELETE FROM Documents WHERE uploaderId = ?", [id]);
-
-    const [result] = await conn.query(
-      "DELETE FROM Users WHERE userId = ?",
-      [id]
-    );
-
-    await conn.commit();
-
-    if (result.affectedRows === 0) {
-      return res.json({
-        success: false,
-        message: "User không tồn tại",
-      });
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    if (rows[0].role === "admin") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Cannot delete admin" });
     }
 
-    res.json({
-      success: true,
-      message: "Xóa user thành công",
-    });
-  } catch (err) {
-    await conn.rollback();
-    console.error("Delete user error:", err);
-
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  } finally {
-    conn.release();
+    await pool.query("DELETE FROM Users WHERE userId = ?", [id]);
+    res.json({ success: true, message: "User deleted" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "Delete user failed" });
   }
 });
 
