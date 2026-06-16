@@ -121,75 +121,88 @@ const ChatArea = ({
   };
 
   const handleUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || !conversationId) return;
+  const file = event.target.files?.[0];
+  if (!file || !conversationId) return;
 
-    try {
-      setUploading(true);
+  try {
+    setUploading(true);
 
-      const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
+    const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
 
-      const result = await uploadFile(file, {
-        uploadedBy,
-        uploaderId: user?.userId,
-      });
+    const result = await uploadFile(file, {
+      uploadedBy,
+      uploaderId: user?.userId,
+    });
 
-      if (result.duplicate) {
-        showToast("warning", "File already exists!");
-        return;
-      }
-
-      if (result.error || result.success === false) {
-        throw new Error(result.detail || result.message || result.error);
-      }
-      await updateChatSession(conversationId, {
-        documentId: result.documentId,
-      });
-
-      const uploadedDocument = {
-        documentId: result.documentId,
-        fileName: result.fileName,
-        totalChunks: result.totalChunks,
-        uploaderId: user?.userId,
-        uploadedBy,
-        reviewStatus: uploadedBy === "teacher" ? "approved" : "private",
-      };
-
-      setSelectedDocument?.(uploadedDocument);
-
-      setAvailableDocuments?.((prev) => {
-        const existed = prev.some(
-          (item) => String(item.documentId) === String(result.documentId),
-        );
-
-        if (existed) return prev;
-
-        return [uploadedDocument, ...prev];
-      });
-
-      showToast("success", "File already exists!");
-
-      onConversationUpdated?.({
-        id: conversationId,
-        documentId: result.documentId,
-        fileName: result.fileName,
-        preview: result.fileName,
-        messageCount: (activeConversation?.messageCount || 0) + 1,
-      });
-    } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: makeId(),
-          role: "system",
-          content: `Upload thất bại: ${error.message}`,
-        },
-      ]);
-    } finally {
-      setUploading(false);
-      event.target.value = "";
+    if (result.error || result.success === false) {
+      throw new Error(result.detail || result.message || result.error);
     }
-  };
+
+    await updateChatSession(conversationId, {
+      documentId: result.documentId,
+    });
+
+    const uploadedDocument = {
+      documentId: result.documentId,
+      fileName: result.fileName,
+      fileType: result.fileType,
+      fileUrl: result.fileUrl,
+      totalChunks: result.totalChunks,
+      uploaderId: user?.userId,
+      uploadedBy,
+      reviewStatus: result.reviewStatus || (uploadedBy === "teacher" ? "approved" : "private"),
+      versionNo: result.versionNo || 1,
+      versionGroupId: result.versionGroupId,
+      vectorDocumentId: result.vectorDocumentId,
+      isDuplicate: Boolean(result.isDuplicate || result.duplicate),
+      uploadDate: new Date().toISOString(),
+    };
+
+    setSelectedDocument?.(uploadedDocument);
+
+    setAvailableDocuments?.((prev) => {
+      const existed = prev.some(
+        (item) => String(item.documentId) === String(result.documentId)
+      );
+
+      if (existed) return prev;
+
+      return [uploadedDocument, ...prev];
+    });
+
+    if (result.duplicate) {
+      showToast(
+        "success",
+        "File already exists!",
+        `Saved as Version ${result.versionNo || 2} in your library.`
+      );
+    } else {
+      showToast("success", "Upload successful!");
+    }
+
+    onConversationUpdated?.({
+      id: conversationId,
+      documentId: result.documentId,
+      fileName: result.fileName,
+      preview: result.duplicate
+        ? `Saved as Version ${result.versionNo || 2}: ${result.fileName}`
+        : result.fileName,
+      messageCount: (activeConversation?.messageCount || 0) + 1,
+    });
+  } catch (error) {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: makeId(),
+        role: "system",
+        content: `Upload thất bại: ${error.message}`,
+      },
+    ]);
+  } finally {
+    setUploading(false);
+    event.target.value = "";
+  }
+};
 
   const handleSend = async () => {
     const userText = message.trim();

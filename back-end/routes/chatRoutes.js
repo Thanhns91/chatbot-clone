@@ -1,4 +1,5 @@
 import express from "express";
+import pool from "../db.js";
 import { qdrant, COLLECTION_NAME } from "../qdrant.js";
 import { embedText } from "../huggingface.js";
 import { generateAnswer } from "../groq.js";
@@ -36,39 +37,71 @@ router.post("/", async (req, res) => {
       });
     }
 
+    /*
+      documentId frontend gửi lên có thể là:
+      - file gốc version 1
+      - file duplicate version 2, 3...
+
+      Nếu là duplicate thì không có vector riêng trong Qdrant.
+      Vì vậy phải lấy vectorDocumentId để search Qdrant.
+    */
+    const [docRows] = await pool.query(
+      `
+      SELECT
+        documentId,
+        fileName,
+        vectorDocumentId,
+        versionGroupId,
+        versionNo,
+        isDuplicate
+      FROM Documents
+      WHERE documentId = ?
+      LIMIT 1
+      `,
+      [documentId]
+    );
+
+    if (docRows.length === 0) {
+      return res.json({
+        answer: "Không tìm thấy tài liệu này.",
+        outOfScope: true,
+      });
+    }
+
+    const selectedDoc = docRows[0];
+
+    const qdrantDocumentId =
+      selectedDoc.vectorDocumentId || selectedDoc.documentId;
+
+    console.log("CHAT SELECTED DOCUMENT:", selectedDoc.documentId);
+    console.log("QDRANT DOCUMENT ID:", qdrantDocumentId);
+
     const keywords = getKeywords(message);
     const vector = await embedText(message);
+
+    const qdrantFilter = {
+      must: [
+        {
+          key: "documentId",
+          match: {
+            value: qdrantDocumentId,
+          },
+        },
+      ],
+    };
 
     const vectorResults = await qdrant.search(COLLECTION_NAME, {
       vector,
       limit: 10,
       with_payload: true,
-      filter: {
-        must: [
-          {
-            key: "documentId",
-            match: {
-              value: documentId,
-            },
-          },
-        ],
-      },
+      filter: qdrantFilter,
     });
 
     const scrollResult = await qdrant.scroll(COLLECTION_NAME, {
       limit: 1000,
       with_payload: true,
       with_vector: false,
-      filter: {
-        must: [
-          {
-            key: "documentId",
-            match: {
-              value: documentId,
-            },
-          },
-        ],
-      },
+      filter: qdrantFilter,
     });
 
     const allChunks = scrollResult.points || [];
@@ -77,16 +110,22 @@ router.post("/", async (req, res) => {
       return res.json({
         answer: "Tài liệu không có thông tin này.",
         outOfScope: true,
+        documentId: selectedDoc.documentId,
+        vectorDocumentId: qdrantDocumentId,
       });
     }
 
     const keywordResults = allChunks
-      .map((point) => ({
-        id: point.id,
-        payload: point.payload,
-        keywordScore: keywordScore(point.payload?.text, keywords),
-        score: keywordScore(point.payload?.text, keywords),
-      }))
+      .map((point) => {
+        const score = keywordScore(point.payload?.text, keywords);
+
+        return {
+          id: point.id,
+          payload: point.payload,
+          keywordScore: score,
+          score,
+        };
+      })
       .filter((item) => item.keywordScore > 0)
       .sort((a, b) => b.keywordScore - a.keywordScore)
       .slice(0, 5);
@@ -100,6 +139,8 @@ router.post("/", async (req, res) => {
         answer: "Tài liệu không có thông tin này.",
         outOfScope: true,
         score: topVectorScore,
+        documentId: selectedDoc.documentId,
+        vectorDocumentId: qdrantDocumentId,
       });
     }
 
@@ -137,6 +178,10 @@ ANSWER: ${item.answer || ""}`;
     const prompt = `
 Bạn là chatbot hỏi đáp dựa trên tài liệu đã upload.
 
+TÀI LIỆU ĐANG ĐƯỢC CHỌN:
+- File name: ${selectedDoc.fileName}
+- Version: ${selectedDoc.versionNo || 1}
+
 NHIỆM VỤ:
 Trả lời QUESTION dựa trên CONTEXT TỪ TÀI LIỆU.
 
@@ -166,6 +211,10 @@ ANSWER:
     res.json({
       answer: answer || "Tài liệu không có thông tin này.",
       outOfScope: answer?.includes("Tài liệu không có thông tin này.") || false,
+      documentId: selectedDoc.documentId,
+      vectorDocumentId: qdrantDocumentId,
+      versionNo: selectedDoc.versionNo || 1,
+      isDuplicate: Boolean(selectedDoc.isDuplicate),
       evidence: finalChunks.map((item) => ({
         chunkIndex: item.payload?.chunkIndex,
         text: item.payload?.text,
