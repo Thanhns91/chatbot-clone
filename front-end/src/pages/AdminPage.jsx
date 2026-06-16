@@ -5,14 +5,13 @@ import "../components/Admin/Admin.scss";
 import Sidebar from "../components/Admin/Sidebar";
 import HomeScreen from "../components/Admin/HomeScreen";
 import UsersPage from "../components/Admin/UsersPage";
-import DocumentsPage from "../components/Admin/DocumentsPage";
-import AISettingsPage from "../components/Admin/AISettingsPage";
+
+
 
 const PAGES = {
   home: HomeScreen,
   users: UsersPage,
-  documents: DocumentsPage,
-  ai: AISettingsPage,
+ 
 };
 
 export default function AdminPage() {
