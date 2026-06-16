@@ -49,7 +49,13 @@ try {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, async () => {
-  await createCollection();
+  try {
+    await createCollection();
+    console.log("Qdrant collection ready");
+  } catch (error) {
+    console.log("Qdrant init failed:", error.message);
+  }
+
   console.log(`Server running on port ${PORT}`);
   console.log(`Swagger docs: /api-docs`);
 });
