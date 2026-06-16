@@ -5,7 +5,10 @@ import TeacherSidebar from "../components/Teacher/TeacherSidebar";
 import HomeTab from "../components/Teacher/HomeTab";
 import MaterialsTab from "../components/Teacher/MaterialsTab";
 import ProfileTab from "../components/Teacher/ProfileTab";
+
 import "../components/Teacher/Teacher.scss";
+import StudentSummaryTab from "../components/Teacher/Studentsummarytab ";
+import StudentFilesTab from "../components/Teacher/StudentFilesTab";
 
 const PAGE_META = {
   home: {
@@ -15,6 +18,14 @@ const PAGE_META = {
   materials: {
     title: "My Materials",
     sub: "AI Learning — Upload and manage your teaching resources",
+  },
+  summary: {
+    title: "Student Summary",
+    sub: "AI Learning — Review and chat with AI about student submissions",
+  },
+  "student-files": {
+    title: "Student Files",
+    sub: "AI Learning — Browse and manage files submitted by students",
   },
   profile: {
     title: "Profile",
@@ -57,6 +68,8 @@ export default function TeacherPage() {
         <main className="td-content">
           {page === "home" && <HomeTab />}
           {page === "materials" && <MaterialsTab />}
+          {page === "summary" && <StudentSummaryTab />}
+          {page === "student-files" && <StudentFilesTab />}
           {page === "profile" && <ProfileTab user={user} />}
         </main>
       </div>

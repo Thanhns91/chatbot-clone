@@ -1,4 +1,4 @@
-export const API_URL = "http://localhost:3000";
+const API_URL = "http://localhost:3000";
 
 export async function uploadFile(file, options = {}) {
   const formData = new FormData();
@@ -37,15 +37,38 @@ export async function sendMessage(documentId, message, approvedAnswers = []) {
   return res.json();
 }
 
-export async function uploadTeacherFile(file) {
+export async function uploadTeacherFile(file, uploaderId) {
   const formData = new FormData();
 
   formData.append("file", file);
   formData.append("uploadedBy", "teacher");
+  formData.append("uploaderId", uploaderId || "");
 
   const res = await fetch(`${API_URL}/upload`, {
     method: "POST",
     body: formData,
+  });
+
+  return res.json();
+}
+
+export async function getTeacherUploadHistory(uploaderId) {
+  const url = uploaderId
+    ? `${API_URL}/documents/teacher-history?uploaderId=${uploaderId}`
+    : `${API_URL}/documents/teacher-history`;
+
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error("Cannot load teacher upload history");
+  }
+
+  return res.json();
+}
+
+export async function deleteDocument(documentId) {
+  const res = await fetch(`${API_URL}/documents/${documentId}`, {
+    method: "DELETE",
   });
 
   return res.json();
@@ -194,24 +217,5 @@ export async function getTeacherStats() {
     throw new Error("Cannot load teacher stats");
   }
 
-  return res.json();
-}
-export async function deleteDocument(documentId) {
-  const res = await fetch(`${API_URL}/documents/${documentId}`, {
-    method: "DELETE",
-  });
-  return res.json();
-}
-
-export async function getDashboardStats() {
-  const res = await fetch(`${API_URL}/users/stats`);
-  return res.json();
-}
-export async function createTeacherAccount(fullName, email) {
-  const res = await fetch(`${API_URL}/auth/admin/create-teacher`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fullName, email }),
-  });
   return res.json();
 }

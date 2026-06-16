@@ -120,7 +120,7 @@ const ChatArea = ({
     fileInputRef.current?.click();
   };
 
-  const handleUpload = async (event) => {
+ const handleUpload = async (event) => {
   const file = event.target.files?.[0];
   if (!file || !conversationId) return;
 

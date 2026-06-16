@@ -1,25 +1,27 @@
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 // ── Variables ──
-$brand:        #2563EB;
-$brand-hover:  #1d4ed8;
-$brand-light:  #eff6ff;
-$sidebar-w:    240px;
+$brand: #2563eb;
+$brand-hover: #1d4ed8;
+$brand-light: #eff6ff;
+$sidebar-w: 240px;
 
-$border:       #e2e8f0;
-$text-dark:    #1e293b;
-$text-mid:     #475569;
-$text-muted:   #94a3b8;
-$bg-main:      #f8fafc;
-$radius-card:  16px;
-$radius-btn:   10px;
+$border: #e2e8f0;
+$text-dark: #1e293b;
+$text-mid: #475569;
+$text-muted: #94a3b8;
+$bg-main: #f8fafc;
+$radius-card: 16px;
+$radius-btn: 10px;
 
 // ── Layout ──
 .td-root {
   display: flex;
   min-height: 100vh;
   background: #ffffff;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: "Segoe UI", system-ui, sans-serif;
 }
 
 // ── Sidebar ──
@@ -131,7 +133,7 @@ $radius-btn:   10px;
     color: #64748b;
     font-size: 13px;
     font-weight: 600;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-family: "Segoe UI", system-ui, sans-serif;
     cursor: pointer;
     transition: all 0.2s;
     flex-shrink: 0;
@@ -176,7 +178,7 @@ $radius-btn:   10px;
 
 .td-nav-item.active {
   background: #eff6ff;
-  color: #2563EB;
+  color: #2563eb;
   font-weight: 600;
   border: 1px solid rgba(37, 99, 235, 0.15);
 }
@@ -221,10 +223,19 @@ $radius-btn:   10px;
   overflow-y: auto;
   padding: 24px 28px;
 
-  &::-webkit-scrollbar { width: 6px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: $border; border-radius: 3px; }
-  &::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: $border;
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+  }
 
   // ── Profile tab — react-bootstrap overrides ──
   .card {
@@ -266,7 +277,9 @@ $radius-btn:   10px;
     }
   }
 
-  .border-primary { border-color: $brand !important; }
+  .border-primary {
+    border-color: $brand !important;
+  }
 }
 
 // ── Card ──
@@ -278,7 +291,11 @@ $radius-btn:   10px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   margin-bottom: 20px;
 
-  &::after { content: ""; display: table; clear: both; }
+  &::after {
+    content: "";
+    display: table;
+    clear: both;
+  }
 }
 
 // ── Tab buttons ──
@@ -483,7 +500,9 @@ $radius-btn:   10px;
   align-items: center;
   gap: 12px;
   margin-bottom: 20px;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
   cursor: pointer;
 
   &:hover,
@@ -506,10 +525,28 @@ $radius-btn:   10px;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
-.td-upload-text  { font-size: 14px; color: $text-mid; margin: 0; font-weight: 500; }
-.td-upload-hint  { font-size: 12px; color: $text-muted; margin: 0; }
-.td-upload-title { font-size: 14px; color: $text-mid; margin: 0; font-weight: 500; }
-.td-upload-sub   { font-size: 12px; color: $text-muted; margin: 0; }
+.td-upload-text {
+  font-size: 14px;
+  color: $text-mid;
+  margin: 0;
+  font-weight: 500;
+}
+.td-upload-hint {
+  font-size: 12px;
+  color: $text-muted;
+  margin: 0;
+}
+.td-upload-title {
+  font-size: 14px;
+  color: $text-mid;
+  margin: 0;
+  font-weight: 500;
+}
+.td-upload-sub {
+  font-size: 12px;
+  color: $text-muted;
+  margin: 0;
+}
 
 .td-select-btn {
   padding: 8px 24px;
@@ -523,7 +560,9 @@ $radius-btn:   10px;
   transition: background 0.15s;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 
-  &:hover { background: $brand-hover; }
+  &:hover {
+    background: $brand-hover;
+  }
 }
 
 // ── File list ──
@@ -534,7 +573,9 @@ $radius-btn:   10px;
   padding: 12px 0;
   border-bottom: 1px solid #f1f5f9;
 
-  &:last-child { border-bottom: none; }
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .td-file-icon {
@@ -547,20 +588,37 @@ $radius-btn:   10px;
   font-size: 17px;
   flex-shrink: 0;
 
-  &--pdf  { background: #fef2f2; color: #dc2626; }
-  &--mp4  { background: $brand-light; color: $brand; }
-  &--docx { background: $brand-light; color: $brand; }
+  &--pdf {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+  &--mp4 {
+    background: $brand-light;
+    color: $brand;
+  }
+  &--docx {
+    background: $brand-light;
+    color: $brand;
+  }
 }
 
-.td-file-name { font-size: 14px; font-weight: 500; color: $text-dark; }
-.td-file-meta { font-size: 12px; color: $text-muted; margin-top: 2px; }
+.td-file-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-dark;
+}
+.td-file-meta {
+  font-size: 12px;
+  color: $text-muted;
+  margin-top: 2px;
+}
 
 // ── Chart tooltip ──
 .td-chart-tooltip {
   background: #fff;
   border: none;
   border-radius: 10px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 600;
@@ -592,7 +650,9 @@ $radius-btn:   10px;
   border: 1.5px solid #e2e8f0 !important;
   border-radius: 14px !important;
   overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   box-shadow: none !important;
 
   &:hover {
@@ -686,7 +746,7 @@ $radius-btn:   10px;
       &.btn-primary {
         background: #fff !important;
         border-color: #e2e8f0 !important;
-        color: #2563EB !important;
+        color: #2563eb !important;
         font-weight: 600;
         box-shadow: 0 1px 4px rgba(37, 99, 235, 0.1) !important;
       }
@@ -844,7 +904,9 @@ $radius-btn:   10px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
   border: none;
   background: none;
   width: 100%;
@@ -867,5 +929,922 @@ $radius-btn:   10px;
     font-size: 18px;
     width: 20px;
     flex-shrink: 0;
+  }
+} // ── Student Summary Tab ────────────────────────────────────────────────────
+
+.td-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.td-summary-meta {
+  font-size: 12px;
+  color: $text-muted;
+  margin-top: 2px;
+}
+
+// Table wrapper
+.td-summary-table-wrap {
+  overflow-x: auto;
+}
+
+.td-summary-table {
+  font-size: 13px;
+  margin-bottom: 0;
+  width: 100%;
+  // KHÔNG dùng table-layout: fixed — để browser tự co giãn,
+  // chỉ dùng min-width để đảm bảo cột không bị bóp quá nhỏ
+
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: $text-muted;
+    border-bottom: 1px solid $border;
+    padding: 10px 12px;
+    white-space: nowrap;
+    background: transparent;
+    vertical-align: middle;
+
+    // Cột File: chiếm phần lớn không gian thừa
+    &:nth-child(1) {
+      width: 35%;
+      min-width: 200px;
+    }
+    // Cột Student
+    &:nth-child(2) {
+      width: auto;
+      min-width: 130px;
+    }
+    // Cột Submitted
+    &:nth-child(3) {
+      width: auto;
+      min-width: 110px;
+      text-align: center;
+    }
+    // Cột Score — căn giữa
+    &:nth-child(4) {
+      width: auto;
+      min-width: 80px;
+      text-align: center;
+    }
+    // Cột Status — căn giữa
+    &:nth-child(5) {
+      width: auto;
+      min-width: 110px;
+      text-align: center;
+    }
+    // Cột Action — không co lại, đủ chỗ cho nút
+    &:nth-child(6) {
+      width: auto;
+      min-width: 145px;
+      text-align: center;
+    }
+  }
+
+  tbody td {
+    padding: 13px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    border-top: none;
+
+    &:nth-child(3) {
+      text-align: center;
+    }
+    &:nth-child(4) {
+      text-align: center;
+    }
+    &:nth-child(5) {
+      text-align: center;
+    }
+    &:nth-child(6) {
+      text-align: center;
+    }
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover td {
+    background: #f8fafc;
+  }
+}
+
+// File cell
+.td-summary-file-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0; // cho phép flex child co lại
+
+  .td-file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+// Smaller file icon variant for table/modal
+.td-file-icon--sm {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+// Student name & id in table
+.td-summary-student-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-dark;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.td-summary-student-id {
+  font-size: 11px;
+  color: $text-muted;
+}
+
+.td-summary-subject {
+  color: $text-mid;
+}
+
+.td-summary-date {
+  color: $text-muted;
+  white-space: nowrap;
+}
+
+// Score badge
+.td-score-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 64px;
+  text-align: center;
+
+  &--none {
+    color: $text-muted;
+    background: #f1f5f9;
+  }
+  &--high {
+    color: #16a34a;
+    background: #f0fdf4;
+  }
+  &--mid {
+    color: $brand;
+    background: $brand-light;
+  }
+  &--low {
+    color: #d97706;
+    background: #fffbeb;
+  }
+  &--fail {
+    color: #dc2626;
+    background: #fef2f2;
+  }
+}
+
+// Status badge
+.td-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--reviewed {
+    background: #f0fdf4;
+    color: #16a34a;
+  }
+  &--pending {
+    background: #fffbeb;
+    color: #d97706;
+  }
+}
+
+// Check Summary button
+.td-summary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 8px;
+  padding: 5px 12px;
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+
+.td-modal-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid $border;
+}
+
+.td-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  i {
+    color: $brand;
+  }
+}
+
+.td-modal-body {
+  padding: 0;
+}
+
+.td-modal-footer {
+  padding: 12px 16px;
+  border-top: 1px solid $border;
+}
+
+// File strip inside modal
+.td-modal-file-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: $bg-main;
+  border-bottom: 1px solid $border;
+}
+
+.td-modal-file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.td-modal-file-sub {
+  font-size: 11px;
+  color: $text-muted;
+  margin-top: 2px;
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────
+
+.td-chat-area {
+  height: 340px;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: $border;
+    border-radius: 2px;
+  }
+}
+
+.td-chat-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 85%;
+
+  &--assistant {
+    align-self: flex-start;
+  }
+
+  &--user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+}
+
+.td-chat-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: $brand-light;
+  color: $brand;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+
+  &--user {
+    background: $text-dark;
+    color: #fff;
+  }
+}
+
+.td-chat-text {
+  background: #f1f5f9;
+  color: $text-dark;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 14px;
+  border-radius: 12px;
+  white-space: pre-wrap;
+
+  .td-chat-bubble--user & {
+    background: $brand;
+    color: #fff;
+  }
+}
+
+// Typing indicator
+.td-chat-typing {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 12px 16px;
+
+  span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: $text-muted;
+    animation: td-typing 1.2s infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+  }
+}
+
+@keyframes td-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+// Chat input
+.td-chat-input-group {
+  width: 100%;
+}
+
+.td-chat-input {
+  border-radius: 10px 0 0 10px !important;
+  border: 1.5px solid $border !important;
+  font-size: 13px !important;
+
+  &:focus {
+    border-color: $brand !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+  }
+}
+
+.td-chat-send {
+  border-radius: 0 10px 10px 0 !important;
+  padding: 0 14px !important;
+  font-size: 15px;
+
+  &:disabled {
+    opacity: 0.45;
+  }
+}
+
+// ── Student Files Tab ────────────────────────────────────────────────────────
+
+// Top bar: search + upload button
+.td-sfile-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.td-sfile-searchbox {
+  width: 280px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 0 16px;
+
+  background: #eef2f7;
+  border-radius: 12px;
+
+  transition: all 0.15s ease;
+
+  &:focus-within {
+    background: #ffffff;
+  }
+}
+
+.td-sfile-searchbox__icon {
+  color: #94a3b8;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.td-sfile-searchbox__input,
+.td-sfile-searchbox__input.form-control {
+  flex: 1;
+
+  height: 100%;
+
+  background: transparent !important;
+  background-color: transparent !important;
+
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+
+  padding: 0 !important;
+
+  color: $text-dark !important;
+  font-size: 14px !important;
+
+  &::placeholder {
+    color: #94a3b8 !important;
+  }
+
+  &:focus {
+    background: transparent !important;
+    background-color: transparent !important;
+
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* đè Bootstrap */
+.td-sfile-searchbox .form-control {
+  background: transparent !important;
+  background-color: transparent !important;
+
+  border: none !important;
+  box-shadow: none !important;
+}
+
+// Stat cards
+.td-sfile-stat-card {
+  border: 1px solid $border !important;
+  border-radius: $radius-card !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+
+  .card-body {
+    padding: 20px 22px;
+    height: 126px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+.td-sfile-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: $text-muted;
+  margin-bottom: 8px;
+}
+
+.td-sfile-stat-num {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+
+  &--blue {
+    color: $brand;
+  }
+  &--red {
+    color: #dc2626;
+  }
+  &--green {
+    color: #16a34a;
+  }
+}
+
+// Table card
+.td-sfile-table-card {
+  border: 1px solid $border !important;
+  border-radius: $radius-card !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+
+  .card-body {
+    padding: 20px 30px;
+  }
+}
+
+.td-sfile-table-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: $text-dark;
+  margin-bottom: 18px;
+}
+
+.td-sfile-table-wrap {
+  overflow-x: auto;
+}
+
+/* chỉnh cột cho đều như mẫu Student Submissions */
+.td-sfile-table {
+  width: 100%;
+  min-width: 1180px;
+  font-size: 13px;
+  margin-bottom: 0;
+
+  thead,
+  tbody {
+    display: block;
+    width: 100%;
+  }
+
+  thead tr,
+  tbody tr {
+    display: grid;
+    grid-template-columns: minmax(420px, 1fr) 140px 180px 280px 170px;
+    align-items: center;
+    width: 100%;
+  }
+
+  thead tr {
+    border-bottom: 1px solid $border;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: $text-muted;
+    padding: 10px 14px;
+    white-space: nowrap;
+    background: transparent;
+    vertical-align: middle;
+    border-bottom: none;
+  }
+
+  tbody td {
+    padding: 14px 14px;
+    border-bottom: none;
+    vertical-align: middle;
+    border-top: none;
+    min-width: 0;
+  }
+
+  thead th:nth-child(2),
+  tbody td:nth-child(2),
+  thead th:nth-child(3),
+  tbody td:nth-child(3),
+  thead th:nth-child(5),
+  tbody td:nth-child(5) {
+    text-align: center;
+  }
+
+  tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  tbody tr:hover td {
+    background: #f8fafc;
+  }
+}
+
+// File name cell
+.td-sfile-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+// File type icon
+.td-sfile-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+
+  &--pdf {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+  &--docx {
+    background: $brand-light;
+    color: $brand;
+  }
+  &--mp4 {
+    background: $brand-light;
+    color: $brand;
+  }
+  &--img {
+    background: #f0fdf4;
+    color: #16a34a;
+  }
+  &--other {
+    background: #f8fafc;
+    color: $text-muted;
+  }
+}
+
+.td-sfile-fname {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: $text-dark;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+.td-sfile-fsize {
+  font-size: 11px;
+  color: $text-muted;
+  margin-top: 1px;
+}
+
+.td-sfile-type-badge {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  padding: 3px 8px !important;
+  letter-spacing: 0.3px;
+  min-width: 64px;
+  text-align: center;
+}
+
+.td-sfile-date {
+  color: $text-muted;
+  white-space: nowrap;
+}
+
+.td-sfile-uploader {
+  font-size: 13px;
+  color: $text-dark;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.td-sfile-empty {
+  text-align: center;
+  color: $text-muted;
+  padding: 40px 0 !important;
+  font-size: 14px;
+}
+
+// Action buttons group
+.td-sfile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.td-sfile-action-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px !important;
+  font-size: 13px;
+}
+
+/* Chỉ đổi hover nút download sang xanh lá */
+.td-sfile-actions .td-sfile-action-btn:nth-child(2):hover {
+  background: #dcfce7 !important;
+  color: #16a34a !important;
+  border-color: #22c55e !important;
+}
+
+// Drop zone in modal
+.td-sfile-drop-zone {
+  border: 2px dashed $border;
+  border-radius: 14px;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+  cursor: pointer;
+
+  &--active,
+  &:hover {
+    border-color: $brand;
+    background: $brand-light;
+  }
+}
+
+.td-file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.td-file-delete {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  i {
+    font-size: 16px;
+  }
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+  }
+}
+
+.td-empty-text {
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 8px 0;
+}
+
+.td-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.td-file-view,
+.td-file-delete {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  i {
+    font-size: 16px;
+  }
+}
+
+.td-file-view {
+  color: #2563eb;
+
+  &:hover {
+    background: rgba(37, 99, 235, 0.1);
+    color: #1d4ed8;
+  }
+}
+
+.td-file-delete {
+  color: #94a3b8;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+  }
+}
+
+.td-sfile-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.td-sfile-action-btn {
+  width: 34px;
+  height: 34px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  border-radius: 8px;
+
+  i {
+    font-size: 15px;
+  }
+}
+
+.td-profile-avatar {
+  overflow: hidden;
+}
+
+.td-profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
+.td-profile-toast {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid transparent;
+  animation: td-toast-in 0.2s ease;
+}
+
+.td-profile-toast--success {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.td-profile-toast--error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.td-profile-toast__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  i {
+    font-size: 18px;
+  }
+}
+
+.td-profile-toast__content {
+  flex: 1;
+}
+
+.td-profile-toast__title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.td-profile-toast__message {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+@keyframes td-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

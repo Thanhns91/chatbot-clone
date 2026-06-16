@@ -12,6 +12,16 @@ const NAV = [
     label: "My Materials",
   },
   {
+    id: "summary",
+    icon: "bi-chat-dots-fill",
+    label: "Student Summary",
+  },
+  {
+    id: "student-files",
+    icon: "bi-folder-symlink-fill",
+    label: "Student Files",
+  },
+  {
     id: "profile",
     icon: "bi-person",
     label: "Profile",

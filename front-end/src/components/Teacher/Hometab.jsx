@@ -100,16 +100,6 @@ export default function HomeTab() {
       count: stats.studentFiles,
       color: ACTIVITY_COLORS.studentFiles,
     },
-    {
-      label: 'Approved',
-      count: stats.approved,
-      color: ACTIVITY_COLORS.approved,
-    },
-    {
-      label: 'Pending',
-      count: stats.pending,
-      color: ACTIVITY_COLORS.pending,
-    },
   ]
 
   const chartData = chartDataMap[tab]

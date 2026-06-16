@@ -1,59 +1,44 @@
 import express from "express";
 import multer from "multer";
 import fs from "fs";
-import path from "path";
 import crypto from "crypto";
 import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
+import xlsx from "xlsx";
 import { v4 as uuidv4 } from "uuid";
+
 import pool from "../db.js";
+import cloudinary from "../cloudinary.js";
 import { qdrant, COLLECTION_NAME } from "../qdrant.js";
 import { semanticChunk } from "../chunking.js";
 import { embedText } from "../huggingface.js";
-import cloudinary from "../cloudinary.js";
 
 const router = express.Router();
 
 export const documents = [];
 
-const uploadDir = path.join(process.cwd(), "uploads");
+const upload = multer({
+  dest: "uploads/",
+});
 
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+function getContentHash(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
-const allowedExtensions = [".pdf", ".doc", ".docx"];
+async function uploadDocumentToCloudinary(filePath, documentId, fileName) {
+  const result = await cloudinary.uploader.upload(filePath, {
+    folder: "ai-learning/documents",
+    resource_type: "raw",
+    public_id: documentId,
+    use_filename: false,
+    unique_filename: false,
+    overwrite: true,
+    filename_override: fileName,
+  });
 
-const isAllowedFile = (file) => {
-  const ext = path.extname(file.originalname).toLowerCase();
-  return allowedExtensions.includes(ext);
-};
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safeFileName = `${Date.now()}-${uuidv4()}${ext}`;
-    cb(null, safeFileName);
-  },
-});
-
-const upload = multer({
-  storage,
-
-  fileFilter: (req, file, cb) => {
-    if (!isAllowedFile(file)) {
-      return cb(
-        new Error("Chỉ cho phép upload file PDF, DOC, DOCX. Không hỗ trợ Excel.")
-      );
-    }
-
-    cb(null, true);
-  },
-});
+  return result.secure_url;
+}
 
 async function extractText(filePath, originalName) {
   const ext = originalName.toLowerCase().split(".").pop();
@@ -73,344 +58,190 @@ async function extractText(filePath, originalName) {
     return result.value;
   }
 
-  if (ext === "doc") {
-    throw new Error("File .doc chưa hỗ trợ đọc nội dung. Hãy đổi sang .docx.");
+  if (ext === "xlsx" || ext === "xls") {
+    const workbook = xlsx.readFile(filePath);
+    let text = "";
+
+    workbook.SheetNames.forEach((sheetName) => {
+      const sheet = workbook.Sheets[sheetName];
+
+      const rows = xlsx.utils.sheet_to_json(sheet, {
+        header: 1,
+        defval: "",
+      });
+
+      text += `\nSheet: ${sheetName}\n`;
+
+      rows.forEach((row) => {
+        text += row.join(" | ") + "\n";
+      });
+    });
+
+    return text;
   }
 
   throw new Error("Unsupported file type");
 }
 
-function normalizeTextForHash(text) {
-  return String(text || "")
-    .replace(/\u0000/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-
-function createContentHash(text) {
-  const normalizedText = normalizeTextForHash(text);
-
-  return crypto
-    .createHash("sha256")
-    .update(normalizedText, "utf8")
-    .digest("hex");
-}
-
-async function uploadToCloudinary(filePath, fileName) {
-  const ext = path.extname(fileName).replace(".", "").toLowerCase();
-  const nameOnly = path.parse(fileName).name.replace(/[^\w-]+/g, "-");
-  const publicId = `${Date.now()}-${uuidv4()}-${nameOnly}`;
-
-  const result = await cloudinary.uploader.upload(filePath, {
-    resource_type: "raw",
-    folder: "chatbot-documents",
-    public_id: publicId,
-    use_filename: true,
-    unique_filename: true,
-    format: ext,
-  });
-
-  return result.secure_url;
-}
-
-router.post("/", (req, res) => {
-  upload.single("file")(req, res, async (multerError) => {
-    if (multerError) {
+router.post("/", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
       return res.status(400).json({
         success: false,
-        error: "Upload failed",
-        detail: multerError.message,
+        error: "No file uploaded",
       });
     }
 
-    try {
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          error: "No file uploaded",
-        });
-      }
+    const fileName = req.file.originalname;
+    const fileType = req.file.mimetype;
+    const uploadedBy = req.body.uploadedBy || "student";
+    const uploaderId = req.body.uploaderId || 1;
+    const reviewStatus = uploadedBy === "teacher" ? "approved" : "private";
 
-      const fileName = req.file.originalname;
-      const ext = path.extname(fileName).toLowerCase();
+    const contentHash = getContentHash(req.file.path);
 
-      if (!allowedExtensions.includes(ext)) {
-        if (req.file?.path && fs.existsSync(req.file.path)) {
-          fs.unlinkSync(req.file.path);
-        }
-
-        return res.status(400).json({
-          success: false,
-          error: "Invalid file type",
-          detail: "Chỉ cho phép upload file PDF, DOC, DOCX. Không hỗ trợ Excel.",
-        });
-      }
-
-      const documentId = uuidv4();
-      const fileType = req.file.mimetype;
-      const uploadedBy = req.body.uploadedBy || "student";
-      const uploaderId = Number(req.body.uploaderId) || 1;
-      const reviewStatus = uploadedBy === "teacher" ? "approved" : "private";
-
-      const text = await extractText(req.file.path, fileName);
-
-      if (!text || !text.trim()) {
-        throw new Error("Không đọc được nội dung file.");
-      }
-
-      const contentHash = createContentHash(text);
-
-      console.log("UPLOAD FILE:", fileName);
-      console.log("CONTENT HASH:", contentHash);
-
-      const [existingDocs] = await pool.query(
-        `
-        SELECT 
-          documentId,
-          fileName,
-          fileType,
-          fileUrl,
-          contentHash,
-          versionGroupId,
-          versionNo,
-          vectorDocumentId,
-          originalDocumentId,
-          uploaderId,
-          uploadedBy,
-          reviewStatus,
-          uploadDate
-        FROM Documents
-        WHERE uploadStatus = 'success'
-          AND contentHash = ?
-        ORDER BY isDuplicate ASC, versionNo ASC, uploadDate ASC
-        LIMIT 1
-        `,
-        [contentHash]
-      );
-
-    
-      if (existingDocs.length > 0) {
-        const originalDoc = existingDocs[0];
-
-        const versionGroupId =
-          originalDoc.versionGroupId || originalDoc.documentId;
-
-        const vectorDocumentId =
-          originalDoc.vectorDocumentId || originalDoc.documentId;
-
-        const originalDocumentId =
-          originalDoc.originalDocumentId || originalDoc.documentId;
-
-        const [versionRows] = await pool.query(
-          `
-          SELECT COALESCE(MAX(versionNo), 0) + 1 AS nextVersion
-          FROM Documents
-          WHERE versionGroupId = ?
-          `,
-          [versionGroupId]
-        );
-
-        const versionNo = Number(versionRows[0]?.nextVersion || 2);
-
-        const fileUrl = await uploadToCloudinary(req.file.path, fileName);
-
-        await pool.query(
-          `
-          INSERT INTO Documents
-          (
-            documentId,
-            fileName,
-            fileType,
-            fileUrl,
-            uploaderId,
-            uploadedBy,
-            uploadStatus,
-            reviewStatus,
-            errorMessage,
-            contentHash,
-            versionGroupId,
-            versionNo,
-            vectorDocumentId,
-            isDuplicate,
-            originalDocumentId
-          )
-          VALUES (?, ?, ?, ?, ?, ?, 'success', ?, NULL, ?, ?, ?, ?, TRUE, ?)
-          `,
-          [
-            documentId,
-            fileName,
-            fileType,
-            fileUrl,
-            uploaderId,
-            uploadedBy,
-            reviewStatus,
-            contentHash,
-            versionGroupId,
-            versionNo,
-            vectorDocumentId,
-            originalDocumentId,
-          ]
-        );
-
-        documents.push({
-          documentId,
-          fileName,
-          fileUrl,
-          contentHash,
-          uploadedBy,
-          reviewStatus,
-          versionNo,
-          isDuplicate: true,
-          vectorDocumentId,
-          createdAt: new Date().toISOString(),
-        });
-
-        if (req.file?.path && fs.existsSync(req.file.path)) {
-          fs.unlinkSync(req.file.path);
-        }
-
-        return res.json({
-          success: true,
-          duplicate: true,
-          versionCreated: true,
-          duplicateType: "content",
-          message: `File already exists. Saved as Version ${versionNo}.`,
-          documentId,
-          fileName,
-          fileType,
-          fileUrl,
-          contentHash,
-          uploadedBy,
-          reviewStatus,
-          versionGroupId,
-          versionNo,
-          vectorDocumentId,
-          isDuplicate: true,
-          originalDocumentId,
-          totalChunks: 0,
-        });
-      }
-
-     
-      const chunks = semanticChunk(text);
-
-      if (!chunks || chunks.length === 0) {
-        throw new Error("Không tạo được chunk từ tài liệu.");
-      }
-
-      const points = [];
-
-      for (let i = 0; i < chunks.length; i++) {
-        const vector = await embedText(chunks[i]);
-
-        points.push({
-          id: uuidv4(),
-          vector,
-          payload: {
-            documentId,
-            vectorDocumentId: documentId,
-            fileName,
-            uploadedBy,
-            uploaderId,
-            text: chunks[i],
-            chunkIndex: i,
-          },
-        });
-      }
-
-      await qdrant.upsert(COLLECTION_NAME, {
-        points,
-      });
-
-      const fileUrl = await uploadToCloudinary(req.file.path, fileName);
-
-      await pool.query(
-        `
-        INSERT INTO Documents
-        (
-          documentId,
-          fileName,
-          fileType,
-          fileUrl,
-          uploaderId,
-          uploadedBy,
-          uploadStatus,
-          reviewStatus,
-          errorMessage,
-          contentHash,
-          versionGroupId,
-          versionNo,
-          vectorDocumentId,
-          isDuplicate,
-          originalDocumentId
-        )
-        VALUES (?, ?, ?, ?, ?, ?, 'success', ?, NULL, ?, ?, 1, ?, FALSE, NULL)
-        `,
-        [
-          documentId,
-          fileName,
-          fileType,
-          fileUrl,
-          uploaderId,
-          uploadedBy,
-          reviewStatus,
-          contentHash,
-          documentId,
-          documentId,
-        ]
-      );
-
-      documents.push({
-        documentId,
-        fileName,
-        fileUrl,
-        contentHash,
-        uploadedBy,
-        reviewStatus,
-        versionNo: 1,
-        isDuplicate: false,
-        vectorDocumentId: documentId,
-        createdAt: new Date().toISOString(),
-      });
-
-      if (req.file?.path && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
-      return res.json({
-        success: true,
-        duplicate: false,
-        versionCreated: false,
-        message: `Uploaded "${fileName}" successfully.`,
+    const [existingDocs] = await pool.query(
+      `
+      SELECT 
         documentId,
         fileName,
         fileType,
         fileUrl,
         contentHash,
+        uploaderId,
         uploadedBy,
         reviewStatus,
-        versionGroupId: documentId,
-        versionNo: 1,
-        vectorDocumentId: documentId,
-        isDuplicate: false,
-        originalDocumentId: null,
-        totalChunks: chunks.length,
-      });
-    } catch (error) {
-      console.log(error);
+        uploadDate
+      FROM Documents
+      WHERE uploadStatus = 'success'
+        AND (
+          contentHash = ?
+          OR (
+            fileName = ?
+            AND (
+              uploaderId = ?
+              OR (uploadedBy = 'teacher' AND reviewStatus = 'approved')
+            )
+          )
+        )
+      LIMIT 1
+      `,
+      [contentHash, fileName, uploaderId],
+    );
 
+    if (existingDocs.length > 0) {
       if (req.file?.path && fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
       }
 
-      return res.status(500).json({
+      return res.status(409).json({
         success: false,
-        error: "Upload failed",
-        detail: error.message,
+        duplicate: true,
+        message: "File đã có sẵn trong thư viện.",
+        document: existingDocs[0],
       });
     }
-  });
+
+    const text = await extractText(req.file.path, fileName);
+
+    if (!text || text.trim().length === 0) {
+      throw new Error("Cannot extract text from this file.");
+    }
+
+    const chunks = semanticChunk(text);
+    const documentId = uuidv4();
+
+    const fileUrl = await uploadDocumentToCloudinary(
+      req.file.path,
+      documentId,
+      fileName,
+    );
+
+    const points = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const vector = await embedText(chunks[i]);
+
+      points.push({
+        id: uuidv4(),
+        vector,
+        payload: {
+          documentId,
+          fileName,
+          uploadedBy,
+          text: chunks[i],
+          chunkIndex: i,
+        },
+      });
+    }
+
+    await qdrant.upsert(COLLECTION_NAME, {
+      points,
+    });
+
+    await pool.query(
+      `
+      INSERT INTO Documents
+      (
+        documentId,
+        fileName,
+        fileType,
+        fileUrl,
+        contentHash,
+        uploaderId,
+        uploadedBy,
+        uploadStatus,
+        reviewStatus
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?)
+      `,
+      [
+        documentId,
+        fileName,
+        fileType,
+        fileUrl,
+        contentHash,
+        uploaderId,
+        uploadedBy,
+        reviewStatus,
+      ],
+    );
+
+    documents.push({
+      documentId,
+      fileName,
+      fileUrl,
+      uploadedBy,
+      createdAt: new Date().toISOString(),
+    });
+
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.json({
+      success: true,
+      message: "Upload success",
+      documentId,
+      fileName,
+      fileType,
+      fileUrl,
+      uploadedBy,
+      totalChunks: chunks.length,
+    });
+  } catch (error) {
+    console.log(error);
+
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Upload failed",
+      detail: error.message,
+    });
+  }
 });
 
 export default router;
