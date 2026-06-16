@@ -9,7 +9,7 @@ import {
   Tooltip,
 } from "recharts";
 
-const API = "http://localhost:3000";
+import { getDashboardStats, getUsers } from "../../services/api";
 
 const ACTIVITY_COLORS = {
   admin: "#dc2626",
@@ -28,39 +28,49 @@ export default function HomePage() {
   const [recentUsers, setRecentUsers] = useState([]);
 
   useEffect(() => {
-    fetch(`${API}/users/stats`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          setStats(data.stats);
-          setCharts(data.charts);
-        }
-      })
-      .catch(console.error);
+    const loadDashboard = async () => {
+      try {
+        const statsData = await getDashboardStats();
 
-    fetch(`${API}/users`)
-      .then((r) => r.json())
-      .then((data) => setRecentUsers(data.slice(0, 5)))
-      .catch(console.error);
+        if (statsData.success) {
+          setStats(statsData.stats);
+          setCharts(statsData.charts);
+        }
+
+        const usersData = await getUsers();
+        setRecentUsers(usersData.slice(0, 5));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadDashboard();
   }, []);
 
-  const buildChartData = (rawData) => {
+  const buildChartData = (rawData = []) => {
     const map = {};
+
     rawData.forEach((d) => {
       map[d.date?.split("T")[0] || d.date] = Number(d.count);
     });
+
     return Array.from({ length: 30 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (29 - i));
+
       const key = date.toISOString().split("T")[0];
-      return { date: key, v: map[key] || 0 };
+
+      return {
+        date: key,
+        v: map[key] || 0,
+      };
     });
   };
 
   const chartDataMap = {
-    members: buildChartData(charts.memberChart || []),
-    teachers: buildChartData(charts.teacherChart || []),
-    documents: buildChartData(charts.documentChart || []),
+    members: buildChartData(charts.memberChart),
+    teachers: buildChartData(charts.teacherChart),
+    documents: buildChartData(charts.documentChart),
   };
 
   const TAB_META = {
@@ -100,11 +110,14 @@ export default function HomePage() {
                 </button>
               ))}
             </div>
+
             <div className="text-end">
               <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>
                 {meta.total}
               </div>
-              <div style={{ fontSize: 12, color: "#94a3b8" }}>{meta.label}</div>
+              <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                {meta.label}
+              </div>
             </div>
           </div>
 
@@ -126,8 +139,10 @@ export default function HomePage() {
                   <stop offset="95%" stopColor="#818cf8" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
+
               <XAxis dataKey="date" hide />
               <YAxis hide />
+
               <Tooltip
                 contentStyle={{
                   fontSize: 12,
@@ -137,6 +152,7 @@ export default function HomePage() {
                 formatter={(v) => [v, "Count"]}
                 labelFormatter={(l) => l}
               />
+
               <Area
                 type="monotone"
                 dataKey="v"
@@ -156,6 +172,7 @@ export default function HomePage() {
               <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>
                 Recent Users
               </div>
+
               {recentUsers.length === 0 ? (
                 <p style={{ fontSize: 13, color: "#94a3b8" }}>No users yet</p>
               ) : (
@@ -170,9 +187,11 @@ export default function HomePage() {
                         background: ACTIVITY_COLORS[u.role] || "#94a3b8",
                       }}
                     />
+
                     <span style={{ fontSize: 13 }}>
                       <strong>{u.fullName}</strong> — {u.role}
                     </span>
+
                     <span
                       style={{
                         fontSize: 12,
@@ -187,26 +206,33 @@ export default function HomePage() {
               )}
             </div>
           </Col>
+
           <Col md={6}>
             <div className="a-card h-100">
               <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>
                 Overview
               </div>
+
               {OVERVIEW.map((item) => (
                 <div
                   key={item.label}
                   className="d-flex align-items-center gap-3 py-2 border-bottom"
                 >
                   <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
+
                   <div className="ov-bar-wrap">
                     <div
                       className="ov-bar"
                       style={{
-                        width: `${Math.min((item.count / maxOverview) * 100, 100)}%`,
+                        width: `${Math.min(
+                          (item.count / maxOverview) * 100,
+                          100
+                        )}%`,
                         background: item.color,
                       }}
                     />
                   </div>
+
                   <span
                     style={{
                       fontSize: 13,

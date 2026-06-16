@@ -5,13 +5,13 @@ import "../components/Admin/Admin.scss";
 import Sidebar from "../components/Admin/Sidebar";
 import HomeScreen from "../components/Admin/HomeScreen";
 import UsersPage from "../components/Admin/UsersPage";
-
+import DocumentsPage from "../components/Admin/DocumentsPage";
 
 
 const PAGES = {
   home: HomeScreen,
   users: UsersPage,
- 
+  documents: DocumentsPage,
 };
 
 export default function AdminPage() {

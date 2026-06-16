@@ -4,7 +4,6 @@ const NAV = [
   { id: "home", icon: "bi-house-door-fill", label: "Home" },
   { id: "users", icon: "bi-people-fill", label: "Users" },
   { id: "documents", icon: "bi-folder2-open", label: "Documents" },
-  { id: "ai", icon: "bi-robot", label: "AI Settings" },
 ];
 
 export default function Sidebar({ active, onNav, onLogout }) {
