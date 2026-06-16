@@ -13,6 +13,10 @@ export async function uploadFile(file, options = {}) {
     formData.append("uploaderId", options.uploaderId);
   }
 
+   if (options.allowVersion) {
+    formData.append("allowVersion", "true");
+  }
+
   const res = await fetch(`${API_URL}/upload`, {
     method: "POST",
     body: formData,
@@ -37,22 +41,30 @@ export async function sendMessage(documentId, message, approvedAnswers = []) {
   return res.json();
 }
 
-export async function uploadTeacherFile(file) {
-  const formData = new FormData();
-
-  formData.append("file", file);
-  formData.append("uploadedBy", "teacher");
-
-  const res = await fetch(`${API_URL}/upload`, {
-    method: "POST",
-    body: formData,
+export async function uploadTeacherFile(file, uploaderId, options = {}) {
+  return uploadFile(file, {
+    uploadedBy: "teacher",
+    uploaderId,
+    allowVersion: options.allowVersion,
   });
-
-  return res.json();
 }
 
 export async function getTeacherDocuments() {
   const res = await fetch(`${API_URL}/documents`);
+
+  return res.json();
+}
+
+export async function getTeacherUploadHistory(teacherId) {
+  const url = teacherId
+    ? `${API_URL}/documents/teacher-history?uploaderId=${teacherId}`
+    : `${API_URL}/documents/teacher-history`;
+
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error("Cannot load teacher upload history");
+  }
 
   return res.json();
 }
@@ -216,12 +228,3 @@ export async function createTeacherAccount(fullName, email) {
   return res.json();
 }
 
-export async function getTeacherUploadHistory(teacherId) {
-  const res = await fetch(`${API_URL}/documents/teacher-history/${teacherId}`);
-
-  if (!res.ok) {
-    throw new Error("Cannot load teacher upload history");
-  }
-
-  return res.json();
-}

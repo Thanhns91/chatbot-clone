@@ -114,8 +114,30 @@ export default function MaterialsTab() {
     try {
       const data = await uploadTeacherFile(file, currentUser?.userId);
 
-      if (data.documentId) {
+      if (data.needConfirm) {
+        const ok = confirm(data.message);
+
+        if (ok) {
+          const retry = await uploadTeacherFile(file, currentUser?.userId, {
+            allowVersion: true,
+          });
+
+          if (retry.success) {
+            await fetchUploadHistory();
+            setError("");
+          } else {
+            setError(retry.error || retry.message || "Upload failed");
+          }
+        } else {
+          setError("");
+        }
+
+        return;
+      }
+
+      if (data.success) {
         await fetchUploadHistory();
+        setError("");
       } else {
         setError(data.error || data.message || "Upload failed");
       }
@@ -173,9 +195,7 @@ export default function MaterialsTab() {
       const data = await deleteDocument(documentId);
 
       if (data.success) {
-        setDocs((prev) =>
-          prev.filter((doc) => doc.documentId !== documentId)
-        );
+        setDocs((prev) => prev.filter((doc) => doc.documentId !== documentId));
       } else {
         setError(data.message || "Delete failed");
       }
@@ -188,8 +208,9 @@ export default function MaterialsTab() {
   return (
     <>
       <Card
-        className={`td-upload-zone border-0 ${dragging ? "td-upload-zone--active" : ""
-          }`}
+        className={`td-upload-zone border-0 ${
+          dragging ? "td-upload-zone--active" : ""
+        }`}
         onClick={() => fileRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
@@ -233,9 +254,7 @@ export default function MaterialsTab() {
           </Button>
 
           {error && (
-            <div style={{ color: "#dc2626", fontSize: 13 }}>
-              {error}
-            </div>
+            <div style={{ color: "#dc2626", fontSize: 13 }}>{error}</div>
           )}
         </Card.Body>
       </Card>
@@ -262,9 +281,7 @@ export default function MaterialsTab() {
                     </div>
 
                     <div className="td-file-info">
-                      <div className="td-file-name">
-                        {file.fileName}
-                      </div>
+                      <div className="td-file-name">{file.fileName}</div>
 
                       <div className="td-file-meta">
                         {formatDate(file.uploadDate)} · {label} ·{" "}
