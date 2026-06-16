@@ -3,7 +3,12 @@ import { Button, Col, Form, Modal, Row, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 
-const API = "http://localhost:3000";
+import {
+  getUsers,
+  deleteUser,
+  updateUserStatus,
+  createTeacherAccount,
+} from "../../services/api";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -18,8 +23,10 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`${API}/users`);
-      const data = await res.json();
+      setLoading(true);
+
+      const data = await getUsers();
+
       setUsers(
         data.map((u) => ({
           id: u.userId,
@@ -28,10 +35,11 @@ export default function UsersPage() {
           role: u.role,
           joinDate: u.createdAt?.split("T")[0] || "-",
           status: u.status,
-        })),
+        }))
       );
     } catch (err) {
       console.error(err);
+      toast.error("Không thể tải danh sách user!");
     } finally {
       setLoading(false);
     }
@@ -41,7 +49,7 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  const deleteUser = async (id) => {
+  const handleDeleteUser = async (id) => {
     const result = await Swal.fire({
       title: "Xóa người dùng?",
       text: "Bạn có chắc muốn xóa user này?",
@@ -56,71 +64,65 @@ export default function UsersPage() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`${API}/users/${id}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
+      const data = await deleteUser(id);
 
       if (data.success) {
         setUsers((prev) => prev.filter((u) => u.id !== id));
-
-        // Toast góc phải
         toast.success("Xóa user thành công!");
       } else {
         toast.error(data.message || "Xóa user thất bại!");
       }
     } catch (err) {
+      console.error(err);
       toast.error("Không thể kết nối server!");
     }
   };
+
   const toggleBlock = async (id, currentStatus) => {
     const newStatus = currentStatus === "active" ? "blocked" : "active";
 
     try {
-      await fetch(`${API}/users/${id}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      await updateUserStatus(id, newStatus);
 
       setUsers((prev) =>
-        prev.map((u) => (u.id === id ? { ...u, status: newStatus } : u)),
+        prev.map((u) => (u.id === id ? { ...u, status: newStatus } : u))
       );
 
       toast.success(
         newStatus === "blocked"
           ? "Block user thành công!"
-          : "Unblock user thành công!",
+          : "Unblock user thành công!"
       );
     } catch (err) {
+      console.error(err);
       toast.error("Thao tác thất bại!");
     }
   };
 
   const createTeacher = async () => {
-    if (!form.name.trim() || !form.email.trim()) return;
+    if (!form.name.trim() || !form.email.trim()) {
+      setError("Vui lòng nhập đầy đủ tên và email.");
+      return;
+    }
 
     setSubmitting(true);
     setError("");
 
     try {
-      const res = await fetch(`${API}/auth/admin/create-teacher`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName: form.name, email: form.email }),
-      });
-      const data = await res.json();
+      const data = await createTeacherAccount(form.name, form.email);
 
       if (!data.success) {
-        setError(data.message);
+        setError(data.message || "Tạo tài khoản thất bại.");
         return;
       }
 
       await fetchUsers();
+
       setForm({ name: "", email: "" });
       setModal(false);
-    } catch {
+      toast.success("Tạo tài khoản teacher thành công!");
+    } catch (err) {
+      console.error(err);
       setError("Không thể kết nối server.");
     } finally {
       setSubmitting(false);
@@ -169,6 +171,7 @@ export default function UsersPage() {
                     {s.val}
                   </div>
                 </div>
+
                 <div
                   className="stat-icon"
                   style={{ background: s.iconBg, color: s.color }}
@@ -188,22 +191,26 @@ export default function UsersPage() {
                 User Management
               </span>
             </div>
+
             <button
               className="btn-purple"
               onClick={() => {
                 setError("");
+                setForm({ name: "", email: "" });
                 setModal(true);
               }}
             >
               <i className="bi bi-person-plus-fill" /> Create Teacher Account
             </button>
           </div>
+
           <div className="d-flex justify-content-between mb-2">
             <span style={{ fontWeight: 600, fontSize: 14 }}>All Users</span>
             <span style={{ fontSize: 12, color: "#94a3b8" }}>
-              {users.length} accounts (admin hidden)
+              {users.length} accounts
             </span>
           </div>
+
           <div className="table-responsive">
             <Table className="admin-table mb-0">
               <thead>
@@ -216,6 +223,7 @@ export default function UsersPage() {
                   <th>Action</th>
                 </tr>
               </thead>
+
               <tbody>
                 {loading ? (
                   <tr>
@@ -236,7 +244,11 @@ export default function UsersPage() {
                       <td style={{ color: "#64748b" }}>{u.email}</td>
                       <td>
                         <span
-                          className={`role-badge ${u.role === "teacher" ? "badge-teacher" : "badge-member"}`}
+                          className={`role-badge ${
+                            u.role === "teacher"
+                              ? "badge-teacher"
+                              : "badge-member"
+                          }`}
                         >
                           {u.role}
                         </span>
@@ -262,9 +274,10 @@ export default function UsersPage() {
                             <i className="bi bi-slash-circle" />
                             {u.status === "active" ? "Block" : "Unblock"}
                           </button>
+
                           <button
                             className="btn-del"
-                            onClick={() => deleteUser(u.id)}
+                            onClick={() => handleDeleteUser(u.id)}
                           >
                             <i className="bi bi-trash3" />
                           </button>
@@ -285,6 +298,7 @@ export default function UsersPage() {
             Create Teacher Account
           </Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
           <Form.Group className="mb-3">
             <Form.Label className="fw-semibold" style={{ fontSize: 13 }}>
@@ -293,9 +307,12 @@ export default function UsersPage() {
             <Form.Control
               placeholder="Enter teacher name"
               value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, name: e.target.value }))
+              }
             />
           </Form.Group>
+
           <Form.Group className="mb-4">
             <Form.Label className="fw-semibold" style={{ fontSize: 13 }}>
               Email Address
@@ -309,12 +326,14 @@ export default function UsersPage() {
               }
             />
           </Form.Group>
+
           {error && (
             <div style={{ color: "#b91c1c", fontSize: 13, marginBottom: 12 }}>
               ❌ {error}
             </div>
           )}
         </Modal.Body>
+
         <Modal.Footer>
           <Button
             variant="light"
@@ -323,6 +342,7 @@ export default function UsersPage() {
           >
             Cancel
           </Button>
+
           <button
             className="btn-purple"
             onClick={createTeacher}

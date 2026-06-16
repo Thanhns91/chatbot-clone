@@ -3,13 +3,18 @@ import { Button, Col, Form, Row, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 
+import {
+  getDocuments,
+  uploadFile,
+  deleteDocument,
+  API_URL,
+} from "../../services/api";
+
 const TYPE_BADGE = {
   PDF: "badge-pdf",
   DOC: "badge-docx",
   DOCX: "badge-docx",
 };
-
-const API = "http://localhost:3000";
 
 export default function DocumentsPage({ currentUser }) {
   const [docs, setDocs] = useState([]);
@@ -19,27 +24,38 @@ export default function DocumentsPage({ currentUser }) {
 
   const fetchDocs = async () => {
     try {
-      const res = await fetch(`${API}/documents`);
-      const data = await res.json();
-
-      if (data.success) {
-        setDocs(data.data);
-      }
+      const data = await getDocuments();
+      if (data.success) setDocs(data.data);
     } catch (err) {
       console.error(err);
     }
   };
 
   useEffect(() => {
-    fetchDocs();
-  }, []);
+  const savedUpload = localStorage.getItem("currentUpload");
+
+  if (savedUpload) {
+    const parsedUpload = JSON.parse(savedUpload);
+
+    if (parsedUpload.status === "uploading") {
+      setUploading(true);
+
+      setTimeout(() => {
+        localStorage.removeItem("currentUpload");
+        setUploading(false);
+        fetchDocs();
+      }, 8000);
+    }
+  }
+
+  fetchDocs();
+}, []);
 
   const getFileType = (fileType, fileName = "") => {
     const type = fileType?.toLowerCase() || "";
     const name = fileName?.toLowerCase() || "";
 
     if (type.includes("pdf") || name.endsWith(".pdf")) return "PDF";
-
     if (
       type.includes("word") ||
       type.includes("docx") ||
@@ -47,7 +63,6 @@ export default function DocumentsPage({ currentUser }) {
     ) {
       return "DOCX";
     }
-
     if (name.endsWith(".doc")) return "DOC";
 
     return "OTHER";
@@ -60,17 +75,11 @@ export default function DocumentsPage({ currentUser }) {
 
   const getDocumentUrl = (d) => {
     if (!d.fileUrl) return "#";
-
-    if (d.fileUrl.startsWith("http")) {
-      return d.fileUrl;
-    }
-
-    return `${API}${d.fileUrl}`;
+    if (d.fileUrl.startsWith("http")) return d.fileUrl;
+    return `${API_URL}${d.fileUrl}`;
   };
 
-  const canViewFile = (d) => {
-    return getFileType(d.fileType, d.fileName) === "PDF";
-  };
+  const canViewFile = (d) => getFileType(d.fileType, d.fileName) === "PDF";
 
   const filtered = docs.filter((d) =>
     d.fileName?.toLowerCase().includes(search.toLowerCase())
@@ -96,58 +105,56 @@ export default function DocumentsPage({ currentUser }) {
 
     const allowedExtensions = [".pdf", ".doc", ".docx"];
     const fileName = file.name.toLowerCase();
-    const isAllowed = allowedExtensions.some((ext) =>
-      fileName.endsWith(ext)
-    );
+    const isAllowed = allowedExtensions.some((ext) => fileName.endsWith(ext));
 
     if (!isAllowed) {
       toast.error("Chỉ cho phép upload file PDF, DOC, DOCX");
-
-      if (fileRef.current) {
-        fileRef.current.value = "";
-      }
-
+      if (fileRef.current) fileRef.current.value = "";
       return;
     }
-
-    setUploading(true);
 
     const user =
       currentUser || JSON.parse(sessionStorage.getItem("currentUser") || "{}");
 
     const role = user?.role === "admin" ? "teacher" : user?.role || "teacher";
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("uploadedBy", role);
-    formData.append("uploaderId", user?.userId || "");
+    if (!user?.userId) {
+      toast.error("Không tìm thấy userId, vui lòng đăng nhập lại.");
+      return;
+    }
+
+localStorage.setItem(
+  "currentUpload",
+  JSON.stringify({
+    fileName: file.name,
+    status: "uploading",
+    startTime: Date.now(),
+  })
+);
+
+    setUploading(true);
 
     try {
-      const res = await fetch(`${API}/upload`, {
-        method: "POST",
-        body: formData,
+      const data = await uploadFile(file, {
+        uploadedBy: role,
+        uploaderId: user.userId,
       });
 
-      const data = await res.json();
-      console.log("UPLOAD RESPONSE:", data);
-
-      if (res.ok && (data.success || data.documentId || data.data?.documentId)) {
+      if (data.success || data.documentId || data.data?.documentId) {
+        localStorage.removeItem("currentUpload");
         await fetchDocs();
         toast.success("Upload tài liệu thành công!");
       } else {
-        toast.error(
-          data.error || data.message || data.detail || "Upload thất bại"
-        );
+        localStorage.removeItem("currentUpload");
+        toast.error(data.error || data.message || "Upload thất bại");
       }
     } catch (err) {
       console.error("UPLOAD ERROR:", err);
+      localStorage.removeItem("currentUpload");
       toast.error("Không thể kết nối server");
     } finally {
       setUploading(false);
-
-      if (fileRef.current) {
-        fileRef.current.value = "";
-      }
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
@@ -166,11 +173,7 @@ export default function DocumentsPage({ currentUser }) {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`${API}/documents/${documentId}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
+      const data = await deleteDocument(documentId);
 
       if (data.success) {
         setDocs((prev) => prev.filter((d) => d.documentId !== documentId));
@@ -195,7 +198,6 @@ export default function DocumentsPage({ currentUser }) {
         <div className="d-flex align-items-center justify-content-between mb-4">
           <div className="search-box">
             <i className="bi bi-search search-box__icon" />
-
             <Form.Control
               className="search-box__input"
               placeholder="Search"
@@ -230,7 +232,6 @@ export default function DocumentsPage({ currentUser }) {
               <div className="stat-card">
                 <div>
                   <div className="stat-label">{s.label}</div>
-
                   <div className="stat-val" style={{ color: s.color }}>
                     {s.val}
                   </div>

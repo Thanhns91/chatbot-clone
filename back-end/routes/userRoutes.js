@@ -143,88 +143,97 @@ router.put("/:id/role", async (req, res) => {
   }
 });
 
-router.post("/:id/avatar", avatarUpload.single("avatar"), async (req, res) => {
-  try {
-    const { id } = req.params;
+router.post("/admin/create-teacher", async (req, res) => {
+  const { fullName, email } = req.body;
 
-    if (!req.file) {
+  try {
+    if (!fullName || !email) {
       return res.status(400).json({
         success: false,
-        message: "No avatar uploaded",
+        message: "Thiếu tên hoặc email",
       });
     }
 
-    const cloudinaryResult = await uploadAvatarToCloudinary(req.file.buffer);
+    const [existing] = await pool.query(
+      "SELECT userId FROM Users WHERE email = ?",
+      [email]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Email này đã tồn tại",
+      });
+    }
 
     await pool.query(
-      `
-      UPDATE Users
-      SET avatar_url = ?
-      WHERE userId = ?
-      `,
-      [cloudinaryResult.secure_url, id],
+      `INSERT INTO Users (fullName, email, passwordHash, role, status)
+       VALUES (?, ?, ?, 'teacher', 'active')`,
+      [fullName, email, ""]
     );
 
-    const [rows] = await pool.query(
-      `
-      SELECT 
-        userId,
-        fullName,
-        fullName AS name,
-        email,
-        role,
-        status,
-        avatar_url,
-        avatar_url AS avatarUrl,
-        createdAt
-      FROM Users
-      WHERE userId = ?
-      `,
-      [id],
-    );
-
-    res.json({
+    return res.json({
       success: true,
-      message: "Avatar updated successfully",
-      avatar_url: cloudinaryResult.secure_url,
-      avatarUrl: cloudinaryResult.secure_url,
-      user: rows[0],
+      message: "Tạo teacher thành công",
     });
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    console.error("Create teacher error:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Upload avatar failed",
-      detail: error.message,
+      message: err.message,
     });
   }
 });
 
 // DELETE user
 router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+  const conn = await pool.getConnection();
+
   try {
-    const { id } = req.params;
-    const [rows] = await pool.query("SELECT role FROM Users WHERE userId = ?", [
-      id,
-    ]);
+    await conn.beginTransaction();
 
-    if (rows.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-    if (rows[0].role === "admin") {
-      return res
-        .status(400)
-        .json({ success: false, message: "Cannot delete admin" });
+    await conn.query(
+      `DELETE FROM ChatMessages
+       WHERE sessionId IN (
+         SELECT sessionId FROM ChatSessions WHERE userId = ?
+       )`,
+      [id]
+    );
+
+    await conn.query("DELETE FROM ChatSessions WHERE userId = ?", [id]);
+
+    await conn.query("DELETE FROM Documents WHERE uploaderId = ?", [id]);
+
+    const [result] = await conn.query(
+      "DELETE FROM Users WHERE userId = ?",
+      [id]
+    );
+
+    await conn.commit();
+
+    if (result.affectedRows === 0) {
+      return res.json({
+        success: false,
+        message: "User không tồn tại",
+      });
     }
 
-    await pool.query("DELETE FROM Users WHERE userId = ?", [id]);
-    res.json({ success: true, message: "User deleted" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ success: false, message: "Delete user failed" });
+    res.json({
+      success: true,
+      message: "Xóa user thành công",
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error("Delete user error:", err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  } finally {
+    conn.release();
   }
 });
 
