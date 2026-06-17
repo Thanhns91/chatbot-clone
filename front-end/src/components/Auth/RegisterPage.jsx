@@ -1,6 +1,6 @@
 import { useState } from "react";
 import "./Auth.scss";
-import { auth, googleProvider } from "../../firebase/firebase";
+import { auth, googleProvider } from "../../fireBase/firebase";
 import { signInWithPopup } from "firebase/auth";
 
 import logoImg from "../../assets/images/1.png";
