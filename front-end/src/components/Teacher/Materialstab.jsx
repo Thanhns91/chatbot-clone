@@ -166,20 +166,43 @@ export default function MaterialsTab() {
     handleUploadFile(file);
   };
 
-  const getDocumentUrl = (file) => {
-    if (!file?.fileUrl) return "#";
-
-    if (file.fileUrl.startsWith("http")) {
-      return file.fileUrl;
+  const getRawFileUrl = (file) => {
+    if (file?.fileUrl) {
+      return file.fileUrl.startsWith("http")
+        ? file.fileUrl
+        : file.fileUrl;
     }
 
-    return file.fileUrl;
+    return "";
+  };
+
+  const getFileExt = (file) => {
+    const fileName = file?.fileName || "";
+    return fileName.split(".").pop()?.toLowerCase() || "";
+  };
+
+  const getPreviewUrl = (file) => {
+    const rawUrl = getRawFileUrl(file);
+
+    if (!rawUrl) return "";
+
+    const ext = getFileExt(file);
+
+    const previewableDocs = ["pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx"];
+
+    if (previewableDocs.includes(ext)) {
+      return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(
+        rawUrl
+      )}`;
+    }
+
+    return rawUrl;
   };
 
   const handleView = (file) => {
-    const url = getDocumentUrl(file);
+    const url = getPreviewUrl(file);
 
-    if (url === "#") {
+    if (!url) {
       alert("File này chưa có URL để xem. Hãy upload lại file.");
       return;
     }
