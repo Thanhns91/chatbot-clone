@@ -129,7 +129,7 @@ async function getDuplicateInfo(contentHash) {
     ORDER BY isDuplicate ASC, versionNo ASC, uploadDate ASC
     LIMIT 1
     `,
-    [contentHash]
+    [contentHash],
   );
 
   if (existingDocs.length === 0) {
@@ -139,10 +139,8 @@ async function getDuplicateInfo(contentHash) {
   const originalDoc = existingDocs[0];
 
   const versionGroupId = originalDoc.versionGroupId || originalDoc.documentId;
-
   const vectorDocumentId =
     originalDoc.vectorDocumentId || originalDoc.documentId;
-
   const originalDocumentId =
     originalDoc.originalDocumentId || originalDoc.documentId;
 
@@ -152,7 +150,7 @@ async function getDuplicateInfo(contentHash) {
     FROM Documents
     WHERE versionGroupId = ?
     `,
-    [versionGroupId]
+    [versionGroupId],
   );
 
   return {
@@ -162,6 +160,44 @@ async function getDuplicateInfo(contentHash) {
     originalDocumentId,
     nextVersion: Number(versionRows[0]?.nextVersion || 2),
   };
+}
+
+async function notifyStudentsAboutTeacherUpload(documentDbId, fileName) {
+  if (!documentDbId) return;
+
+  const [students] = await pool.query(
+    `
+    SELECT userId
+    FROM Users
+    WHERE role = 'student'
+      AND status = 'active'
+    `,
+  );
+
+  if (students.length === 0) return;
+
+  const values = students.map((student) => [
+    student.userId,
+    documentDbId,
+    "New teacher material uploaded",
+    `Teacher uploaded a new file: ${fileName}`,
+    "student_upload",
+  ]);
+
+  await pool.query(
+    `
+    INSERT INTO Notifications
+    (
+      receiverId,
+      documentId,
+      title,
+      message,
+      type
+    )
+    VALUES ?
+    `,
+    [values],
+  );
 }
 
 router.post("/", upload.single("file"), async (req, res) => {
@@ -190,9 +226,14 @@ router.post("/", upload.single("file"), async (req, res) => {
     }
 
     const contentHash = createContentHash(text);
-
     const duplicateInfo = await getDuplicateInfo(contentHash);
 
+    /*
+      LOGIC ĐÚNG:
+      - File mới / nội dung khác: upload bình thường, versionNo = 1.
+      - Chỉ khi contentHash trùng: hỏi user có tạo version mới không.
+      - Nếu user đồng ý allowVersion=true: tạo version mới và dùng lại vectorDocumentId của file gốc.
+    */
     if (duplicateInfo) {
       const {
         originalDoc,
@@ -224,10 +265,10 @@ router.post("/", upload.single("file"), async (req, res) => {
       const fileUrl = await uploadDocumentToCloudinary(
         req.file.path,
         documentId,
-        fileName
+        fileName,
       );
 
-      await pool.query(
+      const [insertResult] = await pool.query(
         `
         INSERT INTO Documents
         (
@@ -262,8 +303,14 @@ router.post("/", upload.single("file"), async (req, res) => {
           nextVersion,
           vectorDocumentId,
           originalDocumentId,
-        ]
+        ],
       );
+
+      const documentDbId = insertResult.insertId;
+
+      if (uploadedBy === "teacher") {
+        await notifyStudentsAboutTeacherUpload(documentDbId, fileName);
+      }
 
       documents.push({
         documentId,
@@ -276,6 +323,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         versionNo: nextVersion,
         vectorDocumentId,
         isDuplicate: true,
+        originalDocumentId,
         createdAt: new Date().toISOString(),
       });
 
@@ -304,6 +352,13 @@ router.post("/", upload.single("file"), async (req, res) => {
       });
     }
 
+    // FILE MỚI HOÀN TOÀN
+    const versionGroupId = documentId;
+    const versionNo = 1;
+    const vectorDocumentId = documentId;
+    const isDuplicate = false;
+    const originalDocumentId = null;
+
     const chunks = semanticChunk(text);
 
     if (!chunks || chunks.length === 0) {
@@ -313,7 +368,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     const fileUrl = await uploadDocumentToCloudinary(
       req.file.path,
       documentId,
-      fileName
+      fileName,
     );
 
     const points = [];
@@ -326,7 +381,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         vector,
         payload: {
           documentId,
-          vectorDocumentId: documentId,
+          vectorDocumentId,
           fileName,
           uploadedBy,
           uploaderId,
@@ -340,81 +395,49 @@ router.post("/", upload.single("file"), async (req, res) => {
       points,
     });
 
-   const [insertResult] = await pool.query(
-  `
-  INSERT INTO Documents
-  (
-    documentId,
-    fileName,
-    fileType,
-    fileUrl,
-    contentHash,
-    uploaderId,
-    uploadedBy,
-    uploadStatus,
-    reviewStatus,
-    versionGroupId,
-    versionNo,
-    vectorDocumentId,
-    isDuplicate,
-    originalDocumentId
-  )
-  VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?)
-  `,
-  [
-    documentId,
-    fileName,
-    fileType,
-    fileUrl,
-    contentHash,
-    uploaderId,
-    uploadedBy,
-    reviewStatus,
-    versionGroupId || documentId,
-    versionNo || 1,
-    vectorDocumentId || documentId,
-    isDuplicate || false,
-    originalDocumentId || null,
-  ]
-);
-
-if (uploadedBy === "teacher") {
-  const [students] = await pool.query(
-    `
-    SELECT userId
-    FROM Users
-    WHERE role = 'student'
-      AND status = 'active'
-    `
-  );
-
-  if (students.length > 0) {
-    const values = students.map((student) => [
-      student.userId,
-      documentDbId,
-      "New teacher material uploaded",
-      `Teacher uploaded a new file: ${fileName}`,
-      "student_upload",
-    ]);
-
-    await pool.query(
+    const [insertResult] = await pool.query(
       `
-      INSERT INTO Notifications
+      INSERT INTO Documents
       (
-        receiverId,
         documentId,
-        title,
-        message,
-        type
+        fileName,
+        fileType,
+        fileUrl,
+        contentHash,
+        uploaderId,
+        uploadedBy,
+        uploadStatus,
+        reviewStatus,
+        versionGroupId,
+        versionNo,
+        vectorDocumentId,
+        isDuplicate,
+        originalDocumentId
       )
-      VALUES ?
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?)
       `,
-      [values]
+      [
+        documentId,
+        fileName,
+        fileType,
+        fileUrl,
+        contentHash,
+        uploaderId,
+        uploadedBy,
+        reviewStatus,
+        versionGroupId,
+        versionNo,
+        vectorDocumentId,
+        isDuplicate,
+        originalDocumentId,
+      ],
     );
-  }
-}
 
-const documentDbId = insertResult.insertId;
+    const documentDbId = insertResult.insertId;
+
+    if (uploadedBy === "teacher") {
+      await notifyStudentsAboutTeacherUpload(documentDbId, fileName);
+    }
 
     documents.push({
       documentId,
@@ -423,10 +446,11 @@ const documentDbId = insertResult.insertId;
       contentHash,
       uploadedBy,
       reviewStatus,
-      versionGroupId: documentId,
-      versionNo: 1,
-      vectorDocumentId: documentId,
-      isDuplicate: false,
+      versionGroupId,
+      versionNo,
+      vectorDocumentId,
+      isDuplicate,
+      originalDocumentId,
       createdAt: new Date().toISOString(),
     });
 
@@ -445,11 +469,11 @@ const documentDbId = insertResult.insertId;
       contentHash,
       uploadedBy,
       reviewStatus,
-      versionGroupId: documentId,
-      versionNo: 1,
-      vectorDocumentId: documentId,
-      isDuplicate: false,
-      originalDocumentId: null,
+      versionGroupId,
+      versionNo,
+      vectorDocumentId,
+      isDuplicate,
+      originalDocumentId,
       totalChunks: chunks.length,
     });
   } catch (error) {
