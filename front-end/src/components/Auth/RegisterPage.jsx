@@ -1,6 +1,6 @@
 import { useState } from "react";
 import "./Auth.scss";
-import { auth, googleProvider } from "../../firebase/firebase";
+import { auth, googleProvider } from "../../fireBase/firebase";
 import { signInWithPopup } from "firebase/auth";
 
 const API = "http://localhost:3000";
