@@ -5,10 +5,10 @@ import TeacherSidebar from "../components/Teacher/TeacherSidebar";
 import HomeTab from "../components/Teacher/HomeTab";
 import MaterialsTab from "../components/Teacher/MaterialsTab";
 import ProfileTab from "../components/Teacher/ProfileTab";
+import StudentFilesTab from "../components/Teacher/StudentFilesTab";
+import StudentSummaryTab from "../components/Teacher/StudentSummaryTab";
 
 import "../components/Teacher/Teacher.scss";
-import StudentSummaryTab from "../components/Teacher/Studentsummarytab ";
-import StudentFilesTab from "../components/Teacher/StudentFilesTab";
 
 const PAGE_META = {
   home: {
