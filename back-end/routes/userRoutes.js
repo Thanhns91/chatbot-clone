@@ -95,17 +95,24 @@ router.get("/stats", async (req, res) => {
   }
 });
 
-// GET all users
+
 router.get("/", async (req, res) => {
   try {
     const [users] = await pool.query(`
       SELECT userId, fullName, email, role, status, createdAt
-      FROM Users ORDER BY createdAt DESC
+      FROM Users
+      WHERE role <> 'admin'
+      ORDER BY createdAt DESC
     `);
+
     res.json(users);
   } catch (error) {
     console.log(error);
-    res.status(500).json({ success: false, message: "Cannot get users" });
+    res.status(500).json({
+      success: false,
+      message: "Cannot get users",
+      detail: error.message,
+    });
   }
 });
 

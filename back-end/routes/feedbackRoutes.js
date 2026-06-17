@@ -63,7 +63,8 @@ router.get("/submissions", async (req, res) => {
         )
 
       WHERE d.uploadedBy = 'student'
-        AND d.uploadStatus = 'success'
+  AND d.uploadStatus = 'success'
+  AND u.role = 'student'
 
       ORDER BY d.uploadDate DESC
     `);
@@ -109,7 +110,7 @@ router.post("/generate", async (req, res) => {
       WHERE userId = ? AND role = 'student'
       LIMIT 1
       `,
-      [studentId]
+      [studentId],
     );
 
     if (studentRows.length === 0) {
@@ -123,12 +124,21 @@ router.post("/generate", async (req, res) => {
 
     const [docRows] = await pool.query(
       `
-      SELECT documentId, fileName, fileUrl, uploadDate
-      FROM Documents
-      WHERE documentId = ?
-      LIMIT 1
-      `,
-      [documentId]
+  SELECT
+    d.documentId,
+    d.fileName,
+    d.fileUrl,
+    d.uploadDate
+  FROM Documents d
+  INNER JOIN Users u ON d.uploaderId = u.userId
+  WHERE d.documentId = ?
+    AND d.uploaderId = ?
+    AND d.uploadedBy = 'student'
+    AND d.uploadStatus = 'success'
+    AND u.role = 'student'
+  LIMIT 1
+  `,
+      [documentId, studentId],
     );
 
     if (docRows.length === 0) {
@@ -154,7 +164,7 @@ router.post("/generate", async (req, res) => {
         AND cs.documentId = ?
       ORDER BY cm.createdAt ASC
       `,
-      [studentId, documentId]
+      [studentId, documentId],
     );
 
     if (messages.length === 0) {
@@ -210,8 +220,16 @@ Cho điểm từ 0 đến 100 dựa trên mức độ hiểu bài thể hiện q
 
     const summary = extractSection(aiResult, "SUMMARY", "STRENGTHS");
     const strengths = extractSection(aiResult, "STRENGTHS", "WEAKNESSES");
-    const weaknesses = extractSection(aiResult, "WEAKNESSES", "RECOMMENDATIONS");
-    const recommendations = extractSection(aiResult, "RECOMMENDATIONS", "SCORE");
+    const weaknesses = extractSection(
+      aiResult,
+      "WEAKNESSES",
+      "RECOMMENDATIONS",
+    );
+    const recommendations = extractSection(
+      aiResult,
+      "RECOMMENDATIONS",
+      "SCORE",
+    );
     const score = extractScore(aiResult);
 
     const [insertResult] = await pool.query(
@@ -241,7 +259,7 @@ Cho điểm từ 0 đến 100 dựa trên mức độ hiểu bài thể hiện q
         weaknesses,
         recommendations,
         score,
-      ]
+      ],
     );
 
     res.json({
@@ -286,16 +304,19 @@ router.post("/ask", async (req, res) => {
     }
 
     const [docRows] = await pool.query(
-      `
-      SELECT d.documentId, d.fileName, u.fullName AS student
-      FROM Documents d
-      JOIN Users u ON d.uploaderId = u.userId
-      WHERE d.documentId = ?
-        AND d.uploaderId = ?
-      LIMIT 1
-      `,
-      [documentId, studentId]
-    );
+  `
+  SELECT d.documentId, d.fileName, u.fullName AS student
+  FROM Documents d
+  INNER JOIN Users u ON d.uploaderId = u.userId
+  WHERE d.documentId = ?
+    AND d.uploaderId = ?
+    AND d.uploadedBy = 'student'
+    AND d.uploadStatus = 'success'
+    AND u.role = 'student'
+  LIMIT 1
+  `,
+  [documentId, studentId]
+);
 
     if (docRows.length === 0) {
       return res.status(404).json({
@@ -315,7 +336,7 @@ router.post("/ask", async (req, res) => {
       ORDER BY createdAt DESC
       LIMIT 1
       `,
-      [studentId, documentId]
+      [studentId, documentId],
     );
 
     const [messages] = await pool.query(
@@ -327,7 +348,7 @@ router.post("/ask", async (req, res) => {
         AND cs.documentId = ?
       ORDER BY cm.createdAt ASC
       `,
-      [studentId, documentId]
+      [studentId, documentId],
     );
 
     const feedback = feedbackRows[0];

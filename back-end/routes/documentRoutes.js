@@ -4,6 +4,7 @@ import pool from "../db.js";
 const router = express.Router();
 
 // GET student uploaded files
+// GET student uploaded files
 router.get("/student-files", async (req, res) => {
   try {
     const [docs] = await pool.query(`
@@ -18,10 +19,13 @@ router.get("/student-files", async (req, res) => {
         d.uploadStatus,
         d.reviewStatus,
         d.uploadDate,
-        u.fullName AS uploaderName
+        u.fullName AS uploaderName,
+        u.role AS uploaderRole
       FROM Documents d
-      LEFT JOIN Users u ON d.uploaderId = u.userId
+      INNER JOIN Users u ON d.uploaderId = u.userId
       WHERE d.uploadedBy = 'student'
+        AND d.uploadStatus = 'success'
+        AND u.role = 'student'
       ORDER BY d.uploadDate DESC
     `);
 
@@ -51,7 +55,7 @@ router.get("/view/:documentId", async (req, res) => {
       FROM Documents
       WHERE documentId = ?
       `,
-      [documentId]
+      [documentId],
     );
 
     if (rows.length === 0) {
@@ -93,7 +97,7 @@ router.get("/download/:documentId", async (req, res) => {
       FROM Documents
       WHERE documentId = ?
       `,
-      [documentId]
+      [documentId],
     );
 
     if (rows.length === 0) {
@@ -123,14 +127,11 @@ router.get("/download/:documentId", async (req, res) => {
 
     const buffer = Buffer.from(await response.arrayBuffer());
 
-    res.setHeader(
-      "Content-Type",
-      doc.fileType || "application/octet-stream"
-    );
+    res.setHeader("Content-Type", doc.fileType || "application/octet-stream");
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${encodeURIComponent(doc.fileName)}"`
+      `attachment; filename="${encodeURIComponent(doc.fileName)}"`,
     );
 
     return res.send(buffer);
@@ -198,14 +199,15 @@ router.get("/teacher-history", async (req, res) => {
 router.get("/teacher-stats", async (req, res) => {
   try {
     const [statsRows] = await pool.query(`
-      SELECT
-        COUNT(CASE WHEN uploadedBy = 'teacher' THEN 1 END) AS materials,
-        COUNT(CASE WHEN uploadedBy = 'student' THEN 1 END) AS studentFiles,
-        COUNT(CASE WHEN reviewStatus = 'approved' THEN 1 END) AS approved,
-        COUNT(CASE WHEN reviewStatus = 'private' THEN 1 END) AS privateFiles,
-        COUNT(CASE WHEN reviewStatus = 'pending' THEN 1 END) AS pending
-      FROM Documents
-    `);
+  SELECT
+    COUNT(CASE WHEN d.uploadedBy = 'teacher' THEN 1 END) AS materials,
+    COUNT(CASE WHEN d.uploadedBy = 'student' AND u.role = 'student' THEN 1 END) AS studentFiles,
+    COUNT(CASE WHEN d.reviewStatus = 'approved' THEN 1 END) AS approved,
+    COUNT(CASE WHEN d.reviewStatus = 'private' THEN 1 END) AS privateFiles,
+    COUNT(CASE WHEN d.reviewStatus = 'pending' THEN 1 END) AS pending
+  FROM Documents d
+  LEFT JOIN Users u ON d.uploaderId = u.userId
+`);
 
     const [materialChart] = await pool.query(`
       SELECT 
@@ -218,28 +220,33 @@ router.get("/teacher-stats", async (req, res) => {
     `);
 
     const [studentChart] = await pool.query(`
-      SELECT 
-        DATE_FORMAT(uploadDate, '%Y-%m-%d') AS date,
-        COUNT(*) AS count
-      FROM Documents
-      WHERE uploadedBy = 'student'
-      GROUP BY DATE_FORMAT(uploadDate, '%Y-%m-%d')
-      ORDER BY date
-    `);
+  SELECT 
+    DATE_FORMAT(d.uploadDate, '%Y-%m-%d') AS date,
+    COUNT(*) AS count
+  FROM Documents d
+  INNER JOIN Users u ON d.uploaderId = u.userId
+  WHERE d.uploadedBy = 'student'
+    AND d.uploadStatus = 'success'
+    AND u.role = 'student'
+  GROUP BY DATE_FORMAT(d.uploadDate, '%Y-%m-%d')
+  ORDER BY date
+`);
 
     const [recentStudentFiles] = await pool.query(`
-      SELECT 
-        d.fileName,
-        d.fileType,
-        d.uploadDate,
-        d.reviewStatus,
-        u.fullName AS uploaderName
-      FROM Documents d
-      LEFT JOIN Users u ON d.uploaderId = u.userId
-      WHERE d.uploadedBy = 'student'
-      ORDER BY d.uploadDate DESC
-      LIMIT 4
-    `);
+  SELECT 
+    d.fileName,
+    d.fileType,
+    d.uploadDate,
+    d.reviewStatus,
+    u.fullName AS uploaderName
+  FROM Documents d
+  INNER JOIN Users u ON d.uploaderId = u.userId
+  WHERE d.uploadedBy = 'student'
+    AND d.uploadStatus = 'success'
+    AND u.role = 'student'
+  ORDER BY d.uploadDate DESC
+  LIMIT 4
+`);
 
     res.json({
       success: true,

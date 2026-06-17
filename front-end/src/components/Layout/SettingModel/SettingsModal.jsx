@@ -4,6 +4,22 @@ import Form from "react-bootstrap/Form";
 import { uploadAvatar } from "../../../services/api";
 import "./SettingsModal.scss";
 
+const applyThemeToDOM = (theme) => {
+  const finalTheme = theme === "dark" ? "dark" : "light";
+
+  localStorage.setItem("theme", finalTheme);
+  document.documentElement.setAttribute("data-theme", finalTheme);
+
+  if (finalTheme === "dark") {
+    document.body.classList.add("dark");
+    document.body.classList.add("theme-dark");
+  } else {
+    document.body.classList.remove("dark");
+    document.body.classList.remove("dark-mode");
+    document.body.classList.remove("theme-dark");
+  }
+};
+
 export default function SettingsModal({ user, onClose, onSave }) {
   const fileInputRef = useRef(null);
 
@@ -12,6 +28,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
   const [chatLanguage, setChatLanguage] = useState(
     localStorage.getItem("chatLanguage") || "vi",
   );
+
   const [form, setForm] = useState({
     name: user?.name || user?.fullName || "",
     email: user?.email || "",
@@ -25,17 +42,8 @@ export default function SettingsModal({ user, onClose, onSave }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
+    applyThemeToDOM(theme);
   }, [theme]);
-
-  const getInitial = () => {
-    return (
-      form.name?.charAt(0)?.toUpperCase() ||
-      user?.email?.charAt(0)?.toUpperCase() ||
-      "U"
-    );
-  };
 
   useEffect(() => {
     localStorage.setItem("chatLanguage", chatLanguage);
@@ -46,6 +54,28 @@ export default function SettingsModal({ user, onClose, onSave }) {
       }),
     );
   }, [chatLanguage]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
+
+  const handleThemeChange = (nextTheme) => {
+    setTheme(nextTheme);
+    applyThemeToDOM(nextTheme);
+  };
+
+  const getInitial = () => {
+    return (
+      form.name?.charAt(0)?.toUpperCase() ||
+      user?.email?.charAt(0)?.toUpperCase() ||
+      "U"
+    );
+  };
+
   const saveUserToStorage = (updatedUser) => {
     const finalUser = {
       ...updatedUser,
@@ -87,6 +117,10 @@ export default function SettingsModal({ user, onClose, onSave }) {
       alert("Image size must be less than 5MB.");
       event.target.value = "";
       return;
+    }
+
+    if (avatarPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreview);
     }
 
     setAvatarFile(file);
@@ -201,7 +235,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   className={`sm-theme-card ${
                     theme === "light" ? "sm-theme-card--active" : ""
                   }`}
-                  onClick={() => setTheme("light")}
+                  onClick={() => handleThemeChange("light")}
                 >
                   <div className="sm-theme-preview sm-theme-preview--light">
                     <i className="bi bi-sun"></i>
@@ -218,7 +252,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   className={`sm-theme-card ${
                     theme === "dark" ? "sm-theme-card--active" : ""
                   }`}
-                  onClick={() => setTheme("dark")}
+                  onClick={() => handleThemeChange("dark")}
                 >
                   <div className="sm-theme-preview sm-theme-preview--dark">
                     <i className="bi bi-moon"></i>
@@ -230,41 +264,47 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   </div>
                 </button>
               </div>
+
+              <div className="sm-language-section">
+                <p className="sm-desc">Choose chatbot response language.</p>
+
+                <div className="sm-language-grid">
+                  <button
+                    type="button"
+                    className={`sm-language-card ${
+                      chatLanguage === "vi"
+                        ? "sm-language-card--active"
+                        : ""
+                    }`}
+                    onClick={() => setChatLanguage("vi")}
+                  >
+                    <i className="bi bi-translate"></i>
+                    <div>
+                      <strong>Vietnamese</strong>
+                      <span>Chatbot trả lời bằng tiếng Việt</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`sm-language-card ${
+                      chatLanguage === "en"
+                        ? "sm-language-card--active"
+                        : ""
+                    }`}
+                    onClick={() => setChatLanguage("en")}
+                  >
+                    <i className="bi bi-translate"></i>
+                    <div>
+                      <strong>English</strong>
+                      <span>Chatbot answers in English</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
-          <div className="sm-language-section">
-            <p className="sm-desc">Choose chatbot response language.</p>
 
-            <div className="sm-language-grid">
-              <button
-                type="button"
-                className={`sm-language-card ${
-                  chatLanguage === "vi" ? "sm-language-card--active" : ""
-                }`}
-                onClick={() => setChatLanguage("vi")}
-              >
-                <i className="bi bi-translate"></i>
-                <div>
-                  <strong>Vietnamese</strong>
-                  <span>Chatbot trả lời bằng tiếng Việt</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className={`sm-language-card ${
-                  chatLanguage === "en" ? "sm-language-card--active" : ""
-                }`}
-                onClick={() => setChatLanguage("en")}
-              >
-                <i className="bi bi-translate"></i>
-                <div>
-                  <strong>English</strong>
-                  <span>Chatbot answers in English</span>
-                </div>
-              </button>
-            </div>
-          </div>
           {activeTab === "profile" && user && (
             <div className="sm-profile">
               <input
@@ -311,7 +351,12 @@ export default function SettingsModal({ user, onClose, onSave }) {
                 <Form.Control
                   className="sm-input"
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      name: e.target.value,
+                    })
+                  }
                 />
               </Form.Group>
 
@@ -321,7 +366,12 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   className="sm-input"
                   type="email"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      email: e.target.value,
+                    })
+                  }
                 />
               </Form.Group>
 
@@ -332,7 +382,12 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   className="sm-input sm-textarea"
                   placeholder="Tell us a bit about yourself..."
                   value={form.bio}
-                  onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      bio: e.target.value,
+                    })
+                  }
                 />
               </Form.Group>
 

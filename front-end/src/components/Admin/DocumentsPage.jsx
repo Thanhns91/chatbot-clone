@@ -1,14 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button, Col, Form, Row, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 
-import {
-  getDocuments,
-  uploadFile,
-  deleteDocument,
-  API_URL,
-} from "../../services/api";
+import { getDocuments, deleteDocument, API_URL } from "../../services/api";
 
 const TYPE_BADGE = {
   PDF: "badge-pdf",
@@ -16,46 +11,37 @@ const TYPE_BADGE = {
   DOCX: "badge-docx",
 };
 
-export default function DocumentsPage({ currentUser }) {
+export default function DocumentsPage() {
   const [docs, setDocs] = useState([]);
   const [search, setSearch] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef();
 
   const fetchDocs = async () => {
     try {
       const data = await getDocuments();
-      if (data.success) setDocs(data.data);
+
+      if (data.success) {
+        setDocs(data.data || []);
+      } else if (Array.isArray(data)) {
+        setDocs(data);
+      } else {
+        setDocs([]);
+      }
     } catch (err) {
       console.error(err);
+      toast.error("Không thể tải danh sách tài liệu!");
     }
   };
 
   useEffect(() => {
-  const savedUpload = localStorage.getItem("currentUpload");
-
-  if (savedUpload) {
-    const parsedUpload = JSON.parse(savedUpload);
-
-    if (parsedUpload.status === "uploading") {
-      setUploading(true);
-
-      setTimeout(() => {
-        localStorage.removeItem("currentUpload");
-        setUploading(false);
-        fetchDocs();
-      }, 8000);
-    }
-  }
-
-  fetchDocs();
-}, []);
+    fetchDocs();
+  }, []);
 
   const getFileType = (fileType, fileName = "") => {
     const type = fileType?.toLowerCase() || "";
     const name = fileName?.toLowerCase() || "";
 
     if (type.includes("pdf") || name.endsWith(".pdf")) return "PDF";
+
     if (
       type.includes("word") ||
       type.includes("docx") ||
@@ -63,6 +49,7 @@ export default function DocumentsPage({ currentUser }) {
     ) {
       return "DOCX";
     }
+
     if (name.endsWith(".doc")) return "DOC";
 
     return "OTHER";
@@ -98,65 +85,6 @@ export default function DocumentsPage({ currentUser }) {
     { label: "PDF Files", val: pdfCount, color: "#dc2626" },
     { label: "Other Files", val: otherCount, color: "#16a34a" },
   ];
-
-  const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const allowedExtensions = [".pdf", ".doc", ".docx"];
-    const fileName = file.name.toLowerCase();
-    const isAllowed = allowedExtensions.some((ext) => fileName.endsWith(ext));
-
-    if (!isAllowed) {
-      toast.error("Chỉ cho phép upload file PDF, DOC, DOCX");
-      if (fileRef.current) fileRef.current.value = "";
-      return;
-    }
-
-    const user =
-      currentUser || JSON.parse(sessionStorage.getItem("currentUser") || "{}");
-
-    const role = user?.role === "admin" ? "teacher" : user?.role || "teacher";
-
-    if (!user?.userId) {
-      toast.error("Không tìm thấy userId, vui lòng đăng nhập lại.");
-      return;
-    }
-
-localStorage.setItem(
-  "currentUpload",
-  JSON.stringify({
-    fileName: file.name,
-    status: "uploading",
-    startTime: Date.now(),
-  })
-);
-
-    setUploading(true);
-
-    try {
-      const data = await uploadFile(file, {
-        uploadedBy: role,
-        uploaderId: user.userId,
-      });
-
-      if (data.success || data.documentId || data.data?.documentId) {
-        localStorage.removeItem("currentUpload");
-        await fetchDocs();
-        toast.success("Upload tài liệu thành công!");
-      } else {
-        localStorage.removeItem("currentUpload");
-        toast.error(data.error || data.message || "Upload thất bại");
-      }
-    } catch (err) {
-      console.error("UPLOAD ERROR:", err);
-      localStorage.removeItem("currentUpload");
-      toast.error("Không thể kết nối server");
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  };
 
   const handleDelete = async (documentId) => {
     const result = await Swal.fire({
@@ -204,25 +132,6 @@ localStorage.setItem(
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
-
-          <div>
-            <input
-              type="file"
-              ref={fileRef}
-              style={{ display: "none" }}
-              accept=".pdf,.doc,.docx"
-              onChange={handleUpload}
-            />
-
-            <button
-              className="btn-purple"
-              onClick={() => fileRef.current.click()}
-              disabled={uploading}
-            >
-              <i className="bi bi-upload" />{" "}
-              {uploading ? "Đang upload..." : "Upload Document"}
-            </button>
           </div>
         </div>
 
