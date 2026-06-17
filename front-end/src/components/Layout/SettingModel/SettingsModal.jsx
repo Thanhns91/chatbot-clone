@@ -9,7 +9,9 @@ export default function SettingsModal({ user, onClose, onSave }) {
 
   const [activeTab, setActiveTab] = useState(user ? "profile" : "appearance");
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
-
+  const [chatLanguage, setChatLanguage] = useState(
+    localStorage.getItem("chatLanguage") || "vi",
+  );
   const [form, setForm] = useState({
     name: user?.name || user?.fullName || "",
     email: user?.email || "",
@@ -35,6 +37,15 @@ export default function SettingsModal({ user, onClose, onSave }) {
     );
   };
 
+  useEffect(() => {
+    localStorage.setItem("chatLanguage", chatLanguage);
+
+    window.dispatchEvent(
+      new CustomEvent("chatLanguageChanged", {
+        detail: chatLanguage,
+      }),
+    );
+  }, [chatLanguage]);
   const saveUserToStorage = (updatedUser) => {
     const finalUser = {
       ...updatedUser,
@@ -221,7 +232,39 @@ export default function SettingsModal({ user, onClose, onSave }) {
               </div>
             </div>
           )}
+          <div className="sm-language-section">
+            <p className="sm-desc">Choose chatbot response language.</p>
 
+            <div className="sm-language-grid">
+              <button
+                type="button"
+                className={`sm-language-card ${
+                  chatLanguage === "vi" ? "sm-language-card--active" : ""
+                }`}
+                onClick={() => setChatLanguage("vi")}
+              >
+                <i className="bi bi-translate"></i>
+                <div>
+                  <strong>Vietnamese</strong>
+                  <span>Chatbot trả lời bằng tiếng Việt</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`sm-language-card ${
+                  chatLanguage === "en" ? "sm-language-card--active" : ""
+                }`}
+                onClick={() => setChatLanguage("en")}
+              >
+                <i className="bi bi-translate"></i>
+                <div>
+                  <strong>English</strong>
+                  <span>Chatbot answers in English</span>
+                </div>
+              </button>
+            </div>
+          </div>
           {activeTab === "profile" && user && (
             <div className="sm-profile">
               <input

@@ -123,7 +123,7 @@ const ChatArea = ({
       showToast(
         "warning",
         "New chat required",
-        "Bạn cần tạo New Chat trước khi upload tài liệu."
+        "Bạn cần tạo New Chat trước khi upload tài liệu.",
       );
       return;
     }
@@ -182,7 +182,7 @@ const ChatArea = ({
 
     setAvailableDocuments?.((prev) => {
       const existed = prev.some(
-        (item) => String(item.documentId) === String(result.documentId)
+        (item) => String(item.documentId) === String(result.documentId),
       );
 
       if (existed) return prev;
@@ -194,13 +194,13 @@ const ChatArea = ({
       showToast(
         "success",
         "Version created!",
-        `"${result.fileName}" saved as Version ${result.versionNo}.`
+        `"${result.fileName}" saved as Version ${result.versionNo}.`,
       );
     } else {
       showToast(
         "success",
         "Upload successful!",
-        `"${result.fileName}" has been added to your library.`
+        `"${result.fileName}" has been added to your library.`,
       );
     }
 
@@ -226,7 +226,7 @@ const ChatArea = ({
       showToast(
         "error",
         "Upload failed",
-        error.message || "Cannot upload this file."
+        error.message || "Cannot upload this file.",
       );
     } finally {
       setUploading(false);
@@ -248,7 +248,7 @@ const ChatArea = ({
       showToast(
         "error",
         "Create version failed",
-        error.message || "Cannot create new version."
+        error.message || "Cannot create new version.",
       );
     } finally {
       setUploading(false);
@@ -261,7 +261,7 @@ const ChatArea = ({
     showToast(
       "warning",
       "Duplicate content detected!",
-      `"${versionModal.currentFileName || versionModal.file?.name}" has the same content as "${versionModal.existingFileName}" but a different file name. It was not saved.`
+      `"${versionModal.currentFileName || versionModal.file?.name}" has the same content as "${versionModal.existingFileName}" but a different file name. It was not saved.`,
     );
 
     setVersionModal(null);
@@ -313,10 +313,13 @@ const ChatArea = ({
         });
       }
 
+      const responseLanguage = localStorage.getItem("chatLanguage") || "vi";
+
       const result = await sendMessage(
         selectedDocument.documentId,
         userText,
-        approvedAnswers
+        approvedAnswers,
+        responseLanguage,
       );
 
       const aiAnswer = result.answer || "Không có phản hồi.";
@@ -361,8 +364,8 @@ const ChatArea = ({
   const handleToggleApproved = (aiMessage) => {
     setMessages((prev) =>
       prev.map((msg) =>
-        msg.id === aiMessage.id ? { ...msg, approved: !msg.approved } : msg
-      )
+        msg.id === aiMessage.id ? { ...msg, approved: !msg.approved } : msg,
+      ),
     );
 
     setApprovedAnswers((prev) => {

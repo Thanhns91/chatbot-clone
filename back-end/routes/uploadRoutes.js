@@ -340,41 +340,81 @@ router.post("/", upload.single("file"), async (req, res) => {
       points,
     });
 
+   const [insertResult] = await pool.query(
+  `
+  INSERT INTO Documents
+  (
+    documentId,
+    fileName,
+    fileType,
+    fileUrl,
+    contentHash,
+    uploaderId,
+    uploadedBy,
+    uploadStatus,
+    reviewStatus,
+    versionGroupId,
+    versionNo,
+    vectorDocumentId,
+    isDuplicate,
+    originalDocumentId
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?)
+  `,
+  [
+    documentId,
+    fileName,
+    fileType,
+    fileUrl,
+    contentHash,
+    uploaderId,
+    uploadedBy,
+    reviewStatus,
+    versionGroupId || documentId,
+    versionNo || 1,
+    vectorDocumentId || documentId,
+    isDuplicate || false,
+    originalDocumentId || null,
+  ]
+);
+
+if (uploadedBy === "teacher") {
+  const [students] = await pool.query(
+    `
+    SELECT userId
+    FROM Users
+    WHERE role = 'student'
+      AND status = 'active'
+    `
+  );
+
+  if (students.length > 0) {
+    const values = students.map((student) => [
+      student.userId,
+      documentDbId,
+      "New teacher material uploaded",
+      `Teacher uploaded a new file: ${fileName}`,
+      "student_upload",
+    ]);
+
     await pool.query(
       `
-      INSERT INTO Documents
+      INSERT INTO Notifications
       (
+        receiverId,
         documentId,
-        fileName,
-        fileType,
-        fileUrl,
-        contentHash,
-        uploaderId,
-        uploadedBy,
-        uploadStatus,
-        reviewStatus,
-        errorMessage,
-        versionGroupId,
-        versionNo,
-        vectorDocumentId,
-        isDuplicate,
-        originalDocumentId
+        title,
+        message,
+        type
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, NULL, ?, 1, ?, FALSE, NULL)
+      VALUES ?
       `,
-      [
-        documentId,
-        fileName,
-        fileType,
-        fileUrl,
-        contentHash,
-        uploaderId,
-        uploadedBy,
-        reviewStatus,
-        documentId,
-        documentId,
-      ]
+      [values]
     );
+  }
+}
+
+const documentDbId = insertResult.insertId;
 
     documents.push({
       documentId,

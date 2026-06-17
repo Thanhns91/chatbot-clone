@@ -13,7 +13,7 @@ import userRoutes from "./routes/userRoutes.js";
 import chatHistoryRoutes from "./routes/chatHistoryRoutes.js";
 import swaggerSpec from "./swagger.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
-
+import notificationRoutes from "./routes/notificationRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -43,6 +43,7 @@ app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/chat-history", chatHistoryRoutes);
 app.use("/feedback", feedbackRoutes);
+app.use("/notifications", notificationRoutes);
 app.get("/", (req, res) => {
   res.send("Backend Hugging Face RAG running");
 });

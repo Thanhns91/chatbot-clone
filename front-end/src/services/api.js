@@ -25,7 +25,12 @@ export async function uploadFile(file, options = {}) {
   return res.json();
 }
 
-export async function sendMessage(documentId, message, approvedAnswers = []) {
+export async function sendMessage(
+  documentId,
+  message,
+  approvedAnswers = [],
+  responseLanguage = "vi",
+) {
   const res = await fetch(`${API_URL}/chat`, {
     method: "POST",
     headers: {
@@ -35,6 +40,7 @@ export async function sendMessage(documentId, message, approvedAnswers = []) {
       documentId,
       message,
       approvedAnswers,
+      responseLanguage,
     }),
   });
 
@@ -233,7 +239,11 @@ export async function getStudentSubmissions() {
   return res.json();
 }
 
-export async function generateStudentFeedback(studentId, teacherId, documentId) {
+export async function generateStudentFeedback(
+  studentId,
+  teacherId,
+  documentId,
+) {
   const res = await fetch(`${API_URL}/feedback/generate`, {
     method: "POST",
     headers: {
@@ -260,6 +270,19 @@ export async function askStudentFeedback(studentId, documentId, question) {
       documentId,
       question,
     }),
+  });
+
+  return res.json();
+}
+
+export async function getNotifications(userId) {
+  const res = await fetch(`${API_URL}/notifications/${userId}`);
+  return res.json();
+}
+
+export async function markNotificationAsRead(notificationId) {
+  const res = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+    method: "PUT",
   });
 
   return res.json();
