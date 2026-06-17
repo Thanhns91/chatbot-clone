@@ -14,26 +14,41 @@ import chatHistoryRoutes from "./routes/chatHistoryRoutes.js";
 import swaggerSpec from "./swagger.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+
 dotenv.config();
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  process.env.CLIENT_URL,
+  process.env.PUBLIC_API_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: true,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`Not allowed by CORS: ${origin}`));
+    },
     credentials: true,
-  }),
+  })
 );
 
-app.use(express.json());
-
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get("/swagger.json", (req, res) => {
   res.json(swaggerSpec);
+});
+
+app.get("/", (req, res) => {
+  res.send("Backend Hugging Face RAG running");
 });
 
 app.use("/upload", uploadRoutes);
@@ -44,9 +59,6 @@ app.use("/users", userRoutes);
 app.use("/chat-history", chatHistoryRoutes);
 app.use("/feedback", feedbackRoutes);
 app.use("/notifications", notificationRoutes);
-app.get("/", (req, res) => {
-  res.send("Backend Hugging Face RAG running");
-});
 
 try {
   const connection = await pool.getConnection();
