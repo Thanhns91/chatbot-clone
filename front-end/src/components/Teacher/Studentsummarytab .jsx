@@ -1,101 +1,50 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import Table from "react-bootstrap/Table";
 import InputGroup from "react-bootstrap/InputGroup";
 import Form from "react-bootstrap/Form";
+import {
+  getStudentSubmissions,
+  generateStudentFeedback,
+  askStudentFeedback,
+} from "../../services/api";
 
-// ── Mock data ──────────────────────────────────────────────────────────────
-const MOCK_SUBMISSIONS = [
-  {
-    id: 1,
-    fileName: "Algebra_Unit4_Homework.pdf",
-    student: "Nguyen Minh Khoa",
-    studentId: "STU-001",
-    submittedAt: "2026-06-10",
-    subject: "Mathematics",
-    status: "reviewed",
-    score: 87,
-    summary:
-      "Student demonstrates solid understanding of quadratic equations. Minor errors in factoring steps. Overall performance is above average with clear logical structure in problem-solving.",
-    fileUrl: null,
-  },
-  {
-    id: 2,
-    fileName: "Essay_HistoryWW2.docx",
-    student: "Tran Thi Lan",
-    studentId: "STU-002",
-    submittedAt: "2026-06-09",
-    subject: "History",
-    status: "pending",
-    score: null,
-    summary: null,
-    fileUrl: null,
-  },
-  {
-    id: 3,
-    fileName: "Physics_Lab_Report.pdf",
-    student: "Le Van Duc",
-    studentId: "STU-003",
-    submittedAt: "2026-06-08",
-    subject: "Physics",
-    status: "reviewed",
-    score: 92,
-    summary:
-      "Excellent lab report with precise measurements and well-drawn conclusions. The hypothesis section is particularly strong. Minor formatting issues in the references section.",
-    fileUrl: null,
-  },
-  {
-    id: 4,
-    fileName: "Calculus_Quiz3_Answers.pdf",
-    student: "Pham Bao Linh",
-    studentId: "STU-004",
-    submittedAt: "2026-06-07",
-    subject: "Mathematics",
-    status: "reviewed",
-    score: 74,
-    summary:
-      "Student struggles with integration by parts. Basic differentiation is solid. Recommend additional practice with chain rule applications and definite integrals.",
-    fileUrl: null,
-  },
-  {
-    id: 5,
-    fileName: "Literature_Analysis_Shakespeare.docx",
-    student: "Hoang Bich Ngoc",
-    studentId: "STU-005",
-    submittedAt: "2026-06-06",
-    subject: "Literature",
-    status: "pending",
-    score: null,
-    summary: null,
-    fileUrl: null,
-  },
-  {
-    id: 6,
-    fileName: "Chemistry_Periodic_Table_Quiz.pdf",
-    student: "Vo Thanh Nam",
-    studentId: "STU-006",
-    submittedAt: "2026-06-05",
-    subject: "Chemistry",
-    status: "reviewed",
-    score: 65,
-    summary:
-      "Needs improvement on electron configuration and valence shell concepts. Successfully identified most common elements. Suggest revisiting periodic trends before the next assessment.",
-    fileUrl: null,
-  },
-];
+const getCurrentUser = () => {
+  const raw =
+    localStorage.getItem("currentUser") ||
+    sessionStorage.getItem("currentUser") ||
+    localStorage.getItem("user") ||
+    sessionStorage.getItem("user");
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-const fileTypeIcon = (fileName) => {
-  if (fileName.endsWith(".pdf"))
-    return { icon: "bi-file-earmark-pdf", cls: "td-file-icon--pdf" };
-  if (fileName.endsWith(".mp4"))
-    return { icon: "bi-file-earmark-play", cls: "td-file-icon--mp4" };
-  return { icon: "bi-file-earmark-word", cls: "td-file-icon--docx" };
+  return raw ? JSON.parse(raw) : null;
+};
+
+const fileTypeIcon = (fileName = "") => {
+  const lower = fileName.toLowerCase();
+
+  if (lower.endsWith(".pdf")) {
+    return {
+      icon: "bi-file-earmark-pdf",
+      cls: "td-file-icon--pdf",
+    };
+  }
+
+  if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
+    return {
+      icon: "bi-file-earmark-word",
+      cls: "td-file-icon--docx",
+    };
+  }
+
+  return {
+    icon: "bi-file-earmark-text",
+    cls: "td-file-icon--docx",
+  };
 };
 
 const scoreClass = (score) => {
-  if (score === null) return "td-score-badge--none";
+  if (score === null || score === undefined) return "td-score-badge--none";
   if (score >= 90) return "td-score-badge--high";
   if (score >= 75) return "td-score-badge--mid";
   if (score >= 60) return "td-score-badge--low";
@@ -104,11 +53,10 @@ const scoreClass = (score) => {
 
 const ScoreBadge = ({ score }) => (
   <span className={`td-score-badge ${scoreClass(score)}`}>
-    {score !== null ? `${score}/100` : "—"}
+    {score !== null && score !== undefined ? `${score}/100` : "—"}
   </span>
 );
 
-// ── Chat bubble ────────────────────────────────────────────────────────────
 const ChatBubble = ({ msg }) => (
   <div className={`td-chat-bubble td-chat-bubble--${msg.role}`}>
     {msg.role === "assistant" && (
@@ -116,7 +64,9 @@ const ChatBubble = ({ msg }) => (
         <i className="bi bi-robot" />
       </div>
     )}
+
     <div className="td-chat-text">{msg.text}</div>
+
     {msg.role === "user" && (
       <div className="td-chat-avatar td-chat-avatar--user">
         <i className="bi bi-person" />
@@ -125,117 +75,242 @@ const ChatBubble = ({ msg }) => (
   </div>
 );
 
-// ── Main ───────────────────────────────────────────────────────────────────
+const buildFeedbackText = (submission) => {
+  if (!submission?.summary) {
+    return `Chưa có feedback cho "${submission?.fileName}". Bấm Generate Summary để AI phân tích lịch sử chat của học sinh.`;
+  }
+
+  return `📋 AI Summary for "${submission.fileName}" by ${submission.student}
+
+SUMMARY:
+${submission.summary || "Chưa có"}
+
+STRENGTHS:
+${submission.strengths || "Chưa có"}
+
+WEAKNESSES:
+${submission.weaknesses || "Chưa có"}
+
+RECOMMENDATIONS:
+${submission.recommendations || "Chưa có"}
+
+SCORE:
+${submission.score ?? "Chưa có"}/100`;
+};
+
 export default function StudentSummaryTab() {
+  const currentUser = getCurrentUser();
+
+  const [submissions, setSubmissions] = useState([]);
   const [selected, setSelected] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingTable, setLoadingTable] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [error, setError] = useState("");
 
-  const openModal = (submission) => {
+  const fetchSubmissions = async () => {
+    try {
+      setLoadingTable(true);
+      setError("");
+
+      const result = await getStudentSubmissions();
+
+      if (result.success) {
+        setSubmissions(result.data || []);
+      } else {
+        setError(result.message || "Cannot load student submissions");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Cannot load student submissions");
+    } finally {
+      setLoadingTable(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSubmissions();
+  }, []);
+
+  const openModal = async (submission) => {
     setSelected(submission);
     setShowModal(true);
-    setChatHistory(
-      submission.summary
-        ? [
-            {
-              role: "assistant",
-              text: `📋 AI Summary for "${submission.fileName}" by ${submission.student}:\n\n${submission.summary}`,
-            },
-          ]
-        : [
-            {
-              role: "assistant",
-              text: `Hello! I'm ready to help you review "${submission.fileName}" submitted by ${submission.student}. This file is pending review. Ask me anything about how to evaluate it!`,
-            },
-          ]
-    );
     setChatInput("");
+    setChatHistory([
+      {
+        role: "assistant",
+        text: buildFeedbackText(submission),
+      },
+    ]);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setSelected(null);
     setChatHistory([]);
+    setChatInput("");
+    setLoading(false);
   };
 
-  const sendMessage = async () => {
-    if (!chatInput.trim() || loading) return;
-    const userMsg = chatInput.trim();
-    setChatInput("");
-    setChatHistory((prev) => [...prev, { role: "user", text: userMsg }]);
-    setLoading(true);
+  const handleGenerateSummary = async () => {
+    if (!selected || loading) return;
 
     try {
-      const context = selected
-        ? `You are an AI teaching assistant. The teacher is reviewing a student submission:
-- File: ${selected.fileName}
-- Student: ${selected.student} (${selected.studentId})
-- Subject: ${selected.subject}
-- Submitted: ${selected.submittedAt}
-- Status: ${selected.status}
-- Score: ${selected.score ?? "Not graded yet"}
-${selected.summary ? `- Existing summary: ${selected.summary}` : "- Not yet summarized."}
+      setLoading(true);
 
-Answer the teacher's question helpfully and concisely.`
-        : "You are an AI teaching assistant.";
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1000,
-          system: context,
-          messages: [
-            ...chatHistory
-              .filter((m) => m.role === "user")
-              .map((m) => ({ role: "user", content: m.text })),
-            { role: "user", content: userMsg },
-          ],
-        }),
-      });
-
-      const data = await response.json();
-      const reply =
-        data.content?.map((b) => b.text || "").join("") ||
-        "Sorry, I couldn't generate a response.";
-      setChatHistory((prev) => [...prev, { role: "assistant", text: reply }]);
-    } catch {
       setChatHistory((prev) => [
         ...prev,
-        { role: "assistant", text: "⚠️ Could not connect to AI. Please try again." },
+        {
+          role: "assistant",
+          text: "Đang phân tích lịch sử chat của học sinh...",
+        },
+      ]);
+
+      const result = await generateStudentFeedback(
+        selected.studentId,
+        currentUser?.userId,
+        selected.documentId
+      );
+
+      if (!result.success) {
+        setChatHistory((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            text:
+              result.message ||
+              "Không thể tạo feedback. Hãy kiểm tra học sinh đã chat với file này chưa.",
+          },
+        ]);
+        return;
+      }
+
+      const updatedSubmission = {
+        ...selected,
+        feedbackId: result.feedback.feedbackId,
+        summary: result.feedback.summary,
+        strengths: result.feedback.strengths,
+        weaknesses: result.feedback.weaknesses,
+        recommendations: result.feedback.recommendations,
+        score: result.feedback.score,
+        status: "reviewed",
+        feedbackStatus: result.feedback.status,
+      };
+
+      setSelected(updatedSubmission);
+
+      setSubmissions((prev) =>
+        prev.map((item) =>
+          item.documentId === updatedSubmission.documentId &&
+          String(item.studentId) === String(updatedSubmission.studentId)
+            ? updatedSubmission
+            : item
+        )
+      );
+
+      setChatHistory([
+        {
+          role: "assistant",
+          text: buildFeedbackText(updatedSubmission),
+        },
+      ]);
+    } catch (err) {
+      console.error(err);
+
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "Lỗi khi tạo feedback. Vui lòng thử lại.",
+        },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
+  const sendMessage = async () => {
+    if (!chatInput.trim() || loading || !selected) return;
+
+    const userMsg = chatInput.trim();
+
+    setChatInput("");
+    setChatHistory((prev) => [...prev, { role: "user", text: userMsg }]);
+    setLoading(true);
+
+    try {
+      const result = await askStudentFeedback(
+        selected.studentId,
+        selected.documentId,
+        userMsg
+      );
+
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text:
+            result.answer ||
+            result.message ||
+            "Không thể trả lời câu hỏi này.",
+        },
+      ]);
+    } catch (err) {
+      console.error(err);
+
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "Không thể kết nối AI. Vui lòng thử lại.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewFile = () => {
+    if (!selected?.fileUrl) {
+      alert("This file does not have a preview link.");
+      return;
+    }
+
+    window.open(selected.fileUrl, "_blank", "noopener,noreferrer");
+  };
+
   const filtered =
     filterStatus === "all"
-      ? MOCK_SUBMISSIONS
-      : MOCK_SUBMISSIONS.filter((s) => s.status === filterStatus);
+      ? submissions
+      : submissions.filter((s) => s.status === filterStatus);
 
-  const reviewedCount = MOCK_SUBMISSIONS.filter((s) => s.status === "reviewed").length;
+  const reviewedCount = submissions.filter(
+    (s) => s.status === "reviewed"
+  ).length;
 
   return (
     <>
       <div className="td-card">
-        {/* Header */}
         <div className="td-summary-header">
           <div>
             <div className="td-card-title">Student Submissions</div>
             <div className="td-summary-meta">
-              {MOCK_SUBMISSIONS.length} submissions · {reviewedCount} reviewed
+              {loadingTable
+                ? "Loading submissions..."
+                : `${submissions.length} submissions · ${reviewedCount} reviewed`}
             </div>
           </div>
+
           <div className="td-tabs">
             {["all", "reviewed", "pending"].map((f) => (
               <button
                 key={f}
-                className={`td-tab ${filterStatus === f ? "td-tab--active" : ""}`}
+                className={`td-tab ${
+                  filterStatus === f ? "td-tab--active" : ""
+                }`}
                 onClick={() => setFilterStatus(f)}
               >
                 {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -244,7 +319,8 @@ Answer the teacher's question helpfully and concisely.`
           </div>
         </div>
 
-        {/* Table */}
+        {error && <div className="td-summary-error">{error}</div>}
+
         <div className="td-summary-table-wrap">
           <Table className="td-summary-table" hover responsive>
             <thead>
@@ -257,51 +333,73 @@ Answer the teacher's question helpfully and concisely.`
                 <th></th>
               </tr>
             </thead>
+
             <tbody>
-              {filtered.map((sub) => {
-                const { icon, cls } = fileTypeIcon(sub.fileName);
-                return (
-                  <tr key={sub.id}>
-                    <td>
-                      <div className="td-summary-file-cell">
-                        <div className={`td-file-icon td-file-icon--sm ${cls}`}>
-                          <i className={`bi ${icon}`} />
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-4">
+                    No student submissions found.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((sub) => {
+                  const { icon, cls } = fileTypeIcon(sub.fileName);
+
+                  return (
+                    <tr key={`${sub.documentId}-${sub.studentId}`}>
+                      <td>
+                        <div className="td-summary-file-cell">
+                          <div className={`td-file-icon td-file-icon--sm ${cls}`}>
+                            <i className={`bi ${icon}`} />
+                          </div>
+                          <span className="td-file-name">{sub.fileName}</span>
                         </div>
-                        <span className="td-file-name">{sub.fileName}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="td-summary-student-name">{sub.student}</div>
-                    </td>
-                    <td className="td-summary-date">{sub.submittedAt}</td>
-                    <td>
-                      <ScoreBadge score={sub.score} />
-                    </td>
-                    <td>
-                      <span className={`td-status-badge td-status-badge--${sub.status}`}>
-                        {sub.status === "reviewed" ? "✓ Reviewed" : "⏳ Pending"}
-                      </span>
-                    </td>
-                    <td>
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        className="td-summary-btn"
-                        onClick={() => openModal(sub)}
-                      >
-                        <i className="bi bi-chat-dots" />
-                        Check Summary
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+
+                      <td>
+                        <div className="td-summary-student-name">
+                          {sub.student || "Unknown student"}
+                        </div>
+                      </td>
+
+                      <td className="td-summary-date">
+                        {sub.submittedAt || "-"}
+                      </td>
+
+                      <td>
+                        <ScoreBadge score={sub.score} />
+                      </td>
+
+                      <td>
+                        <span
+                          className={`td-status-badge td-status-badge--${sub.status}`}
+                        >
+                          {sub.status === "reviewed"
+                            ? "✓ Reviewed"
+                            : "⏳ Pending"}
+                        </span>
+                      </td>
+
+                      <td>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="td-summary-btn"
+                          onClick={() => openModal(sub)}
+                        >
+                          <i className="bi bi-chat-dots" />
+                          Check Summary
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </Table>
         </div>
       </div>
 
-      {/* Modal */}
       <Modal show={showModal} onHide={closeModal} centered size="lg">
         <Modal.Header closeButton className="td-modal-header">
           <Modal.Title className="td-modal-title">
@@ -311,43 +409,62 @@ Answer the teacher's question helpfully and concisely.`
         </Modal.Header>
 
         <Modal.Body className="td-modal-body">
-          {/* File info strip */}
           {selected && (
             <div className="td-modal-file-strip">
-              <div className={`td-file-icon td-file-icon--sm ${fileTypeIcon(selected.fileName).cls}`}>
+              <div
+                className={`td-file-icon td-file-icon--sm ${
+                  fileTypeIcon(selected.fileName).cls
+                }`}
+              >
                 <i className={`bi ${fileTypeIcon(selected.fileName).icon}`} />
               </div>
+
               <div className="td-modal-file-info">
                 <div className="td-file-name">{selected.fileName}</div>
                 <div className="td-modal-file-sub">
-                  {selected.subject} · {selected.submittedAt}
+                  {selected.student} · {selected.submittedAt}
                 </div>
               </div>
+
               <ScoreBadge score={selected.score} />
+
               <Button
                 variant="outline-secondary"
                 size="sm"
                 className="td-preview-btn"
-                onClick={() => alert("File preview: connect your storage service to enable viewing.")}
+                onClick={handleViewFile}
               >
                 <i className="bi bi-eye" />
                 View File
               </Button>
+
+              <Button
+                variant="primary"
+                size="sm"
+                className="td-summary-btn"
+                onClick={handleGenerateSummary}
+                disabled={loading}
+              >
+                <i className="bi bi-stars" />
+                {loading ? "Generating..." : "Generate Summary"}
+              </Button>
             </div>
           )}
 
-          {/* Chat area */}
           <div className="td-chat-area">
             {chatHistory.map((msg, i) => (
               <ChatBubble key={i} msg={msg} />
             ))}
+
             {loading && (
               <div className="td-chat-bubble td-chat-bubble--assistant">
                 <div className="td-chat-avatar">
                   <i className="bi bi-robot" />
                 </div>
                 <div className="td-chat-text td-chat-typing">
-                  <span /><span /><span />
+                  <span />
+                  <span />
+                  <span />
                 </div>
               </div>
             )}
@@ -358,11 +475,17 @@ Answer the teacher's question helpfully and concisely.`
           <InputGroup className="td-chat-input-group">
             <Form.Control
               className="td-chat-input"
-              placeholder="Ask AI about this submission…"
+              placeholder="Ask AI about this student's chat history..."
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
             />
+
             <Button
               variant="primary"
               className="td-chat-send"

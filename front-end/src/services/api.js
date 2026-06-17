@@ -1,4 +1,4 @@
-export const API_URL = "http://localhost:3000";
+export const API_URL = import.meta.env.VITE_API_URL;
 
 export async function uploadFile(file, options = {}) {
   const formData = new FormData();
@@ -13,7 +13,7 @@ export async function uploadFile(file, options = {}) {
     formData.append("uploaderId", options.uploaderId);
   }
 
-   if (options.allowVersion) {
+  if (options.allowVersion) {
     formData.append("allowVersion", "true");
   }
 
@@ -228,3 +228,39 @@ export async function createTeacherAccount(fullName, email) {
   return res.json();
 }
 
+export async function getStudentSubmissions() {
+  const res = await fetch(`${API_URL}/feedback/submissions`);
+  return res.json();
+}
+
+export async function generateStudentFeedback(studentId, teacherId, documentId) {
+  const res = await fetch(`${API_URL}/feedback/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      studentId,
+      teacherId,
+      documentId,
+    }),
+  });
+
+  return res.json();
+}
+
+export async function askStudentFeedback(studentId, documentId, question) {
+  const res = await fetch(`${API_URL}/feedback/ask`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      studentId,
+      documentId,
+      question,
+    }),
+  });
+
+  return res.json();
+}
