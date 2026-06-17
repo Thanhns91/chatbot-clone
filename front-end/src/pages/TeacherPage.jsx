@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { logout } from "../services/authService";
 import AdminPage from "./AdminPage";
-import TeacherSidebar from "../components/Teacher/TeacherSidebar";
+import TeacherSidebar from "../components/Teacher/TeacherSideBar";
 import HomeTab from "../components/Teacher/HomeTab";
 import MaterialsTab from "../components/Teacher/MaterialsTab";
 import ProfileTab from "../components/Teacher/ProfileTab";
