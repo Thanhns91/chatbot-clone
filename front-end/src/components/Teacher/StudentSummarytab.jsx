@@ -330,6 +330,7 @@ export default function StudentSummaryTab() {
                 <th>Submitted</th>
                 <th>Score</th>
                 <th>Status</th>
+                <th> Actions </th>
                 <th></th>
               </tr>
             </thead>
