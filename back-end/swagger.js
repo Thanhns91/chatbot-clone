@@ -46,16 +46,20 @@ const idParam = (name, description = "ID") => ({
 
 const swaggerSpec = {
   openapi: "3.0.0",
+
   info: {
     title: "AI Learning Chatbot API",
     version: "1.0.0",
     description: "Swagger documentation for AI Learning Chatbot backend APIs.",
   },
+
   servers: [
     {
-      url: process.env.SERVER_URL || "http://localhost:3000",
+      url: process.env.SERVER_URL || "/",
+      description: "Current server",
     },
   ],
+
   tags: [
     {
       name: "Root",
@@ -85,7 +89,16 @@ const swaggerSpec = {
       name: "Chat History",
       description: "Chat sessions and chat messages APIs",
     },
+    {
+      name: "Feedback",
+      description: "Student learning feedback and teacher summary APIs",
+    },
+    {
+      name: "Notifications",
+      description: "User notification APIs",
+    },
   ],
+
   components: {
     schemas: {
       User: {
@@ -127,6 +140,7 @@ const swaggerSpec = {
           },
         },
       },
+
       Document: {
         type: "object",
         properties: {
@@ -204,6 +218,7 @@ const swaggerSpec = {
           },
         },
       },
+
       ChatSession: {
         type: "object",
         properties: {
@@ -245,6 +260,7 @@ const swaggerSpec = {
           },
         },
       },
+
       ChatMessage: {
         type: "object",
         properties: {
@@ -271,8 +287,114 @@ const swaggerSpec = {
           },
         },
       },
+
+      StudentFeedback: {
+        type: "object",
+        properties: {
+          feedbackId: {
+            type: "integer",
+            example: 1,
+          },
+          studentId: {
+            type: "integer",
+            example: 3,
+          },
+          teacherId: {
+            type: "integer",
+            example: 2,
+          },
+          documentId: {
+            type: "string",
+            example: "document-uuid",
+          },
+          sessionId: {
+            type: "integer",
+            example: 1,
+          },
+          summary: {
+            type: "string",
+            example: "Học sinh hiểu được nội dung cơ bản của tài liệu.",
+          },
+          strengths: {
+            type: "string",
+            example: "Biết đặt câu hỏi đúng trọng tâm.",
+          },
+          weaknesses: {
+            type: "string",
+            example: "Còn chưa rõ một số khái niệm nâng cao.",
+          },
+          recommendations: {
+            type: "string",
+            example: "Giáo viên nên giải thích thêm phần ví dụ thực tế.",
+          },
+          score: {
+            type: "integer",
+            example: 80,
+          },
+          status: {
+            type: "string",
+            enum: ["generated", "reviewed"],
+            example: "generated",
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+          },
+        },
+      },
+
+      Notification: {
+        type: "object",
+        properties: {
+          notificationId: {
+            type: "integer",
+            example: 1,
+          },
+          receiverId: {
+            type: "integer",
+            example: 3,
+          },
+          documentId: {
+            type: "integer",
+            example: 1,
+          },
+          title: {
+            type: "string",
+            example: "New teacher material uploaded",
+          },
+          message: {
+            type: "string",
+            example: "Teacher uploaded a new file: lesson.pdf",
+          },
+          type: {
+            type: "string",
+            example: "student_upload",
+          },
+          isRead: {
+            type: "boolean",
+            example: false,
+          },
+          fileName: {
+            type: "string",
+            example: "lesson.pdf",
+          },
+          fileUrl: {
+            type: "string",
+            example: "https://res.cloudinary.com/demo/raw/upload/file.pdf",
+          },
+          uploaderName: {
+            type: "string",
+            example: "Teacher A",
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+          },
+        },
+      },
     },
   },
+
   paths: {
     "/": {
       get: {
@@ -441,7 +563,7 @@ const swaggerSpec = {
         tags: ["Upload"],
         summary: "Upload document",
         description:
-          "Upload PDF, DOCX, XLSX/XLS. Backend extracts text, checks contentHash, creates version if allowVersion=true, otherwise asks frontend to confirm.",
+          "Upload PDF, DOC, DOCX. Backend extracts text, checks contentHash, creates version if allowVersion=true, otherwise asks frontend to confirm.",
         requestBody: {
           required: true,
           content: {
@@ -476,6 +598,7 @@ const swaggerSpec = {
         responses: {
           200: ok("Upload success or duplicate confirmation required"),
           400: error("No file uploaded"),
+          409: error("Duplicate document found"),
           500: error("Upload failed"),
         },
       },
@@ -500,6 +623,11 @@ const swaggerSpec = {
                   message: {
                     type: "string",
                     example: "Tài liệu này nói về nội dung gì?",
+                  },
+                  responseLanguage: {
+                    type: "string",
+                    enum: ["vi", "en"],
+                    example: "vi",
                   },
                   approvedAnswers: {
                     type: "array",
@@ -560,6 +688,38 @@ const swaggerSpec = {
         responses: {
           200: ok("Student files loaded"),
           500: error("Cannot load student files"),
+        },
+      },
+    },
+
+    "/documents/library": {
+      get: {
+        tags: ["Documents"],
+        summary: "Get library documents by userId and role",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: true,
+            schema: {
+              type: "integer",
+              example: 1,
+            },
+          },
+          {
+            name: "role",
+            in: "query",
+            required: true,
+            schema: {
+              type: "string",
+              enum: ["admin", "teacher", "student"],
+              example: "student",
+            },
+          },
+        ],
+        responses: {
+          200: ok("Library documents loaded"),
+          500: error("Cannot load library documents"),
         },
       },
     },
@@ -975,6 +1135,141 @@ const swaggerSpec = {
           200: ok("Message saved"),
           400: error("Missing sessionId, sender or message"),
           500: error("Cannot save message"),
+        },
+      },
+    },
+
+    "/feedback/submissions": {
+      get: {
+        tags: ["Feedback"],
+        summary: "Get student submissions with latest feedback",
+        responses: {
+          200: ok("Student submissions loaded"),
+          500: error("Cannot load student submissions"),
+        },
+      },
+    },
+
+    "/feedback/generate": {
+      post: {
+        tags: ["Feedback"],
+        summary: "Generate AI feedback for a student based on chat history",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["studentId", "documentId"],
+                properties: {
+                  studentId: {
+                    type: "integer",
+                    example: 3,
+                  },
+                  teacherId: {
+                    type: "integer",
+                    example: 2,
+                  },
+                  documentId: {
+                    type: "string",
+                    example: "document-uuid",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok("Feedback generated"),
+          400: error("Missing studentId or documentId"),
+          404: error("Student or document not found"),
+          500: error("Generate feedback failed"),
+        },
+      },
+    },
+
+    "/feedback/ask": {
+      post: {
+        tags: ["Feedback"],
+        summary: "Teacher asks AI about a student's feedback and chat history",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["studentId", "documentId", "question"],
+                properties: {
+                  studentId: {
+                    type: "integer",
+                    example: 3,
+                  },
+                  documentId: {
+                    type: "string",
+                    example: "document-uuid",
+                  },
+                  question: {
+                    type: "string",
+                    example: "Học sinh này yếu phần nào?",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok("AI feedback answer"),
+          400: error("Missing studentId, documentId or question"),
+          404: error("Submission not found"),
+          500: error("Ask feedback failed"),
+        },
+      },
+    },
+
+    "/notifications/{userId}": {
+      get: {
+        tags: ["Notifications"],
+        summary: "Get notifications by userId",
+        parameters: [idParam("userId", "User ID")],
+        responses: {
+          200: ok("Notifications loaded"),
+          500: error("Cannot load notifications"),
+        },
+      },
+    },
+
+    "/notifications/{userId}/unread-count": {
+      get: {
+        tags: ["Notifications"],
+        summary: "Get unread notification count by userId",
+        parameters: [idParam("userId", "User ID")],
+        responses: {
+          200: ok("Unread count loaded"),
+          500: error("Cannot load unread count"),
+        },
+      },
+    },
+
+    "/notifications/{notificationId}/read": {
+      put: {
+        tags: ["Notifications"],
+        summary: "Mark notification as read",
+        parameters: [idParam("notificationId", "Notification ID")],
+        responses: {
+          200: ok("Notification marked as read"),
+          500: error("Cannot mark notification as read"),
+        },
+      },
+    },
+
+    "/notifications/user/{userId}/read-all": {
+      put: {
+        tags: ["Notifications"],
+        summary: "Mark all notifications as read by userId",
+        parameters: [idParam("userId", "User ID")],
+        responses: {
+          200: ok("All notifications marked as read"),
+          500: error("Cannot mark all notifications as read"),
         },
       },
     },

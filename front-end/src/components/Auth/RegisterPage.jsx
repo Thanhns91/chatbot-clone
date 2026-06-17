@@ -1,9 +1,12 @@
 import { useState } from "react";
 import "./Auth.scss";
-import { auth, googleProvider } from "../../fireBase/firebase";
+import { auth, googleProvider } from "../../firebase/firebase";
 import { signInWithPopup } from "firebase/auth";
 
-const API = "http://localhost:3000";
+import logoImg from "../../assets/images/1.png";
+import googleImg from "../../assets/images/4.png";
+
+const API = import.meta.env.VITE_API_URL;
 
 export default function RegisterPage({
   onCancel,
@@ -14,6 +17,7 @@ export default function RegisterPage({
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -23,6 +27,11 @@ export default function RegisterPage({
 
   const handleGoogleLogin = async () => {
     try {
+      if (!API) {
+        setError("Thiếu VITE_API_URL. Hãy kiểm tra Environment Variables.");
+        return;
+      }
+
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
 
@@ -56,12 +65,18 @@ export default function RegisterPage({
     e.preventDefault();
     setError("");
 
+    if (!API) {
+      setError("Thiếu VITE_API_URL. Hãy kiểm tra Environment Variables.");
+      return;
+    }
+
     if (form.password !== form.confirm) {
       setError("Passwords do not match.");
       return;
     }
 
     setLoading(true);
+
     try {
       const res = await fetch(`${API}/auth/register`, {
         method: "POST",
@@ -76,26 +91,32 @@ export default function RegisterPage({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.message);
+        setError(data.message || "Đăng ký thất bại.");
         return;
       }
 
-      // Đăng ký xong tự động login
       const loginRes = await fetch(`${API}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.email, password: form.password }),
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+        }),
       });
 
       const loginData = await loginRes.json();
 
-      if (loginData.success) {
-        sessionStorage.setItem("currentUser", JSON.stringify(loginData.user));
-        sessionStorage.setItem("showDashboard", "true");
-        onLoginSuccess?.(loginData.user.role, loginData.user);
+      if (!loginData.success) {
+        setError(loginData.message || "Đăng nhập sau đăng ký thất bại.");
+        return;
       }
+
+      sessionStorage.setItem("currentUser", JSON.stringify(loginData.user));
+      sessionStorage.setItem("showDashboard", "true");
+      onLoginSuccess?.(loginData.user.role, loginData.user);
     } catch (err) {
       setError("Không thể kết nối server.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -112,7 +133,7 @@ export default function RegisterPage({
         </button>
 
         <div className="auth-icon">
-          <img src="/src/assets/images/1.png" alt="AI Learning" />
+          <img src={logoImg} alt="AI Learning" />
         </div>
 
         <h1 className="auth-title">Create an account</h1>
@@ -125,12 +146,7 @@ export default function RegisterPage({
           className="auth-google"
           onClick={handleGoogleLogin}
         >
-          <img
-            src="/src/assets/images/4.png"
-            alt="Google"
-            width={20}
-            height={20}
-          />
+          <img src={googleImg} alt="Google" width={20} height={20} />
           Continue with Google
         </button>
 
@@ -179,7 +195,9 @@ export default function RegisterPage({
                 type={showPassword ? "text" : "password"}
                 className="auth-input auth-input--password"
                 value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, password: e.target.value })
+                }
                 required
               />
               <button
@@ -201,7 +219,9 @@ export default function RegisterPage({
                 type={showConfirm ? "text" : "password"}
                 className="auth-input auth-input--password"
                 value={form.confirm}
-                onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, confirm: e.target.value })
+                }
                 required
               />
               <button

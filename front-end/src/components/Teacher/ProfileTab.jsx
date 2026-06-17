@@ -8,7 +8,7 @@ import Modal from "react-bootstrap/Modal";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 
-const API = "http://localhost:3000";
+const API = import.meta.env.VITE_API_URL;;
 
 const getStoredUser = () => {
   const raw =

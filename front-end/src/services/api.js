@@ -1,4 +1,5 @@
-export const API_URL = import.meta.env.VITE_API_URL;
+export const API_URL =
+  import.meta.env.VITE_API_URL;
 
 export async function uploadFile(file, options = {}) {
   const formData = new FormData();
@@ -29,7 +30,7 @@ export async function sendMessage(
   documentId,
   message,
   approvedAnswers = [],
-  responseLanguage = "vi",
+  responseLanguage = "vi"
 ) {
   const res = await fetch(`${API_URL}/chat`, {
     method: "POST",
@@ -57,7 +58,6 @@ export async function uploadTeacherFile(file, uploaderId, options = {}) {
 
 export async function getTeacherDocuments() {
   const res = await fetch(`${API_URL}/documents`);
-
   return res.json();
 }
 
@@ -118,11 +118,11 @@ export async function updateUserRole(userId, role) {
 }
 
 export async function deleteUser(userId) {
-  const response = await fetch(`http://localhost:3000/users/${userId}`, {
+  const res = await fetch(`${API_URL}/users/${userId}`, {
     method: "DELETE",
   });
 
-  return await response.json();
+  return res.json();
 }
 
 export async function getChatSessions(userId) {
@@ -189,12 +189,20 @@ export async function deleteChatSession(sessionId) {
 
 export async function getDocuments() {
   const res = await fetch(`${API_URL}/documents`);
+  return res.json();
+}
+
+export async function getLibraryDocuments(userId, role) {
+  const res = await fetch(
+    `${API_URL}/documents/library?userId=${userId}&role=${role}`
+  );
 
   return res.json();
 }
 
 export async function uploadAvatar(userId, file) {
   const formData = new FormData();
+
   formData.append("avatar", file);
 
   const res = await fetch(`${API_URL}/users/${userId}/avatar`, {
@@ -214,10 +222,12 @@ export async function getTeacherStats() {
 
   return res.json();
 }
+
 export async function deleteDocument(documentId) {
   const res = await fetch(`${API_URL}/documents/${documentId}`, {
     method: "DELETE",
   });
+
   return res.json();
 }
 
@@ -225,12 +235,19 @@ export async function getDashboardStats() {
   const res = await fetch(`${API_URL}/users/stats`);
   return res.json();
 }
+
 export async function createTeacherAccount(fullName, email) {
   const res = await fetch(`${API_URL}/auth/admin/create-teacher`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fullName, email }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fullName,
+      email,
+    }),
   });
+
   return res.json();
 }
 
@@ -242,7 +259,7 @@ export async function getStudentSubmissions() {
 export async function generateStudentFeedback(
   studentId,
   teacherId,
-  documentId,
+  documentId
 ) {
   const res = await fetch(`${API_URL}/feedback/generate`, {
     method: "POST",
@@ -280,8 +297,21 @@ export async function getNotifications(userId) {
   return res.json();
 }
 
+export async function getUnreadNotificationCount(userId) {
+  const res = await fetch(`${API_URL}/notifications/${userId}/unread-count`);
+  return res.json();
+}
+
 export async function markNotificationAsRead(notificationId) {
   const res = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+    method: "PUT",
+  });
+
+  return res.json();
+}
+
+export async function markAllNotificationsAsRead(userId) {
+  const res = await fetch(`${API_URL}/notifications/user/${userId}/read-all`, {
     method: "PUT",
   });
 

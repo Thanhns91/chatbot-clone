@@ -2,7 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import pool from "../db.js";
-
+import { sendTeacherAccountEmail } from "../serverMail.js";
 const router = express.Router();
 
 const transporter = nodemailer.createTransport({
@@ -12,7 +12,37 @@ const transporter = nodemailer.createTransport({
     pass: process.env.GMAIL_APP_PASSWORD,
   },
 });
+const defaultPassword = "12345";
+const passwordHash = await bcrypt.hash(defaultPassword, 10);
 
+await pool.query(
+  `
+  INSERT INTO Users (fullName, email, passwordHash, role, status)
+  VALUES (?, ?, ?, 'teacher', 'active')
+  `,
+  [fullName, email, passwordHash],
+);
+
+try {
+  await sendTeacherAccountEmail({
+    to: email,
+    fullName,
+    password: defaultPassword,
+  });
+} catch (mailError) {
+  console.log("Send teacher email failed:", mailError.message);
+
+  return res.json({
+    success: true,
+    mailSent: false,
+    message: "Tạo tài khoản giáo viên thành công nhưng gửi email thất bại.",
+    teacher: {
+      fullName,
+      email,
+      defaultPassword,
+    },
+  });
+}
 // REGISTER
 router.post("/register", async (req, res) => {
   try {

@@ -1,8 +1,13 @@
 import { useState } from "react";
 import "./Auth.scss";
 import { login } from "../../services/authService";
-import { auth, googleProvider } from "../../fireBase/firebase";
+import { auth, googleProvider } from "../../firebase/firebase";
 import { signInWithPopup } from "firebase/auth";
+
+import logoImg from "../../assets/images/1.png";
+import googleImg from "../../assets/images/4.png";
+
+const API = import.meta.env.VITE_API_URL;
 
 export default function LoginPage({
   onCancel,
@@ -16,20 +21,28 @@ export default function LoginPage({
   const handleSignIn = async (e) => {
     e.preventDefault();
     setError("");
+
     const result = await login(form.email, form.password);
+
     if (!result.success) {
       setError(result.message);
       return;
     }
+
     onLoginSuccess?.(result.user.role, result.user);
   };
 
   const handleGoogleLogin = async () => {
     try {
+      if (!API) {
+        setError("Thiếu VITE_API_URL. Hãy kiểm tra Environment Variables.");
+        return;
+      }
+
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
 
-      const res = await fetch("http://localhost:3000/auth/google-login", {
+      const res = await fetch(`${API}/auth/google-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -66,7 +79,7 @@ export default function LoginPage({
         </button>
 
         <div className="auth-icon">
-          <img src="/src/assets/images/1.png" alt="AI Learning" />
+          <img src={logoImg} alt="AI Learning" />
         </div>
 
         <h1 className="auth-title">Welcome back</h1>
@@ -77,12 +90,7 @@ export default function LoginPage({
           className="auth-google"
           onClick={handleGoogleLogin}
         >
-          <img
-            src="/src/assets/images/4.png"
-            alt="Google"
-            width={20}
-            height={20}
-          />
+          <img src={googleImg} alt="Google" width={20} height={20} />
           Continue with Google
         </button>
 
@@ -119,7 +127,9 @@ export default function LoginPage({
                 type={showPassword ? "text" : "password"}
                 className="auth-input auth-input--password"
                 value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, password: e.target.value })
+                }
                 required
               />
               <button
