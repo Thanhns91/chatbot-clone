@@ -382,7 +382,22 @@ router.post("/", upload.single("file"), async (req, res) => {
         ],
       );
 
-      
+      await safeNotifyTeacherUpload(uploadedBy, documentId, fileName);
+
+      documents.push({
+        documentId,
+        fileName,
+        fileUrl,
+        contentHash,
+        uploadedBy,
+        reviewStatus,
+        versionGroupId,
+        versionNo: nextVersion,
+        vectorDocumentId,
+        isDuplicate: true,
+        originalDocumentId,
+        createdAt: new Date().toISOString(),
+      });
 
       cleanupFile(req.file.path);
 
