@@ -23,9 +23,7 @@ function getKeywords(message) {
 }
 
 function keywordScore(text, keywords) {
-  const lower = String(text || "")
-    .toLowerCase()
-    .normalize("NFC");
+  const lower = String(text || "").toLowerCase().normalize("NFC");
   let score = 0;
 
   for (const keyword of keywords) {
@@ -43,6 +41,10 @@ function removeVietnameseTones(str = "") {
     .replace(/Đ/g, "D");
 }
 
+function escapeRegExp(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function getImportantKeywords(message) {
   const rawWords = String(message || "")
     .normalize("NFC")
@@ -52,6 +54,7 @@ function getImportantKeywords(message) {
     .filter(Boolean);
 
   const stopWords = new Set([
+    // English
     "what",
     "who",
     "where",
@@ -78,6 +81,8 @@ function getImportantKeywords(message) {
     "me",
     "tell",
     "explain",
+
+    // Vietnamese
     "là",
     "gì",
     "ai",
@@ -114,6 +119,7 @@ function getImportantKeywords(message) {
 
       if (stopWords.has(lower)) return false;
 
+      // Giữ keyword ngắn / acronym: AI, RAG, LLM, ORAN, API, GenAI
       if (/^[A-Z0-9]{2,}$/.test(word)) return true;
 
       return lower.length >= 3;
@@ -121,36 +127,65 @@ function getImportantKeywords(message) {
     .map((word) => word.toLowerCase());
 }
 
-function escapeRegExp(value = "") {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function hasExactImportantKeywordMatch(text, importantKeywords) {
-  const originalText = String(text || "")
-    .toLowerCase()
-    .normalize("NFC");
+  const originalText = String(text || "").toLowerCase().normalize("NFC");
   const noToneText = removeVietnameseTones(originalText).toLowerCase();
 
   return importantKeywords.some((keyword) => {
-    const originalKeyword = String(keyword || "")
-      .toLowerCase()
-      .normalize("NFC");
+    const originalKeyword = String(keyword || "").toLowerCase().normalize("NFC");
     const noToneKeyword = removeVietnameseTones(originalKeyword).toLowerCase();
 
-    const escapedOriginal = escapeRegExp(originalKeyword);
-    const escapedNoTone = escapeRegExp(noToneKeyword);
-
     const originalRegex = new RegExp(
-      `(^|[^\\p{L}\\p{N}])${escapedOriginal}([^\\p{L}\\p{N}]|$)`,
+      `(^|[^\\p{L}\\p{N}])${escapeRegExp(originalKeyword)}([^\\p{L}\\p{N}]|$)`,
       "iu",
     );
 
     const noToneRegex = new RegExp(
-      `(^|[^\\p{L}\\p{N}])${escapedNoTone}([^\\p{L}\\p{N}]|$)`,
+      `(^|[^\\p{L}\\p{N}])${escapeRegExp(noToneKeyword)}([^\\p{L}\\p{N}]|$)`,
       "iu",
     );
 
     return originalRegex.test(originalText) || noToneRegex.test(noToneText);
+  });
+}
+
+function extractQuoteSearchKeywords(message) {
+  const keywords = getImportantKeywords(message);
+
+  const quoteStopWords = new Set([
+    "trích",
+    "dẫn",
+    "trich",
+    "dan",
+    "nguyên",
+    "văn",
+    "nguyen",
+    "van",
+    "lời",
+    "nói",
+    "loi",
+    "noi",
+    "câu",
+    "cau",
+    "cái",
+    "ấy",
+    "đó",
+    "kia",
+    "quote",
+    "quotes",
+    "sentence",
+    "sentences",
+    "direct",
+    "from",
+    "by",
+    "of",
+  ]);
+
+  return keywords.filter((keyword) => {
+    const lower = keyword.toLowerCase();
+    const noToneKeyword = removeVietnameseTones(lower).toLowerCase();
+
+    return !quoteStopWords.has(lower) && !quoteStopWords.has(noToneKeyword);
   });
 }
 
@@ -234,9 +269,7 @@ function extractRequestedPages(message) {
 }
 
 function isContinueQuestion(message) {
-  const text = String(message || "")
-    .toLowerCase()
-    .normalize("NFC");
+  const text = String(message || "").toLowerCase().normalize("NFC");
 
   return (
     text.includes("tiếp") ||
@@ -248,9 +281,7 @@ function isContinueQuestion(message) {
 }
 
 function isQuoteRequest(message) {
-  const text = String(message || "")
-    .toLowerCase()
-    .normalize("NFC");
+  const text = String(message || "").toLowerCase().normalize("NFC");
 
   return (
     text.includes("trích dẫn") ||
@@ -259,65 +290,38 @@ function isQuoteRequest(message) {
     text.includes("câu nói") ||
     text.includes("phát biểu") ||
     text.includes("quote") ||
-    text.includes("quotes")
+    text.includes("quotes") ||
+    text.includes("direct quote")
   );
 }
 
-function extractQuoteTargetName(message) {
-  const text = String(message || "").trim();
-
-  const patterns = [
-    /(?:lời nói của|câu nói của|phát biểu của|trích dẫn của|của)\s+([A-ZÀ-Ỹ][\p{L}.'-]+(?:\s+[A-ZÀ-Ỹ][\p{L}.'-]+){0,5})/u,
-    /(?:quote|quotes|statement|statements)\s+(?:of|by|from)\s+([A-Z][\p{L}.'-]+(?:\s+[A-Z][\p{L}.'-]+){0,5})/iu,
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-
-    if (match?.[1]) {
-      return match[1].replace(/[?.!,;:]+$/g, "").trim();
-    }
-  }
-
-  const capitalized = text.match(
-    /\b[A-ZÀ-Ỹ][\p{L}.'-]+(?:\s+[A-ZÀ-Ỹ][\p{L}.'-]+){1,4}\b/u,
-  );
-
-  return capitalized?.[0]?.trim() || "";
-}
-
-function normalizeSearchText(value = "") {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFC")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+function normalizeSentenceForDisplay(sentence = "") {
+  return String(sentence || "")
     .replace(/\s+/g, " ")
+    .replace(/^PAGE\s+\d+\s*/i, "")
+    .replace(/^\[?PAGE\s+\d+\]?\s*/i, "")
     .trim();
 }
 
-function textContainsPersonName(text, personName) {
-  const normalizedText = normalizeSearchText(text);
-  const normalizedName = normalizeSearchText(personName);
+function splitIntoSentences(text = "") {
+  const normalized = String(text || "")
+    .replace(/\r/g, "\n")
+    .replace(/\n+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  if (!normalizedText || !normalizedName) return false;
+  if (!normalized) return [];
 
-  if (normalizedText.includes(normalizedName)) return true;
+  const sentences =
+    normalized.match(/[^.!?。！？]+[.!?。！？]+|[^.!?。！？]+$/g) || [];
 
-  const tokens = normalizedName
-    .split(/\s+/)
-    .filter((token) => token.length >= 2);
-
-  if (tokens.length === 0) return false;
-
-  const hitCount = tokens.filter((token) =>
-    normalizedText.includes(token),
-  ).length;
-
-  return hitCount === tokens.length;
+  return sentences
+    .map(normalizeSentenceForDisplay)
+    .filter((sentence) => sentence.length > 0);
 }
 
-function buildQuoteFocusedChunks(allChunks, personName) {
-  if (!personName) return [];
+function buildQuoteFocusedChunks(allChunks, quoteKeywords) {
+  if (!Array.isArray(quoteKeywords) || quoteKeywords.length === 0) return [];
 
   const grouped = new Map();
 
@@ -347,10 +351,15 @@ function buildQuoteFocusedChunks(allChunks, personName) {
     for (let i = 0; i < sorted.length; i++) {
       const text = sorted[i].payload?.text || "";
 
-      if (!textContainsPersonName(text, personName)) continue;
+      const hasQuoteKeyword = hasExactImportantKeywordMatch(
+        text,
+        quoteKeywords,
+      );
+
+      if (!hasQuoteKeyword) continue;
 
       const start = Math.max(0, i - 1);
-      const end = Math.min(sorted.length - 1, i + 2);
+      const end = Math.min(sorted.length - 1, i + 1);
 
       for (let j = start; j <= end; j++) {
         const item = sorted[j];
@@ -362,14 +371,86 @@ function buildQuoteFocusedChunks(allChunks, personName) {
             item.payload?.vectorDocumentId ||
             item.payload?.documentId ||
             item.sourceDocumentId,
-          keywordScore: 20,
-          score: 20,
+          keywordScore: 30,
+          score: 30,
+          importantExactMatch: true,
         });
       }
     }
   }
 
   return Array.from(selected.values());
+}
+
+function extractDirectQuotesFromChunks(finalChunks, quoteKeywords, docNameMap) {
+  if (!Array.isArray(quoteKeywords) || quoteKeywords.length === 0) return [];
+
+  const quotes = [];
+  const seen = new Set();
+
+  for (const item of finalChunks) {
+    const text = item.payload?.text || "";
+    const sentences = splitIntoSentences(text);
+
+    for (const sentence of sentences) {
+      if (!hasExactImportantKeywordMatch(sentence, quoteKeywords)) continue;
+
+      const cleanedSentence = normalizeSentenceForDisplay(sentence);
+
+      if (cleanedSentence.length < 8) continue;
+
+      const dedupeKey = cleanedSentence.toLowerCase();
+
+      if (seen.has(dedupeKey)) continue;
+
+      seen.add(dedupeKey);
+
+      const sourceDocumentId =
+        item.payload?.vectorDocumentId ||
+        item.payload?.documentId ||
+        item.sourceDocumentId;
+
+      quotes.push({
+        text: cleanedSentence,
+        fileName:
+          docNameMap.get(sourceDocumentId) ||
+          item.payload?.fileName ||
+          "Unknown file",
+        source:
+          item.payload?.chunkIndex !== undefined
+            ? `SOURCE ${item.payload.chunkIndex + 1}`
+            : "SOURCE",
+      });
+
+      if (quotes.length >= 5) return quotes;
+    }
+  }
+
+  return quotes;
+}
+
+function formatDirectQuoteAnswer(quotes, responseLanguage) {
+  if (!quotes || quotes.length === 0) return "";
+
+  if (responseLanguage === "en") {
+    return [
+      "Direct quote found in the document:",
+      "",
+      ...quotes.map((quote, index) => {
+        const prefix = quotes.length > 1 ? `${index + 1}. ` : "";
+        return `${prefix}"${quote.text}"\nSource: ${quote.fileName}`;
+      }),
+    ].join("\n");
+  }
+
+  return [
+    "Câu được trích dẫn trong tài liệu là:",
+    "",
+    ...quotes.map((quote, index) => {
+      const prefix = quotes.length > 1 ? `${index + 1}. ` : "";
+      return `${prefix}"${quote.text}"\nNguồn: ${quote.fileName}`;
+    }),
+  ].join("\n");
 }
 
 function makeQdrantFilter(documentId) {
@@ -475,15 +556,18 @@ router.post("/", async (req, res) => {
       ? `${safeRecentHistory}\n${safeMessage}`
       : safeMessage;
 
-    const embedSearchMessage = limitText(searchMessage, MAX_EMBED_QUERY_CHARS);
+    const embedSearchMessage = limitText(
+      searchMessage,
+      MAX_EMBED_QUERY_CHARS,
+    );
 
     const keywords = getKeywords(searchMessage);
     const importantKeywords = getImportantKeywords(safeMessage);
-    const requestedPages = extractRequestedPages(safeMessage);
     const quoteMode = isQuoteRequest(safeMessage);
-    const quoteTargetName = quoteMode
-      ? extractQuoteTargetName(safeMessage)
-      : "";
+    const quoteSearchKeywords = quoteMode
+      ? extractQuoteSearchKeywords(safeMessage)
+      : [];
+    const requestedPages = extractRequestedPages(safeMessage);
     const vector = await embedText(embedSearchMessage);
 
     console.log("CHAT DOCUMENTS:", uniqueTargetDocumentIds);
@@ -493,8 +577,9 @@ router.post("/", async (req, res) => {
     );
     console.log("KEYWORDS:", keywords);
     console.log("IMPORTANT KEYWORDS:", importantKeywords);
+    console.log("QUOTE MODE:", quoteMode);
+    console.log("QUOTE KEYWORDS:", quoteSearchKeywords);
     console.log("REQUESTED PAGES:", requestedPages);
-    console.log("QUOTE MODE:", quoteMode, quoteTargetName);
     console.log("RESPONSE LANGUAGE:", responseLanguage);
 
     const allVectorResults = [];
@@ -588,10 +673,14 @@ router.post("/", async (req, res) => {
       .sort((a, b) => b.keywordScore - a.keywordScore)
       .slice(0, 10);
 
-    const quoteFocusedResults =
-      quoteMode && quoteTargetName
-        ? buildQuoteFocusedChunks(allChunks, quoteTargetName)
-        : [];
+    const quoteFocusedResults = quoteMode
+      ? buildQuoteFocusedChunks(
+          allChunks,
+          quoteSearchKeywords.length > 0
+            ? quoteSearchKeywords
+            : importantKeywords,
+        )
+      : [];
 
     const vectorResults = allVectorResults
       .sort((a, b) => (b.score || 0) - (a.score || 0))
@@ -619,12 +708,17 @@ router.post("/", async (req, res) => {
     console.log("QUOTE RESULTS:", quoteFocusedResults.length);
     console.log("TOP VECTOR SCORE:", topVectorScore);
 
-    if (quoteMode && quoteTargetName && quoteFocusedResults.length === 0) {
+    if (quoteMode && quoteFocusedResults.length === 0) {
+      const keywordText =
+        quoteSearchKeywords.length > 0
+          ? quoteSearchKeywords.join(", ")
+          : safeMessage;
+
       return res.json({
         answer:
           responseLanguage === "en"
-            ? `The document does not contain direct quotes from ${quoteTargetName}.`
-            : `Tài liệu không có trích dẫn nguyên văn lời nói của ${quoteTargetName}.`,
+            ? `The document does not contain a direct quote related to "${keywordText}".`
+            : `Tài liệu không có câu trích dẫn nguyên văn liên quan đến "${keywordText}".`,
         outOfScope: true,
         documentIds: uniqueTargetDocumentIds,
       });
@@ -678,6 +772,42 @@ router.post("/", async (req, res) => {
       }));
     }
 
+    if (quoteMode) {
+      const quoteKeywords =
+        quoteSearchKeywords.length > 0
+          ? quoteSearchKeywords
+          : importantKeywords;
+
+      const directQuotes = extractDirectQuotesFromChunks(
+        finalChunks,
+        quoteKeywords,
+        docNameMap,
+      );
+
+      if (directQuotes.length > 0) {
+        return res.json({
+          answer: formatDirectQuoteAnswer(directQuotes, responseLanguage),
+          outOfScope: false,
+          documentId: uniqueTargetDocumentIds[0],
+          documentIds: uniqueTargetDocumentIds,
+          responseLanguage,
+          evidence: finalChunks.map((item) => ({
+            fileName:
+              docNameMap.get(
+                item.payload?.vectorDocumentId ||
+                  item.payload?.documentId ||
+                  item.sourceDocumentId,
+              ) || item.payload?.fileName,
+            documentId: item.payload?.documentId,
+            vectorDocumentId: item.payload?.vectorDocumentId,
+            chunkIndex: item.payload?.chunkIndex,
+            text: item.payload?.text,
+            score: item.score || item.keywordScore || 0,
+          })),
+        });
+      }
+    }
+
     const context = buildContextWithBudget(finalChunks, docNameMap);
 
     const approvedContext = Array.isArray(approvedAnswers)
@@ -700,18 +830,23 @@ ANSWER: ${item.answer || ""}`;
       .map((doc, index) => `${index + 1}. ${doc.fileName}`)
       .join("\n");
 
-    const quoteRule =
-      quoteMode && quoteTargetName
-        ? `
+    const quoteRule = quoteMode
+      ? `
 YÊU CẦU TRÍCH DẪN NGUYÊN VĂN:
-- Người cần trích dẫn: ${quoteTargetName}
-- Chỉ liệt kê các câu nói/trích dẫn được gắn trực tiếp với ${quoteTargetName}.
-- Không được lấy các câu mô tả chung về công ty, sản phẩm, chiến lược, hoặc đoạn văn không phải lời nói của ${quoteTargetName}.
-- Nếu một câu không được gắn rõ với ${quoteTargetName}, không được đưa vào danh sách.
-- Giữ nguyên văn câu trích dẫn như trong tài liệu.
-- Không tự sửa câu, không diễn giải lại.
+- Từ khóa/cụm cần tìm: ${
+          quoteSearchKeywords.length > 0
+            ? quoteSearchKeywords.join(", ")
+            : safeMessage
+        }
+- Hãy trích dẫn nguyên văn câu hoặc đoạn ngắn trong CONTEXT có chứa/tập trung vào từ khóa trên.
+- Không hiểu các từ như GenAI, RAG, ORAN, LLM, AI là tên người.
+- Không trả lời kiểu "lời nói của GenAI" hoặc "lời nói của RAG".
+- Nếu thấy câu bắt đầu bằng từ khóa được hỏi, ưu tiên trích nguyên câu đó.
+- Giữ nguyên văn tiếng Anh nếu tài liệu là tiếng Anh.
+- Không diễn giải lại, không tự viết lại nội dung.
+- Nếu đã trích được câu, không thêm câu "${noInfoAnswer}".
 `
-        : "";
+      : "";
 
     const prompt = `
 Bạn là chatbot hỏi đáp dựa trên tài liệu đã upload.
