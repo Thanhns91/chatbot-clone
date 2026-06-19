@@ -23,7 +23,9 @@ function getKeywords(message) {
 }
 
 function keywordScore(text, keywords) {
-  const lower = String(text || "").toLowerCase().normalize("NFC");
+  const lower = String(text || "")
+    .toLowerCase()
+    .normalize("NFC");
   let score = 0;
 
   for (const keyword of keywords) {
@@ -124,11 +126,15 @@ function escapeRegExp(value = "") {
 }
 
 function hasExactImportantKeywordMatch(text, importantKeywords) {
-  const originalText = String(text || "").toLowerCase().normalize("NFC");
+  const originalText = String(text || "")
+    .toLowerCase()
+    .normalize("NFC");
   const noToneText = removeVietnameseTones(originalText).toLowerCase();
 
   return importantKeywords.some((keyword) => {
-    const originalKeyword = String(keyword || "").toLowerCase().normalize("NFC");
+    const originalKeyword = String(keyword || "")
+      .toLowerCase()
+      .normalize("NFC");
     const noToneKeyword = removeVietnameseTones(originalKeyword).toLowerCase();
 
     const escapedOriginal = escapeRegExp(originalKeyword);
@@ -228,7 +234,9 @@ function extractRequestedPages(message) {
 }
 
 function isContinueQuestion(message) {
-  const text = String(message || "").toLowerCase().normalize("NFC");
+  const text = String(message || "")
+    .toLowerCase()
+    .normalize("NFC");
 
   return (
     text.includes("tiếp") ||
@@ -240,7 +248,9 @@ function isContinueQuestion(message) {
 }
 
 function isQuoteRequest(message) {
-  const text = String(message || "").toLowerCase().normalize("NFC");
+  const text = String(message || "")
+    .toLowerCase()
+    .normalize("NFC");
 
   return (
     text.includes("trích dẫn") ||
@@ -465,16 +475,15 @@ router.post("/", async (req, res) => {
       ? `${safeRecentHistory}\n${safeMessage}`
       : safeMessage;
 
-    const embedSearchMessage = limitText(
-      searchMessage,
-      MAX_EMBED_QUERY_CHARS,
-    );
+    const embedSearchMessage = limitText(searchMessage, MAX_EMBED_QUERY_CHARS);
 
     const keywords = getKeywords(searchMessage);
     const importantKeywords = getImportantKeywords(safeMessage);
     const requestedPages = extractRequestedPages(safeMessage);
     const quoteMode = isQuoteRequest(safeMessage);
-    const quoteTargetName = quoteMode ? extractQuoteTargetName(safeMessage) : "";
+    const quoteTargetName = quoteMode
+      ? extractQuoteTargetName(safeMessage)
+      : "";
     const vector = await embedText(embedSearchMessage);
 
     console.log("CHAT DOCUMENTS:", uniqueTargetDocumentIds);
@@ -724,7 +733,10 @@ QUY TẮC BẮT BUỘC:
 - Nếu câu hỏi là "giải thích tiếp", "phần còn lại", hãy dựa vào LỊCH SỬ GẦN ĐÂY để hiểu đang tiếp nội dung nào, nhưng kiến thức vẫn phải lấy từ CONTEXT.
 ${quoteRule}
 - APPROVED ANSWERS chỉ là câu trả lời trước đó user đánh dấu phù hợp để học cách trình bày. Nó không phải nguồn kiến thức mới.
-- Nếu CONTEXT không có thông tin trực tiếp để trả lời QUESTION, chỉ trả lời đúng một câu:
+- Nếu có ít nhất một phần trong CONTEXT trả lời được QUESTION, hãy trả lời dựa trên phần đó.
+- Nếu đang chọn nhiều file, không cần nói file nào không có thông tin.
+- Không được thêm câu "${noInfoAnswer}" sau khi đã trả lời được nội dung chính.
+- Chỉ khi toàn bộ CONTEXT không có bất kỳ thông tin nào liên quan đến QUESTION thì mới trả lời đúng một câu:
 "${noInfoAnswer}"
 - ${answerLanguageRule}
 
@@ -740,11 +752,24 @@ ${safeMessage}
 ANSWER:
 `;
 
-    const answer = await generateAnswer(prompt);
+    let answer = await generateAnswer(prompt);
+
+    if (answer && answer.includes(noInfoAnswer)) {
+      const cleanedAnswer = answer
+        .replace(noInfoAnswer, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+      if (cleanedAnswer.length > 0) {
+        answer = cleanedAnswer;
+      }
+    }
+
+    const isOutOfScope = !answer || answer.trim() === noInfoAnswer;
 
     res.json({
       answer: answer || noInfoAnswer,
-      outOfScope: answer?.includes(noInfoAnswer) || false,
+      outOfScope: isOutOfScope,
       documentId: uniqueTargetDocumentIds[0],
       documentIds: uniqueTargetDocumentIds,
       responseLanguage,
