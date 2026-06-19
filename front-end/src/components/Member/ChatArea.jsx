@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Form from "react-bootstrap/Form";
 import logo7 from "../../assets/images/7.png";
 import {
@@ -15,6 +15,17 @@ const makeId = () => {
   return String(Date.now() + Math.random());
 };
 
+const dedupeDocuments = (docs = []) => {
+  const map = new Map();
+
+  docs.filter(Boolean).forEach((doc) => {
+    if (!doc.documentId) return;
+    map.set(String(doc.documentId), doc);
+  });
+
+  return Array.from(map.values());
+};
+
 const ChatArea = ({
   conversationId,
   user,
@@ -25,15 +36,29 @@ const ChatArea = ({
   setAvailableDocuments,
 }) => {
   const fileInputRef = useRef(null);
+  const chatBodyRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const shouldAutoScrollRef = useRef(true);
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [approvedAnswers, setApprovedAnswers] = useState([]);
+  const [selectedDocuments, setSelectedDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [toast, setToast] = useState(null);
   const [versionModal, setVersionModal] = useState(null);
+
+  const selectedDocumentIds = useMemo(() => {
+    return selectedDocuments.map((doc) => doc.documentId).filter(Boolean);
+  }, [selectedDocuments]);
+
+  const selectedDocumentLabel = useMemo(() => {
+    if (selectedDocuments.length === 0) return "";
+    if (selectedDocuments.length === 1) return selectedDocuments[0].fileName;
+    return `${selectedDocuments.length} files`;
+  }, [selectedDocuments]);
 
   const showToast = (type, title, message = "") => {
     const toastId = Date.now();
@@ -53,11 +78,48 @@ const ChatArea = ({
     }, 3200);
   };
 
+  const handleScroll = () => {
+    const el = chatBodyRef.current;
+    if (!el) return;
+
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    shouldAutoScrollRef.current = distanceFromBottom < 120;
+  };
+
+  useEffect(() => {
+    if (!shouldAutoScrollRef.current) return;
+
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }, [messages.length, loading]);
+
+  useEffect(() => {
+    if (!selectedDocument?.documentId) return;
+
+    setSelectedDocuments((prev) =>
+      dedupeDocuments([
+        ...prev,
+        {
+          documentId: selectedDocument.documentId,
+          fileName: selectedDocument.fileName || "Uploaded document",
+          fileType: selectedDocument.fileType,
+          fileUrl: selectedDocument.fileUrl,
+          uploadedBy: selectedDocument.uploadedBy,
+          uploaderId: selectedDocument.uploaderId,
+          reviewStatus: selectedDocument.reviewStatus,
+        },
+      ]),
+    );
+  }, [selectedDocument]);
+
   useEffect(() => {
     const loadMessages = async () => {
       if (!conversationId) {
         setMessages([]);
         setSelectedDocument?.(null);
+        setSelectedDocuments([]);
         setApprovedAnswers([]);
         return;
       }
@@ -96,10 +158,15 @@ const ChatArea = ({
         setMessages(formatted);
 
         if (activeConversation?.documentId) {
-          setSelectedDocument?.({
+          const doc = {
             documentId: activeConversation.documentId,
             fileName: activeConversation.fileName || "Uploaded document",
-          });
+          };
+
+          setSelectedDocument?.(doc);
+          setSelectedDocuments((prev) => dedupeDocuments([...prev, doc]));
+        } else {
+          setSelectedDocuments([]);
         }
 
         setApprovedAnswers([]);
@@ -179,6 +246,7 @@ const ChatArea = ({
     };
 
     setSelectedDocument?.(uploadedDocument);
+    setSelectedDocuments((prev) => dedupeDocuments([...prev, uploadedDocument]));
 
     setAvailableDocuments?.((prev) => {
       const existed = prev.some(
@@ -200,7 +268,7 @@ const ChatArea = ({
       showToast(
         "success",
         "Upload successful!",
-        `"${result.fileName}" has been added to your library.`,
+        `"${result.fileName}" has been added to this chat.`,
       );
     }
 
@@ -221,6 +289,7 @@ const ChatArea = ({
 
     try {
       setUploading(true);
+      shouldAutoScrollRef.current = false;
       await uploadDocumentToServer(file, false);
     } catch (error) {
       showToast(
@@ -239,6 +308,7 @@ const ChatArea = ({
 
     try {
       setUploading(true);
+      shouldAutoScrollRef.current = false;
 
       const file = versionModal.file;
       setVersionModal(null);
@@ -256,14 +326,6 @@ const ChatArea = ({
   };
 
   const handleCancelCreateVersion = () => {
-    if (!versionModal) return;
-
-    showToast(
-      "warning",
-      "Duplicate content detected!",
-      `"${versionModal.currentFileName || versionModal.file?.name}" has the same content as "${versionModal.existingFileName}" but a different file name. It was not saved.`,
-    );
-
     setVersionModal(null);
   };
 
@@ -272,7 +334,7 @@ const ChatArea = ({
 
     if (!userText || loading || !conversationId) return;
 
-    if (!selectedDocument?.documentId) {
+    if (selectedDocuments.length === 0) {
       setMessages((prev) => [
         ...prev,
         {
@@ -285,6 +347,8 @@ const ChatArea = ({
       ]);
       return;
     }
+
+    shouldAutoScrollRef.current = true;
 
     const userMessage = {
       id: makeId(),
@@ -313,14 +377,14 @@ const ChatArea = ({
         });
       }
 
-      const responseLanguage = localStorage.getItem("chatLanguage") || "vi";
-
-      const result = await sendMessage(
-        selectedDocument.documentId,
-        userText,
+      const result = await sendMessage({
+        documentId: selectedDocumentIds[0],
+        documentIds: selectedDocumentIds,
+        sessionId: conversationId,
+        message: userText,
         approvedAnswers,
-        responseLanguage,
-      );
+        responseLanguage: localStorage.getItem("chatLanguage") || "vi",
+      });
 
       const aiAnswer = result.answer || "Không có phản hồi.";
 
@@ -430,24 +494,18 @@ const ChatArea = ({
         <div className="version-modal">
           <div className="version-modal__card">
             <div className="version-modal__icon">
-              <i className="bi bi-files"></i>
+              <i className="ti ti-files"></i>
             </div>
 
-            <h3>Duplicate content detected</h3>
+            <h3>File content already exists</h3>
 
             <p>
-              File{" "}
-              <strong>
-                {versionModal.currentFileName || versionModal.file?.name}
-              </strong>{" "}
-              has the same content as{" "}
-              <strong>{versionModal.existingFileName}</strong>, but the file
-              name is different.
+              <strong>{versionModal.currentFileName}</strong> has the same
+              content as <strong>{versionModal.existingFileName}</strong>.
             </p>
 
             <p>
-              Do you want to save it as{" "}
-              <strong>Version {versionModal.nextVersion}</strong>?
+              Do you want to save this file as Version {versionModal.nextVersion}?
             </p>
 
             <div className="version-modal__actions">
@@ -457,7 +515,7 @@ const ChatArea = ({
                 onClick={handleCancelCreateVersion}
                 disabled={uploading}
               >
-                No
+                Cancel
               </button>
 
               <button
@@ -466,14 +524,18 @@ const ChatArea = ({
                 onClick={handleConfirmCreateVersion}
                 disabled={uploading}
               >
-                {uploading ? "Saving..." : "Add Version"}
+                {uploading ? "Saving..." : "Save Version"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="member-chat__body">
+      <div
+        ref={chatBodyRef}
+        className="member-chat__body"
+        onScroll={handleScroll}
+      >
         {loadingMessages ? (
           <p>Đang tải tin nhắn...</p>
         ) : messages.length === 0 ? (
@@ -481,17 +543,17 @@ const ChatArea = ({
             <img src={logo7} alt="logo" className="member-chat__logo" />
             <h1 className="member-chat__title">Where should we start?</h1>
             <p className="member-chat__subtitle">
-              Upload tài liệu hoặc mở Library để chọn file, sau đó hỏi AI dựa
-              trên nội dung trong file.
+              Upload tài liệu hoặc mở Library để chọn một hoặc nhiều file, sau
+              đó hỏi AI dựa trên nội dung trong các file đó.
             </p>
           </div>
         ) : (
           <div className="member-chat__messages">
-            {selectedDocument && (
+            {selectedDocuments.length > 0 && (
               <div className="member-chat__document-info">
                 <i className="ti ti-file-text" />
                 <span>
-                  Đang hỏi theo file: <b>{selectedDocument.fileName}</b>
+                  Đang hỏi theo: <b>{selectedDocumentLabel}</b>
                 </span>
               </div>
             )}
@@ -535,6 +597,8 @@ const ChatArea = ({
                 </div>
               </div>
             )}
+
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
@@ -561,8 +625,8 @@ const ChatArea = ({
           className="member-chat__input"
           type="text"
           placeholder={
-            selectedDocument
-              ? `Hỏi nội dung trong ${selectedDocument.fileName}...`
+            selectedDocuments.length > 0
+              ? `Hỏi nội dung trong ${selectedDocumentLabel}...`
               : "Chọn file trong Library hoặc upload tài liệu trước..."
           }
           value={message}

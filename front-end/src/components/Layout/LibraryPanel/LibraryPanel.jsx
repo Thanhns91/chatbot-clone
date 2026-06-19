@@ -6,6 +6,7 @@ const getFileIcon = (fileName = "") => {
   const lower = fileName.toLowerCase();
 
   if (lower.endsWith(".pdf")) return "bi bi-file-earmark-pdf";
+
   if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
     return "bi bi-file-earmark-word";
   }
@@ -44,17 +45,6 @@ const LibraryPanel = ({
   }, [documents]);
 
   const currentFiles = activeTab === "teacher" ? teacherFiles : studentFiles;
-
-  const handleOpenFile = (doc) => {
-    const fileUrl = doc?.fileUrl || doc?.url || doc?.secure_url;
-
-    if (!fileUrl) {
-      alert("File này chưa có link để mở.");
-      return;
-    }
-
-    window.open(fileUrl, "_blank", "noopener,noreferrer");
-  };
 
   const renderEmpty = () => (
     <div className="library-empty">
@@ -108,29 +98,18 @@ const LibraryPanel = ({
         </div>
 
         <div className="lesson-card__meta">
-          {doc.fileType || "Document"} &nbsp;·&nbsp;
-          {doc.versionNo ? ` Version ${doc.versionNo}` : " Version 1"}
-          {doc.uploadDate ? ` · ${formatDate(doc.uploadDate)}` : ""}
+          {doc.fileType || "Document"} &nbsp;·&nbsp;{" "}
+          {formatDate(doc.uploadDate)}
         </div>
 
-        <div className="lesson-card__actions lesson-card__actions--two">
-          <Button
-            variant="outline-secondary"
-            className="lesson-card__btn-open"
-            onClick={() => handleOpenFile(doc)}
-            disabled={!doc.fileUrl}
-          >
-            <i className="bi bi-box-arrow-up-right me-1"></i>
-            Open
-          </Button>
-
+        <div className="lesson-card__actions">
           <Button
             variant="primary"
             className="lesson-card__btn-ask"
             onClick={() => onSelectDocument?.(doc)}
           >
-            <i className="bi bi-chat-dots me-1"></i>
-            {isActive ? "Using" : "Ask AI"}
+            <i className="bi bi-plus-circle me-1"></i>
+            {isActive ? "Using" : "Add to Chat"}
           </Button>
         </div>
       </div>
@@ -196,4 +175,4 @@ const LibraryPanel = ({
   );
 };
 
-export default LibraryPanel;  
+export default LibraryPanel;

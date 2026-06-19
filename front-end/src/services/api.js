@@ -1,5 +1,5 @@
 export const API_URL =
-  import.meta.env.VITE_API_URL;
+  import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export async function uploadFile(file, options = {}) {
   const formData = new FormData();
@@ -27,22 +27,29 @@ export async function uploadFile(file, options = {}) {
 }
 
 export async function sendMessage(
-  documentId,
+  payloadOrDocumentId,
   message,
   approvedAnswers = [],
-  responseLanguage = "vi"
+  responseLanguage = "vi",
+  sessionId = null,
 ) {
+  const payload =
+    typeof payloadOrDocumentId === "object" && payloadOrDocumentId !== null
+      ? payloadOrDocumentId
+      : {
+          documentId: payloadOrDocumentId,
+          message,
+          approvedAnswers,
+          responseLanguage,
+          sessionId,
+        };
+
   const res = await fetch(`${API_URL}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      documentId,
-      message,
-      approvedAnswers,
-      responseLanguage,
-    }),
+    body: JSON.stringify(payload),
   });
 
   return res.json();
@@ -194,7 +201,7 @@ export async function getDocuments() {
 
 export async function getLibraryDocuments(userId, role) {
   const res = await fetch(
-    `${API_URL}/documents/library?userId=${userId}&role=${role}`
+    `${API_URL}/documents/library?userId=${userId}&role=${role}`,
   );
 
   return res.json();
@@ -256,11 +263,7 @@ export async function getStudentSubmissions() {
   return res.json();
 }
 
-export async function generateStudentFeedback(
-  studentId,
-  teacherId,
-  documentId
-) {
+export async function generateStudentFeedback(studentId, teacherId, documentId) {
   const res = await fetch(`${API_URL}/feedback/generate`, {
     method: "POST",
     headers: {
