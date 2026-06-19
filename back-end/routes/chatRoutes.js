@@ -33,6 +33,121 @@ function keywordScore(text, keywords) {
   return score;
 }
 
+function removeVietnameseTones(str = "") {
+  return String(str || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+}
+
+function getImportantKeywords(message) {
+  const rawWords = String(message || "")
+    .normalize("NFC")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter(Boolean);
+
+  const stopWords = new Set([
+    "what",
+    "who",
+    "where",
+    "when",
+    "why",
+    "how",
+    "is",
+    "are",
+    "was",
+    "were",
+    "the",
+    "a",
+    "an",
+    "of",
+    "in",
+    "on",
+    "for",
+    "to",
+    "and",
+    "or",
+    "with",
+    "about",
+    "give",
+    "me",
+    "tell",
+    "explain",
+    "là",
+    "gì",
+    "ai",
+    "ở",
+    "đâu",
+    "khi",
+    "nào",
+    "tại",
+    "sao",
+    "như",
+    "thế",
+    "của",
+    "trong",
+    "về",
+    "cho",
+    "tôi",
+    "hãy",
+    "nêu",
+    "giải",
+    "thích",
+    "trình",
+    "bày",
+    "biết",
+    "các",
+    "những",
+    "một",
+    "và",
+    "hoặc",
+  ]);
+
+  return rawWords
+    .filter((word) => {
+      const lower = word.toLowerCase();
+
+      if (stopWords.has(lower)) return false;
+
+      if (/^[A-Z0-9]{2,}$/.test(word)) return true;
+
+      return lower.length >= 3;
+    })
+    .map((word) => word.toLowerCase());
+}
+
+function escapeRegExp(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasExactImportantKeywordMatch(text, importantKeywords) {
+  const originalText = String(text || "").toLowerCase().normalize("NFC");
+  const noToneText = removeVietnameseTones(originalText).toLowerCase();
+
+  return importantKeywords.some((keyword) => {
+    const originalKeyword = String(keyword || "").toLowerCase().normalize("NFC");
+    const noToneKeyword = removeVietnameseTones(originalKeyword).toLowerCase();
+
+    const escapedOriginal = escapeRegExp(originalKeyword);
+    const escapedNoTone = escapeRegExp(noToneKeyword);
+
+    const originalRegex = new RegExp(
+      `(^|[^\\p{L}\\p{N}])${escapedOriginal}([^\\p{L}\\p{N}]|$)`,
+      "iu",
+    );
+
+    const noToneRegex = new RegExp(
+      `(^|[^\\p{L}\\p{N}])${escapedNoTone}([^\\p{L}\\p{N}]|$)`,
+      "iu",
+    );
+
+    return originalRegex.test(originalText) || noToneRegex.test(noToneText);
+  });
+}
+
 function getNoInfoAnswer(responseLanguage) {
   return responseLanguage === "en"
     ? "The document does not contain this information."
@@ -356,6 +471,7 @@ router.post("/", async (req, res) => {
     );
 
     const keywords = getKeywords(searchMessage);
+    const importantKeywords = getImportantKeywords(safeMessage);
     const requestedPages = extractRequestedPages(safeMessage);
     const quoteMode = isQuoteRequest(safeMessage);
     const quoteTargetName = quoteMode ? extractQuoteTargetName(safeMessage) : "";
@@ -366,6 +482,8 @@ router.post("/", async (req, res) => {
       "QDRANT DOCUMENT IDS:",
       vectorDocs.map((doc) => doc.qdrantDocumentId),
     );
+    console.log("KEYWORDS:", keywords);
+    console.log("IMPORTANT KEYWORDS:", importantKeywords);
     console.log("REQUESTED PAGES:", requestedPages);
     console.log("QUOTE MODE:", quoteMode, quoteTargetName);
     console.log("RESPONSE LANGUAGE:", responseLanguage);
@@ -441,14 +559,20 @@ router.post("/", async (req, res) => {
 
     const keywordResults = allChunks
       .map((point) => {
-        const score = keywordScore(point.payload?.text, keywords);
+        const text = point.payload?.text || "";
+        const score = keywordScore(text, keywords);
+        const importantExactMatch = hasExactImportantKeywordMatch(
+          text,
+          importantKeywords,
+        );
 
         return {
           id: point.id,
           payload: point.payload,
           sourceDocumentId: point.sourceDocumentId,
-          keywordScore: score,
-          score,
+          keywordScore: importantExactMatch ? score + 5 : score,
+          importantExactMatch,
+          score: importantExactMatch ? score + 5 : score,
         };
       })
       .filter((item) => item.keywordScore > 0)
@@ -466,7 +590,12 @@ router.post("/", async (req, res) => {
 
     const topVectorScore = vectorResults[0]?.score || 0;
 
+    const hasImportantExactMatch = keywordResults.some(
+      (item) => item.importantExactMatch,
+    );
+
     const hasEnoughKeywordMatch =
+      hasImportantExactMatch ||
       keywordResults.length >= 2 ||
       keywordResults.some((item) => item.keywordScore >= 2) ||
       pageResults.length > 0 ||
@@ -475,8 +604,8 @@ router.post("/", async (req, res) => {
     const hasStrongSemanticMatch = topVectorScore >= 0.35;
 
     console.log("ALL CHUNKS:", allChunks.length);
-    console.log("KEYWORDS:", keywords);
     console.log("KEYWORD RESULTS:", keywordResults.length);
+    console.log("IMPORTANT EXACT MATCH:", hasImportantExactMatch);
     console.log("PAGE RESULTS:", pageResults.length);
     console.log("QUOTE RESULTS:", quoteFocusedResults.length);
     console.log("TOP VECTOR SCORE:", topVectorScore);

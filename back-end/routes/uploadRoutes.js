@@ -89,7 +89,18 @@ async function extractText(filePath, originalName) {
     const fileBuffer = fs.readFileSync(filePath);
     const parser = new PDFParse({ data: fileBuffer });
     const pdfData = await parser.getText();
-    return pdfData.text;
+
+    const rawText = pdfData.text || "";
+
+    const formFeedPages = rawText.split(/\f+/).filter(Boolean);
+
+    if (formFeedPages.length > 1) {
+      return formFeedPages
+        .map((pageText, index) => `\n\nPAGE ${index + 1}\n${pageText}`)
+        .join("\n\n");
+    }
+
+    return `\n\nPAGE 1\n${rawText}`;
   }
 
   if (ext === "docx") {
@@ -344,7 +355,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         fileName,
       );
 
-      const [insertResult] = await pool.query(
+      await pool.query(
         `
         INSERT INTO Documents
         (
@@ -466,7 +477,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       points,
     });
 
-    const [insertResult] = await pool.query(
+    await pool.query(
       `
       INSERT INTO Documents
       (
@@ -503,8 +514,6 @@ router.post("/", upload.single("file"), async (req, res) => {
         originalDocumentId,
       ],
     );
-
-    
 
     await safeNotifyTeacherUpload(uploadedBy, documentId, fileName);
 

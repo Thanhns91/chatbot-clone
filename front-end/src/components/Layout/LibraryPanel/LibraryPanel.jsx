@@ -11,6 +11,10 @@ const getFileIcon = (fileName = "") => {
     return "bi bi-file-earmark-word";
   }
 
+  if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+    return "bi bi-file-earmark-excel";
+  }
+
   return "bi bi-file-earmark-text";
 };
 
@@ -45,6 +49,23 @@ const LibraryPanel = ({
   }, [documents]);
 
   const currentFiles = activeTab === "teacher" ? teacherFiles : studentFiles;
+
+  const handleOpenFile = (doc) => {
+    const fileUrl =
+      doc?.fileUrl ||
+      doc?.file_url ||
+      doc?.url ||
+      doc?.downloadUrl ||
+      doc?.download_url ||
+      doc?.secure_url;
+
+    if (!fileUrl) {
+      alert("File này chưa có link để mở.");
+      return;
+    }
+
+    window.open(fileUrl, "_blank", "noopener,noreferrer");
+  };
 
   const renderEmpty = () => (
     <div className="library-empty">
@@ -98,18 +119,29 @@ const LibraryPanel = ({
         </div>
 
         <div className="lesson-card__meta">
-          {doc.fileType || "Document"} &nbsp;·&nbsp;{" "}
-          {formatDate(doc.uploadDate)}
+          {doc.fileType || "Document"} &nbsp;·&nbsp;
+          {doc.versionNo ? ` Version ${doc.versionNo}` : " Version 1"}
+          {doc.uploadDate ? ` · ${formatDate(doc.uploadDate)}` : ""}
         </div>
 
-        <div className="lesson-card__actions">
+        <div className="lesson-card__actions lesson-card__actions--two">
+          <Button
+            variant="outline-secondary"
+            className="lesson-card__btn-open"
+            onClick={() => handleOpenFile(doc)}
+            disabled={!doc.fileUrl}
+          >
+            <i className="bi bi-box-arrow-up-right me-1"></i>
+            Open
+          </Button>
+
           <Button
             variant="primary"
             className="lesson-card__btn-ask"
             onClick={() => onSelectDocument?.(doc)}
           >
-            <i className="bi bi-plus-circle me-1"></i>
-            {isActive ? "Using" : "Add to Chat"}
+            <i className="bi bi-chat-dots me-1"></i>
+            {isActive ? "Using" : "Ask AI"}
           </Button>
         </div>
       </div>

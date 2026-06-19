@@ -48,7 +48,6 @@ const ChatArea = ({
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [toast, setToast] = useState(null);
-  const [versionModal, setVersionModal] = useState(null);
 
   const selectedDocumentIds = useMemo(() => {
     return selectedDocuments.map((doc) => doc.documentId).filter(Boolean);
@@ -164,7 +163,7 @@ const ChatArea = ({
           };
 
           setSelectedDocument?.(doc);
-          setSelectedDocuments((prev) => dedupeDocuments([...prev, doc]));
+          setSelectedDocuments([doc]);
         } else {
           setSelectedDocuments([]);
         }
@@ -178,12 +177,7 @@ const ChatArea = ({
     };
 
     loadMessages();
-  }, [
-    conversationId,
-    activeConversation?.documentId,
-    activeConversation?.fileName,
-    setSelectedDocument,
-  ]);
+  }, [conversationId, setSelectedDocument]);
 
   const handleChooseFile = () => {
     if (!conversationId) {
@@ -201,26 +195,26 @@ const ChatArea = ({
   const uploadDocumentToServer = async (file, allowVersion = false) => {
     const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
 
-    const result = await uploadFile(file, {
+    let result = await uploadFile(file, {
       uploadedBy,
       uploaderId: user?.userId,
       allowVersion,
     });
 
     if (result.duplicate && result.needConfirm) {
-      setVersionModal({
-        file,
-        currentFileName: result.currentFileName || file.name,
-        existingFileName: result.existingFileName || "existing document",
-        nextVersion: result.nextVersion || 2,
-        message: result.message || "",
+      result = await uploadFile(file, {
+        uploadedBy,
+        uploaderId: user?.userId,
+        allowVersion: true,
       });
-
-      return;
     }
 
     if (result.error || result.success === false) {
       throw new Error(result.detail || result.message || result.error);
+    }
+
+    if (!result.documentId) {
+      throw new Error(result.message || "Upload failed: missing documentId");
     }
 
     await updateChatSession(conversationId, {
@@ -246,7 +240,10 @@ const ChatArea = ({
     };
 
     setSelectedDocument?.(uploadedDocument);
-    setSelectedDocuments((prev) => dedupeDocuments([...prev, uploadedDocument]));
+
+    setSelectedDocuments((prev) =>
+      dedupeDocuments([...prev, uploadedDocument]),
+    );
 
     setAvailableDocuments?.((prev) => {
       const existed = prev.some(
@@ -258,20 +255,6 @@ const ChatArea = ({
       return [uploadedDocument, ...prev];
     });
 
-    if (result.versionCreated) {
-      showToast(
-        "success",
-        "Version created!",
-        `"${result.fileName}" saved as Version ${result.versionNo}.`,
-      );
-    } else {
-      showToast(
-        "success",
-        "Upload successful!",
-        `"${result.fileName}" has been added to this chat.`,
-      );
-    }
-
     onConversationUpdated?.({
       id: conversationId,
       documentId: result.documentId,
@@ -281,21 +264,47 @@ const ChatArea = ({
         : result.fileName,
       messageCount: activeConversation?.messageCount || 0,
     });
+
+    return uploadedDocument;
   };
 
   const handleUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || !conversationId) return;
+    const files = Array.from(event.target.files || []);
+
+    if (files.length === 0 || !conversationId) return;
 
     try {
       setUploading(true);
       shouldAutoScrollRef.current = false;
-      await uploadDocumentToServer(file, false);
+
+      const uploadedDocs = [];
+
+      for (const file of files) {
+        const uploadedDoc = await uploadDocumentToServer(file, false);
+
+        if (uploadedDoc) {
+          uploadedDocs.push(uploadedDoc);
+        }
+      }
+
+      if (uploadedDocs.length > 0) {
+        setSelectedDocuments((prev) =>
+          dedupeDocuments([...prev, ...uploadedDocs]),
+        );
+
+        setSelectedDocument?.(uploadedDocs[uploadedDocs.length - 1]);
+
+        showToast(
+          "success",
+          "Upload successful!",
+          `${uploadedDocs.length} file(s) uploaded and used in this chat.`,
+        );
+      }
     } catch (error) {
       showToast(
         "error",
         "Upload failed",
-        error.message || "Cannot upload this file.",
+        error.message || "Cannot upload these files.",
       );
     } finally {
       setUploading(false);
@@ -303,38 +312,21 @@ const ChatArea = ({
     }
   };
 
-  const handleConfirmCreateVersion = async () => {
-    if (!versionModal?.file) return;
-
-    try {
-      setUploading(true);
-      shouldAutoScrollRef.current = false;
-
-      const file = versionModal.file;
-      setVersionModal(null);
-
-      await uploadDocumentToServer(file, true);
-    } catch (error) {
-      showToast(
-        "error",
-        "Create version failed",
-        error.message || "Cannot create new version.",
-      );
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleCancelCreateVersion = () => {
-    setVersionModal(null);
-  };
-
   const handleSend = async () => {
     const userText = message.trim();
 
     if (!userText || loading || !conversationId) return;
 
-    if (selectedDocuments.length === 0) {
+    if (userText.length > 3000) {
+      showToast(
+        "warning",
+        "Question too long",
+        "Câu hỏi quá dài. Bạn hãy chia nhỏ câu hỏi hoặc hỏi từng phần.",
+      );
+      return;
+    }
+
+    if (selectedDocumentIds.length === 0) {
       setMessages((prev) => [
         ...prev,
         {
@@ -455,7 +447,8 @@ const ChatArea = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.docx,.xlsx,.xls"
+        accept=".pdf,.doc,.docx,.xlsx,.xls"
+        multiple
         hidden
         onChange={handleUpload}
       />
@@ -490,47 +483,6 @@ const ChatArea = ({
         </div>
       )}
 
-      {versionModal && (
-        <div className="version-modal">
-          <div className="version-modal__card">
-            <div className="version-modal__icon">
-              <i className="ti ti-files"></i>
-            </div>
-
-            <h3>File content already exists</h3>
-
-            <p>
-              <strong>{versionModal.currentFileName}</strong> has the same
-              content as <strong>{versionModal.existingFileName}</strong>.
-            </p>
-
-            <p>
-              Do you want to save this file as Version {versionModal.nextVersion}?
-            </p>
-
-            <div className="version-modal__actions">
-              <button
-                type="button"
-                className="version-modal__btn version-modal__btn--cancel"
-                onClick={handleCancelCreateVersion}
-                disabled={uploading}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className="version-modal__btn version-modal__btn--confirm"
-                onClick={handleConfirmCreateVersion}
-                disabled={uploading}
-              >
-                {uploading ? "Saving..." : "Save Version"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div
         ref={chatBodyRef}
         className="member-chat__body"
@@ -543,8 +495,8 @@ const ChatArea = ({
             <img src={logo7} alt="logo" className="member-chat__logo" />
             <h1 className="member-chat__title">Where should we start?</h1>
             <p className="member-chat__subtitle">
-              Upload tài liệu hoặc mở Library để chọn một hoặc nhiều file, sau
-              đó hỏi AI dựa trên nội dung trong các file đó.
+              Upload tài liệu hoặc mở Library để chọn file, sau đó hỏi AI dựa
+              trên nội dung trong file.
             </p>
           </div>
         ) : (
@@ -624,6 +576,7 @@ const ChatArea = ({
         <Form.Control
           className="member-chat__input"
           type="text"
+          maxLength={3000}
           placeholder={
             selectedDocuments.length > 0
               ? `Hỏi nội dung trong ${selectedDocumentLabel}...`
