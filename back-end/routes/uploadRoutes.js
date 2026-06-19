@@ -211,7 +211,7 @@ async function notifyStudentsAboutTeacherUpload(documentId, fileName) {
 
   const values = students.map((student) => [
     student.userId,
-    documentDbId,
+    documentId,
     "New teacher material uploaded",
     `Teacher uploaded a new file: ${fileName}`,
     "student_upload",
@@ -504,9 +504,9 @@ router.post("/", upload.single("file"), async (req, res) => {
       ],
     );
 
-    const documentDbId = insertResult.insertId;
+    
 
-    await safeNotifyTeacherUpload(uploadedBy, documentDbId, fileName);
+    await safeNotifyTeacherUpload(uploadedBy, documentId, fileName);
 
     documents.push({
       documentId,
