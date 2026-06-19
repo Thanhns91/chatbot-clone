@@ -3,6 +3,7 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import ListGroup from "react-bootstrap/ListGroup";
 import {
+  API_URL,
   uploadTeacherFile,
   getTeacherUploadHistory,
   deleteDocument,
@@ -24,7 +25,12 @@ const getFileType = (fileName = "", fileType = "") => {
     return "pdf";
   }
 
-  if (lowerName.endsWith(".docx") || lowerType.includes("word")) {
+  if (
+    lowerName.endsWith(".doc") ||
+    lowerName.endsWith(".docx") ||
+    lowerType.includes("word") ||
+    lowerType.includes("document")
+  ) {
     return "docx";
   }
 
@@ -177,6 +183,13 @@ export default function MaterialsTab() {
   };
 
   const handleView = (file) => {
+    const type = getFileType(file.fileName, file.fileType);
+
+    if (type !== "pdf") {
+      alert("DOC/DOCX files cannot be previewed. Please download the file.");
+      return;
+    }
+
     const url = getDocumentUrl(file);
 
     if (url === "#") {
@@ -185,6 +198,19 @@ export default function MaterialsTab() {
     }
 
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDownload = (file) => {
+    if (!file?.documentId) {
+      alert("Không tìm thấy documentId để tải file.");
+      return;
+    }
+
+    window.open(
+      `${API_URL}/documents/download/${file.documentId}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
   const handleDelete = async (documentId) => {
@@ -270,6 +296,7 @@ export default function MaterialsTab() {
               docs.map((file) => {
                 const type = getFileType(file.fileName, file.fileType);
                 const { cls, icon, label } = fileIcon(type);
+                const canPreview = type === "pdf";
 
                 return (
                   <ListGroup.Item
@@ -290,13 +317,33 @@ export default function MaterialsTab() {
                     </div>
 
                     <div className="td-file-actions">
+                      {canPreview ? (
+                        <button
+                          type="button"
+                          className="td-file-view"
+                          title="View file"
+                          onClick={() => handleView(file)}
+                        >
+                          <i className="bi bi-eye"></i>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="td-file-view td-file-view--disabled"
+                          title="DOC/DOCX cannot be previewed"
+                          disabled
+                        >
+                          <i className="bi bi-eye-slash"></i>
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        className="td-file-view"
-                        title="View file"
-                        onClick={() => handleView(file)}
+                        className="td-file-download"
+                        title="Download file"
+                        onClick={() => handleDownload(file)}
                       >
-                        <i className="bi bi-eye"></i>
+                        <i className="bi bi-download"></i>
                       </button>
 
                       <button

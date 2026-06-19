@@ -1,0 +1,150 @@
+
+
+html[data-theme="dark"] .auth-overlay,
+html[data-theme="dark"] .login-overlay,
+html[data-theme="dark"] .modal-backdrop,
+html[data-theme="dark"] .auth-modal-overlay {
+  background: rgba(2, 6, 23, 0.62) !important;
+  backdrop-filter: blur(5px) !important;
+}
+
+/* Card đăng nhập */
+html[data-theme="dark"] .auth-card,
+html[data-theme="dark"] .login-card,
+html[data-theme="dark"] .register-card,
+html[data-theme="dark"] .auth-modal,
+html[data-theme="dark"] .login-modal {
+  background: #111827 !important;
+  color: #e5e7eb !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5) !important;
+  opacity: 1 !important;
+}
+
+/* Chữ tiêu đề */
+html[data-theme="dark"] .auth-card h1,
+html[data-theme="dark"] .auth-card h2,
+html[data-theme="dark"] .login-card h1,
+html[data-theme="dark"] .login-card h2,
+html[data-theme="dark"] .register-card h1,
+html[data-theme="dark"] .register-card h2,
+html[data-theme="dark"] .auth-title,
+html[data-theme="dark"] .login-title {
+  color: #f8fafc !important;
+  opacity: 1 !important;
+}
+
+/* Chữ phụ */
+html[data-theme="dark"] .auth-card p,
+html[data-theme="dark"] .login-card p,
+html[data-theme="dark"] .register-card p,
+html[data-theme="dark"] .auth-subtitle,
+html[data-theme="dark"] .login-subtitle {
+  color: #cbd5e1 !important;
+  opacity: 1 !important;
+}
+
+/* Label Email / Password */
+html[data-theme="dark"] .auth-card label,
+html[data-theme="dark"] .login-card label,
+html[data-theme="dark"] .register-card label,
+html[data-theme="dark"] .auth-label {
+  color: #e5e7eb !important;
+  opacity: 1 !important;
+  font-weight: 700 !important;
+}
+
+/* Input */
+html[data-theme="dark"] .auth-card input,
+html[data-theme="dark"] .login-card input,
+html[data-theme="dark"] .register-card input,
+html[data-theme="dark"] .auth-input {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1.5px solid #475569 !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="dark"] .auth-card input::placeholder,
+html[data-theme="dark"] .login-card input::placeholder,
+html[data-theme="dark"] .register-card input::placeholder,
+html[data-theme="dark"] .auth-input::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+/* Button Google */
+html[data-theme="dark"] .google-btn,
+html[data-theme="dark"] .auth-google,
+html[data-theme="dark"] .login-google {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1.5px solid #475569 !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="dark"] .google-btn:hover,
+html[data-theme="dark"] .auth-google:hover,
+html[data-theme="dark"] .login-google:hover {
+  background: #334155 !important;
+}
+
+/* Divider OR */
+html[data-theme="dark"] .auth-divider,
+html[data-theme="dark"] .login-divider,
+html[data-theme="dark"] .divider {
+  color: #cbd5e1 !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="dark"] .auth-divider::before,
+html[data-theme="dark"] .auth-divider::after,
+html[data-theme="dark"] .login-divider::before,
+html[data-theme="dark"] .login-divider::after,
+html[data-theme="dark"] .divider::before,
+html[data-theme="dark"] .divider::after {
+  background: #475569 !important;
+  border-color: #475569 !important;
+}
+
+/* Sign In button */
+html[data-theme="dark"] .auth-submit,
+html[data-theme="dark"] .login-submit,
+html[data-theme="dark"] .sign-in-btn {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  border: none !important;
+}
+
+html[data-theme="dark"] .auth-submit:disabled,
+html[data-theme="dark"] .login-submit:disabled,
+html[data-theme="dark"] .sign-in-btn:disabled {
+  background: #334155 !important;
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+/* Link register */
+html[data-theme="dark"] .auth-card a,
+html[data-theme="dark"] .login-card a,
+html[data-theme="dark"] .register-card a,
+html[data-theme="dark"] .auth-link {
+  color: #93c5fd !important;
+  opacity: 1 !important;
+  font-weight: 700 !important;
+}
+
+/* Icon đóng */
+html[data-theme="dark"] .auth-close,
+html[data-theme="dark"] .login-close,
+html[data-theme="dark"] .modal-close {
+  color: #cbd5e1 !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="dark"] .auth-close:hover,
+html[data-theme="dark"] .login-close:hover,
+html[data-theme="dark"] .modal-close:hover {
+  color: #ffffff !important;
+}

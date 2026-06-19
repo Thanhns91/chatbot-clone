@@ -1864,3 +1864,38 @@ $radius-btn: 10px;
   border-radius: inherit;
   display: block;
 }
+
+.td-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.td-file-download {
+  border: none;
+  background: transparent;
+  color: #16a34a;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    transform 0.15s;
+
+  &:hover {
+    color: #15803d;
+    transform: translateY(-1px);
+  }
+}
+
+.td-file-view--disabled {
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  opacity: 0.7;
+}
+
+.td-file-view--disabled:hover {
+  color: #94a3b8 !important;
+  transform: none !important;
+}

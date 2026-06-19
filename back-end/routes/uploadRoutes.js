@@ -195,8 +195,8 @@ async function getDuplicateInfo(contentHash) {
   };
 }
 
-async function notifyStudentsAboutTeacherUpload(documentDbId, fileName) {
-  if (!documentDbId) return;
+async function notifyStudentsAboutTeacherUpload(documentId, fileName) {
+  if (!documentId) return;
 
   const [students] = await pool.query(
     `
@@ -233,11 +233,11 @@ async function notifyStudentsAboutTeacherUpload(documentDbId, fileName) {
   );
 }
 
-async function safeNotifyTeacherUpload(uploadedBy, documentDbId, fileName) {
+async function safeNotifyTeacherUpload(uploadedBy, documentId, fileName) {
   if (uploadedBy !== "teacher") return;
 
   try {
-    await notifyStudentsAboutTeacherUpload(documentDbId, fileName);
+    await notifyStudentsAboutTeacherUpload(documentId, fileName);
   } catch (notifyError) {
     console.log("Create notification failed:", notifyError.message);
   }
@@ -382,9 +382,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         ],
       );
 
-      const documentDbId = insertResult.insertId;
-
-      await safeNotifyTeacherUpload(uploadedBy, documentDbId, fileName);
+      await safeNotifyTeacherUpload(uploadedBy, documentId, fileName);
 
       documents.push({
         documentId,

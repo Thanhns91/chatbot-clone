@@ -11,12 +11,14 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: #ffffff;
   }
 
   &__body {
     flex: 1;
     display: flex;
     overflow: hidden;
+    background: #ffffff;
   }
 
   &__content {
@@ -24,5 +26,113 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: #ffffff;
   }
+}
+
+/* =========================================================
+   DARK MODE FIX FOR CHAT LAYOUT
+========================================================= */
+
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+html[data-theme="dark"] #root {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .chat-layout,
+html[data-theme="dark"] .app-chat-layout,
+html[data-theme="dark"] .chat-layout__main,
+html[data-theme="dark"] .chat-layout__body,
+html[data-theme="dark"] .chat-layout__content {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+  border-color: #1e293b !important;
+}
+
+/* Ép phần con trong content không bị trắng */
+html[data-theme="dark"] .chat-layout__content > *,
+html[data-theme="dark"] .chat-layout__content main,
+html[data-theme="dark"] .chat-layout__content section,
+html[data-theme="dark"] .chat-layout__content article {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+}
+
+/* Welcome / empty chat */
+html[data-theme="dark"] .member-chat,
+html[data-theme="dark"] .member-chat__body,
+html[data-theme="dark"] .member-chat__welcome,
+html[data-theme="dark"] .welcome-screen,
+html[data-theme="dark"] .home-screen,
+html[data-theme="dark"] .chat-empty,
+html[data-theme="dark"] .empty-chat,
+html[data-theme="dark"] .start-screen {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .member-chat__title,
+html[data-theme="dark"] .welcome-screen h1,
+html[data-theme="dark"] .home-screen h1,
+html[data-theme="dark"] .chat-empty h1,
+html[data-theme="dark"] .empty-chat h1,
+html[data-theme="dark"] .start-screen h1 {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .member-chat__subtitle,
+html[data-theme="dark"] .welcome-screen p,
+html[data-theme="dark"] .home-screen p,
+html[data-theme="dark"] .chat-empty p,
+html[data-theme="dark"] .empty-chat p,
+html[data-theme="dark"] .start-screen p {
+  color: #94a3b8 !important;
+}
+
+/* Input bar dưới cùng */
+html[data-theme="dark"] .member-chat__input-bar,
+html[data-theme="dark"] .chat-input-bar,
+html[data-theme="dark"] .chat-input,
+html[data-theme="dark"] .input-area {
+  background: #111827 !important;
+  border-top-color: #1e293b !important;
+}
+
+html[data-theme="dark"] .member-chat__input.form-control,
+html[data-theme="dark"] .chat-input input,
+html[data-theme="dark"] .chat-input textarea,
+html[data-theme="dark"] .input-area input,
+html[data-theme="dark"] .input-area textarea {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Message bubble */
+html[data-theme="dark"] .member-chat__bubble--ai {
+  background: #1e293b !important;
+  color: #e5e7eb !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .member-chat__bubble--user {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .member-chat__document-info {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .member-chat__document-info b {
+  color: #ffffff !important;
 }

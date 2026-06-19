@@ -29,7 +29,7 @@ const ChatLayout = ({
   };
 
   return (
-    <div className="chat-layout">
+   <div className="chat-layout  app-chat-layout">
       <Sidebar
         conversations={conversations}
         activeId={activeId}
