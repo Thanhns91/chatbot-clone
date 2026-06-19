@@ -22,8 +22,26 @@ const upload = multer({
 });
 
 function cleanupFile(filePath) {
-  if (filePath && fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
+  try {
+    if (filePath && fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (error) {
+    console.log("Cleanup file failed:", error.message);
+  }
+}
+
+function fixFileNameEncoding(fileName = "") {
+  try {
+    const decoded = Buffer.from(fileName, "latin1").toString("utf8");
+
+    if (decoded.includes("�")) {
+      return fileName;
+    }
+
+    return decoded;
+  } catch {
+    return fileName;
   }
 }
 
@@ -45,10 +63,11 @@ function createContentHash(text) {
 }
 
 async function uploadDocumentToCloudinary(filePath, documentId, fileName) {
-  const safeName = fileName
-    .replace(/\.[^/.]+$/, "")
-    .replace(/[^\w-]+/g, "-")
-    .slice(0, 80);
+  const safeName =
+    fileName
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[^\w-]+/g, "-")
+      .slice(0, 80) || "document";
 
   const result = await cloudinary.uploader.upload(filePath, {
     folder: "ai-learning/documents",
@@ -104,6 +123,20 @@ async function extractText(filePath, originalName) {
   }
 
   throw new Error("Unsupported file type");
+}
+
+async function getUploaderInfo(uploaderId) {
+  const [userRows] = await pool.query(
+    `
+    SELECT userId, fullName, role, status
+    FROM Users
+    WHERE userId = ?
+    LIMIT 1
+    `,
+    [uploaderId],
+  );
+
+  return userRows[0] || null;
 }
 
 async function getDuplicateInfo(contentHash) {
@@ -200,6 +233,16 @@ async function notifyStudentsAboutTeacherUpload(documentDbId, fileName) {
   );
 }
 
+async function safeNotifyTeacherUpload(uploadedBy, documentDbId, fileName) {
+  if (uploadedBy !== "teacher") return;
+
+  try {
+    await notifyStudentsAboutTeacherUpload(documentDbId, fileName);
+  } catch (notifyError) {
+    console.log("Create notification failed:", notifyError.message);
+  }
+}
+
 router.post("/", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -209,10 +252,49 @@ router.post("/", upload.single("file"), async (req, res) => {
       });
     }
 
-    const fileName = req.file.originalname;
+    const fileName = fixFileNameEncoding(req.file.originalname);
     const fileType = req.file.mimetype;
-    const uploadedBy = req.body.uploadedBy || "student";
-    const uploaderId = Number(req.body.uploaderId) || 1;
+    const uploaderId = Number(req.body.uploaderId);
+
+    if (!uploaderId) {
+      cleanupFile(req.file.path);
+
+      return res.status(400).json({
+        success: false,
+        error: "Missing uploaderId",
+      });
+    }
+
+    const uploader = await getUploaderInfo(uploaderId);
+
+    if (!uploader) {
+      cleanupFile(req.file.path);
+
+      return res.status(404).json({
+        success: false,
+        error: "Uploader not found",
+      });
+    }
+
+    if (uploader.status === "blocked") {
+      cleanupFile(req.file.path);
+
+      return res.status(403).json({
+        success: false,
+        error: "Your account is blocked",
+      });
+    }
+
+    if (uploader.role === "admin") {
+      cleanupFile(req.file.path);
+
+      return res.status(403).json({
+        success: false,
+        error: "Admin is not allowed to upload documents",
+      });
+    }
+
+    const uploadedBy = uploader.role;
     const reviewStatus = uploadedBy === "teacher" ? "approved" : "private";
     const allowVersion =
       req.body.allowVersion === "true" || req.body.allowVersion === true;
@@ -228,12 +310,6 @@ router.post("/", upload.single("file"), async (req, res) => {
     const contentHash = createContentHash(text);
     const duplicateInfo = await getDuplicateInfo(contentHash);
 
-    /*
-      LOGIC ĐÚNG:
-      - File mới / nội dung khác: upload bình thường, versionNo = 1.
-      - Chỉ khi contentHash trùng: hỏi user có tạo version mới không.
-      - Nếu user đồng ý allowVersion=true: tạo version mới và dùng lại vectorDocumentId của file gốc.
-    */
     if (duplicateInfo) {
       const {
         originalDoc,
@@ -308,9 +384,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
       const documentDbId = insertResult.insertId;
 
-      if (uploadedBy === "teacher") {
-        await notifyStudentsAboutTeacherUpload(documentDbId, fileName);
-      }
+      await safeNotifyTeacherUpload(uploadedBy, documentDbId, fileName);
 
       documents.push({
         documentId,
@@ -352,7 +426,6 @@ router.post("/", upload.single("file"), async (req, res) => {
       });
     }
 
-    // FILE MỚI HOÀN TOÀN
     const versionGroupId = documentId;
     const versionNo = 1;
     const vectorDocumentId = documentId;
@@ -435,9 +508,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     const documentDbId = insertResult.insertId;
 
-    if (uploadedBy === "teacher") {
-      await notifyStudentsAboutTeacherUpload(documentDbId, fileName);
-    }
+    await safeNotifyTeacherUpload(uploadedBy, documentDbId, fileName);
 
     documents.push({
       documentId,

@@ -29,12 +29,27 @@ const NAV = [
 ];
 
 export default function TeacherSidebar({ user, page, setPage, onLogout }) {
-  const initial = user?.name?.charAt(0).toUpperCase() || "T";
+  const displayName = user?.fullName || user?.name || "Teacher User";
+  const initial = displayName?.charAt(0)?.toUpperCase() || "T";
+  const avatarUrl = user?.avatarUrl || user?.avatar_url || "";
+
+  const renderAvatar = (className) => {
+    if (avatarUrl) {
+      return (
+        <div className={className}>
+          <img src={avatarUrl} alt="Teacher avatar" />
+        </div>
+      );
+    }
+
+    return <div className={className}>{initial}</div>;
+  };
 
   return (
     <aside className="td-sidebar">
       <div className="td-sidebar__brand">
-        <div className="td-sidebar__avatar">{initial}</div>
+        {renderAvatar("td-sidebar__avatar")}
+
         <div>
           <div className="td-sidebar__brand-title">Teacher Dashboard</div>
           <div className="td-sidebar__brand-sub">AI Learning</div>
@@ -56,12 +71,10 @@ export default function TeacherSidebar({ user, page, setPage, onLogout }) {
       </nav>
 
       <div className="td-sidebar__footer">
-        <div className="td-sidebar__user-avatar">{initial}</div>
+        {renderAvatar("td-sidebar__user-avatar")}
 
         <div className="td-sidebar__user-info">
-          <div className="td-sidebar__user-name">
-            {user?.name || "Teacher User"}
-          </div>
+          <div className="td-sidebar__user-name">{displayName}</div>
           <div className="td-sidebar__user-role">Teacher</div>
         </div>
 

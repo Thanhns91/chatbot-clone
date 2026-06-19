@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { logout } from "../../services/authService";
 import {
+  getUserProfile,
   getChatSessions,
   createChatSession,
   deleteChatSession,
   getDocuments,
   updateChatSession,
 } from "../../services/api";
+
 import ChatLayout from "../Layout/ChatLayout";
 import UserAvatar from "./UserAvatar";
 import ChatArea from "./ChatArea";
@@ -37,6 +39,39 @@ const MemberPage = () => {
   const activeConversation = conversations.find(
     (item) => String(item.id) === String(activeId),
   );
+
+  useEffect(() => {
+    if (!userId) {
+      navigate("/");
+      return;
+    }
+
+    const checkStatus = async () => {
+      try {
+        const result = await getUserProfile(userId);
+
+        if (result.success && result.user?.status === "blocked") {
+          localStorage.removeItem("currentUser");
+          sessionStorage.removeItem("currentUser");
+          sessionStorage.setItem(
+            "blockedMessage",
+            "Tài khoản của bạn đã bị admin chặn.",
+          );
+
+          setUser(null);
+          navigate("/", { replace: true });
+        }
+      } catch (error) {
+        console.log("Cannot check user status:", error);
+      }
+    };
+
+    checkStatus();
+
+    const timer = setInterval(checkStatus, 5000);
+
+    return () => clearInterval(timer);
+  }, [userId, navigate]);
 
   useEffect(() => {
     const loadSessions = async () => {
@@ -69,7 +104,6 @@ const MemberPage = () => {
 
       try {
         const result = await getDocuments();
-
         const docs = Array.isArray(result) ? result : result?.data || [];
 
         const filteredDocs = docs.filter((doc) => {
@@ -130,7 +164,6 @@ const MemberPage = () => {
 
     try {
       const result = await createChatSession(userId, null, "New Chat");
-
       const newId = String(result.sessionId || result.id);
 
       const newConv = {

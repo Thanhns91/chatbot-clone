@@ -317,3 +317,8 @@ export async function markAllNotificationsAsRead(userId) {
 
   return res.json();
 }
+
+export async function getUserProfile(userId) {
+  const res = await fetch(`${API_URL}/users/${userId}/profile`);
+  return res.json();
+}

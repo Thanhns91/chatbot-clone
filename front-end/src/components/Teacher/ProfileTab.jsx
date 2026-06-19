@@ -20,7 +20,7 @@ const getStoredUser = () => {
   return raw ? JSON.parse(raw) : null;
 };
 
-const ProfileTab = ({ user }) => {
+const ProfileTab = ({ user , onUserUpdated}) => {
   const fileInputRef = useRef(null);
 
   const initialUser = user || getStoredUser() || {};
@@ -103,6 +103,14 @@ const ProfileTab = ({ user }) => {
     if (sessionStorage.getItem("user")) {
       sessionStorage.setItem("user", JSON.stringify(normalized));
     }
+
+    onUserUpdated?.(normalized);
+
+  window.dispatchEvent(
+    new CustomEvent("currentUserUpdated", {
+      detail: normalized,
+    })
+  );
 
     return normalized;
   };

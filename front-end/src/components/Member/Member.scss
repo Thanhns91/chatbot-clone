@@ -1518,3 +1518,99 @@ body.dark-mode .member-avatar__info span,
 body.theme-dark .member-avatar__info span {
   color: #94a3b8 !important;
 }
+
+/* =========================
+   FINAL FIX: CHAT SCROLL + DARK MODE
+========================= */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.chat-layout,
+.chat-layout__main,
+.chat-layout__body,
+.chat-layout__content,
+.member-chat {
+  min-height: 0;
+}
+
+.member-chat__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto !important;
+}
+
+.member-chat__messages {
+  min-height: auto !important;
+  justify-content: flex-start !important;
+}
+
+/* Dark mode full chat page */
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+html[data-theme="dark"] #root {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .chat-layout,
+html[data-theme="dark"] .chat-layout__main,
+html[data-theme="dark"] .chat-layout__body,
+html[data-theme="dark"] .chat-layout__content,
+html[data-theme="dark"] .member-chat,
+html[data-theme="dark"] .member-chat__body,
+html[data-theme="dark"] .home-screen,
+html[data-theme="dark"] .chat-empty,
+html[data-theme="dark"] .welcome-screen {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+}
+
+html[data-theme="dark"] .member-chat__title,
+html[data-theme="dark"] .home-screen h1,
+html[data-theme="dark"] .chat-empty h1,
+html[data-theme="dark"] .welcome-screen h1 {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .member-chat__subtitle,
+html[data-theme="dark"] .home-screen p,
+html[data-theme="dark"] .chat-empty p,
+html[data-theme="dark"] .welcome-screen p {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .member-chat__input-bar {
+  background: #111827 !important;
+  border-top-color: #1e293b !important;
+}
+
+html[data-theme="dark"] .member-chat__input.form-control {
+  background: #1e293b !important;
+  color: #e5e7eb !important;
+  border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .member-chat__bubble--ai {
+  background: #1e293b !important;
+  color: #e5e7eb !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .member-chat__bubble--user {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .member-chat__document-info {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .member-chat__document-info b {
+  color: #ffffff !important;
+}

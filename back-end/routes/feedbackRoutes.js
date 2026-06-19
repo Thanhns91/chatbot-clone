@@ -9,13 +9,8 @@ function extractSection(text, start, end) {
   return text.match(regex)?.[1]?.trim() || "";
 }
 
-function extractLastSection(text, start) {
-  const regex = new RegExp(`${start}:\\s*([\\s\\S]*)`, "i");
-  return text.match(regex)?.[1]?.trim() || "";
-}
-
 function extractScore(text) {
-  const match = text.match(/SCORE:\s*(\d+)/i);
+  const match = text.match(/SCORE:\\s*(\\d+)/i);
   if (!match) return null;
 
   const score = Number(match[1]);
@@ -29,16 +24,29 @@ router.get("/submissions", async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-        d.id,
-        d.documentId,
+        cs.sessionId,
+        cs.sessionId AS id,
+        cs.userId AS studentId,
+        cs.documentId,
+        cs.title AS sessionTitle,
+        cs.createdAt AS sessionCreatedAt,
+        cs.updatedAt AS sessionUpdatedAt,
+
+        u.fullName AS student,
+        u.email AS studentEmail,
+
+        d.id AS documentDbId,
         d.fileName,
         d.fileType,
         d.fileUrl,
         d.uploadDate,
+        d.uploadedBy,
         d.reviewStatus,
-        d.uploaderId AS studentId,
-        u.fullName AS student,
-        u.email AS studentEmail,
+
+        uploader.fullName AS uploaderName,
+
+        msgStats.messageCount,
+        msgStats.lastMessageAt,
 
         sf.feedbackId,
         sf.summary,
@@ -49,31 +57,65 @@ router.get("/submissions", async (req, res) => {
         sf.status AS feedbackStatus,
         sf.createdAt AS feedbackCreatedAt
 
-      FROM Documents d
-      JOIN Users u ON d.uploaderId = u.userId
+      FROM ChatSessions cs
+
+      INNER JOIN (
+        SELECT
+          cs0.userId,
+          cs0.documentId,
+          MAX(cs0.sessionId) AS latestSessionId
+        FROM ChatSessions cs0
+        INNER JOIN ChatMessages cm0 ON cs0.sessionId = cm0.sessionId
+        WHERE cs0.documentId IS NOT NULL
+        GROUP BY cs0.userId, cs0.documentId
+      ) latest
+        ON latest.latestSessionId = cs.sessionId
+
+      INNER JOIN Users u
+        ON cs.userId = u.userId
+       AND u.role = 'student'
+
+      INNER JOIN Documents d
+        ON cs.documentId = d.documentId
+       AND d.uploadStatus = 'success'
+
+      LEFT JOIN Users uploader
+        ON d.uploaderId = uploader.userId
+
+      INNER JOIN (
+        SELECT
+          sessionId,
+          COUNT(*) AS messageCount,
+          MAX(createdAt) AS lastMessageAt
+        FROM ChatMessages
+        GROUP BY sessionId
+      ) msgStats
+        ON msgStats.sessionId = cs.sessionId
+
+      LEFT JOIN (
+        SELECT
+          sf0.studentId,
+          sf0.documentId,
+          MAX(sf0.feedbackId) AS latestFeedbackId
+        FROM StudentFeedback sf0
+        GROUP BY sf0.studentId, sf0.documentId
+      ) latestFeedback
+        ON latestFeedback.studentId = cs.userId
+       AND latestFeedback.documentId = cs.documentId
 
       LEFT JOIN StudentFeedback sf
-        ON sf.feedbackId = (
-          SELECT sf2.feedbackId
-          FROM StudentFeedback sf2
-          WHERE sf2.studentId = d.uploaderId
-            AND sf2.documentId = d.documentId
-          ORDER BY sf2.createdAt DESC
-          LIMIT 1
-        )
+        ON sf.feedbackId = latestFeedback.latestFeedbackId
 
-      WHERE d.uploadedBy = 'student'
-  AND d.uploadStatus = 'success'
-  AND u.role = 'student'
-
-      ORDER BY d.uploadDate DESC
+      ORDER BY cs.updatedAt DESC, cs.createdAt DESC
     `);
 
     const data = rows.map((item) => ({
       ...item,
-      submittedAt: item.uploadDate
-        ? new Date(item.uploadDate).toISOString().split("T")[0]
-        : "-",
+      submittedAt: item.lastMessageAt
+        ? new Date(item.lastMessageAt).toISOString().split("T")[0]
+        : item.sessionUpdatedAt
+          ? new Date(item.sessionUpdatedAt).toISOString().split("T")[0]
+          : "-",
       status: item.feedbackId ? "reviewed" : "pending",
     }));
 
@@ -107,7 +149,8 @@ router.post("/generate", async (req, res) => {
       `
       SELECT userId, fullName, email
       FROM Users
-      WHERE userId = ? AND role = 'student'
+      WHERE userId = ?
+        AND role = 'student'
       LIMIT 1
       `,
       [studentId],
@@ -124,21 +167,21 @@ router.post("/generate", async (req, res) => {
 
     const [docRows] = await pool.query(
       `
-  SELECT
-    d.documentId,
-    d.fileName,
-    d.fileUrl,
-    d.uploadDate
-  FROM Documents d
-  INNER JOIN Users u ON d.uploaderId = u.userId
-  WHERE d.documentId = ?
-    AND d.uploaderId = ?
-    AND d.uploadedBy = 'student'
-    AND d.uploadStatus = 'success'
-    AND u.role = 'student'
-  LIMIT 1
-  `,
-      [documentId, studentId],
+      SELECT
+        d.documentId,
+        d.fileName,
+        d.fileUrl,
+        d.uploadDate,
+        d.uploadedBy,
+        d.reviewStatus,
+        uploader.fullName AS uploaderName
+      FROM Documents d
+      LEFT JOIN Users uploader ON d.uploaderId = uploader.userId
+      WHERE d.documentId = ?
+        AND d.uploadStatus = 'success'
+      LIMIT 1
+      `,
+      [documentId],
     );
 
     if (docRows.length === 0) {
@@ -159,10 +202,10 @@ router.post("/generate", async (req, res) => {
         cm.message,
         cm.createdAt
       FROM ChatSessions cs
-      JOIN ChatMessages cm ON cs.sessionId = cm.sessionId
+      INNER JOIN ChatMessages cm ON cs.sessionId = cm.sessionId
       WHERE cs.userId = ?
         AND cs.documentId = ?
-      ORDER BY cm.createdAt ASC
+      ORDER BY cs.createdAt ASC, cm.createdAt ASC
       `,
       [studentId, documentId],
     );
@@ -175,7 +218,7 @@ router.post("/generate", async (req, res) => {
       });
     }
 
-    const sessionId = messages[0]?.sessionId || null;
+    const sessionId = messages[messages.length - 1]?.sessionId || null;
 
     const chatHistory = messages
       .map((msg) => `${String(msg.sender).toUpperCase()}: ${msg.message}`)
@@ -193,6 +236,7 @@ Dựa trên lịch sử hỏi đáp giữa học sinh và chatbot, hãy phân t�
 THÔNG TIN:
 Student: ${student.fullName}
 Document: ${document.fileName}
+Document uploaded by: ${document.uploadedBy}
 
 LỊCH SỬ CHAT:
 ${chatHistory}
@@ -303,25 +347,46 @@ router.post("/ask", async (req, res) => {
       });
     }
 
+    const [studentRows] = await pool.query(
+      `
+      SELECT userId, fullName, email
+      FROM Users
+      WHERE userId = ?
+        AND role = 'student'
+      LIMIT 1
+      `,
+      [studentId],
+    );
+
+    if (studentRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    const student = studentRows[0];
+
     const [docRows] = await pool.query(
-  `
-  SELECT d.documentId, d.fileName, u.fullName AS student
-  FROM Documents d
-  INNER JOIN Users u ON d.uploaderId = u.userId
-  WHERE d.documentId = ?
-    AND d.uploaderId = ?
-    AND d.uploadedBy = 'student'
-    AND d.uploadStatus = 'success'
-    AND u.role = 'student'
-  LIMIT 1
-  `,
-  [documentId, studentId]
-);
+      `
+      SELECT
+        d.documentId,
+        d.fileName,
+        d.uploadedBy,
+        uploader.fullName AS uploaderName
+      FROM Documents d
+      LEFT JOIN Users uploader ON d.uploaderId = uploader.userId
+      WHERE d.documentId = ?
+        AND d.uploadStatus = 'success'
+      LIMIT 1
+      `,
+      [documentId],
+    );
 
     if (docRows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Submission not found",
+        message: "Document not found",
       });
     }
 
@@ -343,10 +408,10 @@ router.post("/ask", async (req, res) => {
       `
       SELECT cm.sender, cm.message, cm.createdAt
       FROM ChatSessions cs
-      JOIN ChatMessages cm ON cs.sessionId = cm.sessionId
+      INNER JOIN ChatMessages cm ON cs.sessionId = cm.sessionId
       WHERE cs.userId = ?
         AND cs.documentId = ?
-      ORDER BY cm.createdAt ASC
+      ORDER BY cs.createdAt ASC, cm.createdAt ASC
       `,
       [studentId, documentId],
     );
@@ -360,9 +425,10 @@ router.post("/ask", async (req, res) => {
     const prompt = `
 Bạn là trợ lý cho giáo viên.
 
-Giáo viên đang xem feedback học sinh:
-Student: ${doc.student}
+Giáo viên đang xem quá trình học của học sinh:
+Student: ${student.fullName}
 File: ${doc.fileName}
+File uploaded by: ${doc.uploadedBy}
 
 FEEDBACK HIỆN CÓ:
 Summary: ${feedback?.summary || "Chưa có"}

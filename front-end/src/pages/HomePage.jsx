@@ -8,7 +8,6 @@ import logo7 from "../assets/images/7.png";
 import Form from "react-bootstrap/Form";
 import "./HomePage.scss";
 
-// Slug hoá tên: "Member User" -> "member-user"
 const toSlug = (name = "") =>
   name
     .trim()
