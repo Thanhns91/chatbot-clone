@@ -6,13 +6,8 @@ const getFileIcon = (fileName = "") => {
   const lower = fileName.toLowerCase();
 
   if (lower.endsWith(".pdf")) return "bi bi-file-earmark-pdf";
-
   if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
     return "bi bi-file-earmark-word";
-  }
-
-  if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
-    return "bi bi-file-earmark-excel";
   }
 
   return "bi bi-file-earmark-text";
@@ -29,6 +24,62 @@ const formatDate = (date) => {
   } catch {
     return "";
   }
+};
+
+const getDocumentUrl = (doc) => {
+  return (
+    doc?.fileUrl ||
+    doc?.file_url ||
+    doc?.url ||
+    doc?.downloadUrl ||
+    doc?.download_url ||
+    doc?.secure_url ||
+    ""
+  );
+};
+
+const getSubjectLabel = (doc) => {
+  if (doc.subjectCode && doc.subjectName) {
+    return `${doc.subjectCode} - ${doc.subjectName}`;
+  }
+
+  return doc.subjectName || doc.subjectCode || "No Subject";
+};
+
+const getTopicLabel = (doc) => {
+  return doc.topicName || "Uncategorized";
+};
+
+const groupByMetadata = (files) => {
+  const subjectMap = new Map();
+
+  files.forEach((doc) => {
+    const subjectKey = `${doc.subjectId || "none"}-${getSubjectLabel(doc)}`;
+    const topicKey = `${doc.topicId || "none"}-${getTopicLabel(doc)}`;
+
+    if (!subjectMap.has(subjectKey)) {
+      subjectMap.set(subjectKey, {
+        label: getSubjectLabel(doc),
+        topics: new Map(),
+      });
+    }
+
+    const subjectGroup = subjectMap.get(subjectKey);
+
+    if (!subjectGroup.topics.has(topicKey)) {
+      subjectGroup.topics.set(topicKey, {
+        label: getTopicLabel(doc),
+        files: [],
+      });
+    }
+
+    subjectGroup.topics.get(topicKey).files.push(doc);
+  });
+
+  return Array.from(subjectMap.values()).map((subject) => ({
+    ...subject,
+    topics: Array.from(subject.topics.values()),
+  }));
 };
 
 const LibraryPanel = ({
@@ -49,22 +100,14 @@ const LibraryPanel = ({
   }, [documents]);
 
   const currentFiles = activeTab === "teacher" ? teacherFiles : studentFiles;
+  const groupedFiles = useMemo(() => groupByMetadata(currentFiles), [currentFiles]);
 
   const handleOpenFile = (doc) => {
-    const fileUrl =
-      doc?.fileUrl ||
-      doc?.file_url ||
-      doc?.url ||
-      doc?.downloadUrl ||
-      doc?.download_url ||
-      doc?.secure_url;
+    const rawUrl = getDocumentUrl(doc);
 
-    if (!fileUrl) {
-      alert("File này chưa có link để mở.");
-      return;
-    }
+    if (!rawUrl) return;
 
-    window.open(fileUrl, "_blank", "noopener,noreferrer");
+    window.open(rawUrl, "_blank", "noopener,noreferrer");
   };
 
   const renderEmpty = () => (
@@ -119,17 +162,18 @@ const LibraryPanel = ({
         </div>
 
         <div className="lesson-card__meta">
-          {doc.fileType || "Document"} &nbsp;·&nbsp;
-          {doc.versionNo ? ` Version ${doc.versionNo}` : " Version 1"}
-          {doc.uploadDate ? ` · ${formatDate(doc.uploadDate)}` : ""}
+          {doc.documentTypeName || doc.fileType || "Document"}
+          {doc.levelName ? ` · ${doc.levelName}` : ""}
+          {" · "}
+          {formatDate(doc.uploadDate)}
         </div>
 
-        <div className="lesson-card__actions lesson-card__actions--two">
+        <div className="lesson-card__actions">
           <Button
             variant="outline-secondary"
             className="lesson-card__btn-open"
             onClick={() => handleOpenFile(doc)}
-            disabled={!doc.fileUrl}
+            disabled={!getDocumentUrl(doc)}
           >
             <i className="bi bi-box-arrow-up-right me-1"></i>
             Open
@@ -200,7 +244,23 @@ const LibraryPanel = ({
         <div className="library-panel__list">
           {currentFiles.length === 0
             ? renderEmpty()
-            : currentFiles.map(renderFileCard)}
+            : groupedFiles.map((subject) => (
+                <div key={subject.label} className="library-meta-group">
+                  <div className="library-meta-group__subject">
+                    <i className="bi bi-folder2-open"></i>
+                    {subject.label}
+                  </div>
+
+                  {subject.topics.map((topic) => (
+                    <div key={`${subject.label}-${topic.label}`}>
+                      <div className="library-meta-group__topic">
+                        {topic.label}
+                      </div>
+                      {topic.files.map(renderFileCard)}
+                    </div>
+                  ))}
+                </div>
+              ))}
         </div>
       </div>
     </div>

@@ -9,8 +9,13 @@ function extractSection(text, start, end) {
   return text.match(regex)?.[1]?.trim() || "";
 }
 
+function extractLastSection(text, start) {
+  const regex = new RegExp(`${start}:\\s*([\\s\\S]*)`, "i");
+  return text.match(regex)?.[1]?.trim() || "";
+}
+
 function extractScore(text) {
-  const match = text.match(/SCORE:\\s*(\\d+)/i);
+  const match = text.match(/SCORE:\s*(\d+)/i);
   if (!match) return null;
 
   const score = Number(match[1]);
@@ -24,29 +29,16 @@ router.get("/submissions", async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-        cs.sessionId,
-        cs.sessionId AS id,
-        cs.userId AS studentId,
-        cs.documentId,
-        cs.title AS sessionTitle,
-        cs.createdAt AS sessionCreatedAt,
-        cs.updatedAt AS sessionUpdatedAt,
-
-        u.fullName AS student,
-        u.email AS studentEmail,
-
-        d.id AS documentDbId,
+        d.id,
+        d.documentId,
         d.fileName,
         d.fileType,
         d.fileUrl,
         d.uploadDate,
-        d.uploadedBy,
         d.reviewStatus,
-
-        uploader.fullName AS uploaderName,
-
-        msgStats.messageCount,
-        msgStats.lastMessageAt,
+        d.uploaderId AS studentId,
+        u.fullName AS student,
+        u.email AS studentEmail,
 
         sf.feedbackId,
         sf.summary,
@@ -57,65 +49,30 @@ router.get("/submissions", async (req, res) => {
         sf.status AS feedbackStatus,
         sf.createdAt AS feedbackCreatedAt
 
-      FROM ChatSessions cs
-
-      INNER JOIN (
-        SELECT
-          cs0.userId,
-          cs0.documentId,
-          MAX(cs0.sessionId) AS latestSessionId
-        FROM ChatSessions cs0
-        INNER JOIN ChatMessages cm0 ON cs0.sessionId = cm0.sessionId
-        WHERE cs0.documentId IS NOT NULL
-        GROUP BY cs0.userId, cs0.documentId
-      ) latest
-        ON latest.latestSessionId = cs.sessionId
-
-      INNER JOIN Users u
-        ON cs.userId = u.userId
-       AND u.role = 'student'
-
-      INNER JOIN Documents d
-        ON cs.documentId = d.documentId
-       AND d.uploadStatus = 'success'
-
-      LEFT JOIN Users uploader
-        ON d.uploaderId = uploader.userId
-
-      INNER JOIN (
-        SELECT
-          sessionId,
-          COUNT(*) AS messageCount,
-          MAX(createdAt) AS lastMessageAt
-        FROM ChatMessages
-        GROUP BY sessionId
-      ) msgStats
-        ON msgStats.sessionId = cs.sessionId
-
-      LEFT JOIN (
-        SELECT
-          sf0.studentId,
-          sf0.documentId,
-          MAX(sf0.feedbackId) AS latestFeedbackId
-        FROM StudentFeedback sf0
-        GROUP BY sf0.studentId, sf0.documentId
-      ) latestFeedback
-        ON latestFeedback.studentId = cs.userId
-       AND latestFeedback.documentId = cs.documentId
+      FROM Documents d
+      JOIN Users u ON d.uploaderId = u.userId
 
       LEFT JOIN StudentFeedback sf
-        ON sf.feedbackId = latestFeedback.latestFeedbackId
+        ON sf.feedbackId = (
+          SELECT sf2.feedbackId
+          FROM StudentFeedback sf2
+          WHERE sf2.studentId = d.uploaderId
+            AND sf2.documentId = d.documentId
+          ORDER BY sf2.createdAt DESC
+          LIMIT 1
+        )
 
-      ORDER BY cs.updatedAt DESC, cs.createdAt DESC
+      WHERE d.uploadedBy = 'student'
+        AND d.uploadStatus = 'success'
+
+      ORDER BY d.uploadDate DESC
     `);
 
     const data = rows.map((item) => ({
       ...item,
-      submittedAt: item.lastMessageAt
-        ? new Date(item.lastMessageAt).toISOString().split("T")[0]
-        : item.sessionUpdatedAt
-          ? new Date(item.sessionUpdatedAt).toISOString().split("T")[0]
-          : "-",
+      submittedAt: item.uploadDate
+        ? new Date(item.uploadDate).toISOString().split("T")[0]
+        : "-",
       status: item.feedbackId ? "reviewed" : "pending",
     }));
 
@@ -149,11 +106,10 @@ router.post("/generate", async (req, res) => {
       `
       SELECT userId, fullName, email
       FROM Users
-      WHERE userId = ?
-        AND role = 'student'
+      WHERE userId = ? AND role = 'student'
       LIMIT 1
       `,
-      [studentId],
+      [studentId]
     );
 
     if (studentRows.length === 0) {
@@ -167,21 +123,12 @@ router.post("/generate", async (req, res) => {
 
     const [docRows] = await pool.query(
       `
-      SELECT
-        d.documentId,
-        d.fileName,
-        d.fileUrl,
-        d.uploadDate,
-        d.uploadedBy,
-        d.reviewStatus,
-        uploader.fullName AS uploaderName
-      FROM Documents d
-      LEFT JOIN Users uploader ON d.uploaderId = uploader.userId
-      WHERE d.documentId = ?
-        AND d.uploadStatus = 'success'
+      SELECT documentId, fileName, fileUrl, uploadDate
+      FROM Documents
+      WHERE documentId = ?
       LIMIT 1
       `,
-      [documentId],
+      [documentId]
     );
 
     if (docRows.length === 0) {
@@ -202,12 +149,12 @@ router.post("/generate", async (req, res) => {
         cm.message,
         cm.createdAt
       FROM ChatSessions cs
-      INNER JOIN ChatMessages cm ON cs.sessionId = cm.sessionId
+      JOIN ChatMessages cm ON cs.sessionId = cm.sessionId
       WHERE cs.userId = ?
         AND cs.documentId = ?
-      ORDER BY cs.createdAt ASC, cm.createdAt ASC
+      ORDER BY cm.createdAt ASC
       `,
-      [studentId, documentId],
+      [studentId, documentId]
     );
 
     if (messages.length === 0) {
@@ -218,7 +165,7 @@ router.post("/generate", async (req, res) => {
       });
     }
 
-    const sessionId = messages[messages.length - 1]?.sessionId || null;
+    const sessionId = messages[0]?.sessionId || null;
 
     const chatHistory = messages
       .map((msg) => `${String(msg.sender).toUpperCase()}: ${msg.message}`)
@@ -236,7 +183,6 @@ Dựa trên lịch sử hỏi đáp giữa học sinh và chatbot, hãy phân t�
 THÔNG TIN:
 Student: ${student.fullName}
 Document: ${document.fileName}
-Document uploaded by: ${document.uploadedBy}
 
 LỊCH SỬ CHAT:
 ${chatHistory}
@@ -264,16 +210,8 @@ Cho điểm từ 0 đến 100 dựa trên mức độ hiểu bài thể hiện q
 
     const summary = extractSection(aiResult, "SUMMARY", "STRENGTHS");
     const strengths = extractSection(aiResult, "STRENGTHS", "WEAKNESSES");
-    const weaknesses = extractSection(
-      aiResult,
-      "WEAKNESSES",
-      "RECOMMENDATIONS",
-    );
-    const recommendations = extractSection(
-      aiResult,
-      "RECOMMENDATIONS",
-      "SCORE",
-    );
+    const weaknesses = extractSection(aiResult, "WEAKNESSES", "RECOMMENDATIONS");
+    const recommendations = extractSection(aiResult, "RECOMMENDATIONS", "SCORE");
     const score = extractScore(aiResult);
 
     const [insertResult] = await pool.query(
@@ -303,7 +241,7 @@ Cho điểm từ 0 đến 100 dựa trên mức độ hiểu bài thể hiện q
         weaknesses,
         recommendations,
         score,
-      ],
+      ]
     );
 
     res.json({
@@ -347,46 +285,22 @@ router.post("/ask", async (req, res) => {
       });
     }
 
-    const [studentRows] = await pool.query(
-      `
-      SELECT userId, fullName, email
-      FROM Users
-      WHERE userId = ?
-        AND role = 'student'
-      LIMIT 1
-      `,
-      [studentId],
-    );
-
-    if (studentRows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Student not found",
-      });
-    }
-
-    const student = studentRows[0];
-
     const [docRows] = await pool.query(
       `
-      SELECT
-        d.documentId,
-        d.fileName,
-        d.uploadedBy,
-        uploader.fullName AS uploaderName
+      SELECT d.documentId, d.fileName, u.fullName AS student
       FROM Documents d
-      LEFT JOIN Users uploader ON d.uploaderId = uploader.userId
+      JOIN Users u ON d.uploaderId = u.userId
       WHERE d.documentId = ?
-        AND d.uploadStatus = 'success'
+        AND d.uploaderId = ?
       LIMIT 1
       `,
-      [documentId],
+      [documentId, studentId]
     );
 
     if (docRows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Document not found",
+        message: "Submission not found",
       });
     }
 
@@ -401,19 +315,19 @@ router.post("/ask", async (req, res) => {
       ORDER BY createdAt DESC
       LIMIT 1
       `,
-      [studentId, documentId],
+      [studentId, documentId]
     );
 
     const [messages] = await pool.query(
       `
       SELECT cm.sender, cm.message, cm.createdAt
       FROM ChatSessions cs
-      INNER JOIN ChatMessages cm ON cs.sessionId = cm.sessionId
+      JOIN ChatMessages cm ON cs.sessionId = cm.sessionId
       WHERE cs.userId = ?
         AND cs.documentId = ?
-      ORDER BY cs.createdAt ASC, cm.createdAt ASC
+      ORDER BY cm.createdAt ASC
       `,
-      [studentId, documentId],
+      [studentId, documentId]
     );
 
     const feedback = feedbackRows[0];
@@ -425,10 +339,9 @@ router.post("/ask", async (req, res) => {
     const prompt = `
 Bạn là trợ lý cho giáo viên.
 
-Giáo viên đang xem quá trình học của học sinh:
-Student: ${student.fullName}
+Giáo viên đang xem feedback học sinh:
+Student: ${doc.student}
 File: ${doc.fileName}
-File uploaded by: ${doc.uploadedBy}
 
 FEEDBACK HIỆN CÓ:
 Summary: ${feedback?.summary || "Chưa có"}

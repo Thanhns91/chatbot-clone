@@ -1,12 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import ListGroup from "react-bootstrap/ListGroup";
+import Row from "react-bootstrap/Row";
+import Col from "react-bootstrap/Col";
+import Form from "react-bootstrap/Form";
+import Alert from "react-bootstrap/Alert";
 import {
-  API_URL,
   uploadTeacherFile,
   getTeacherUploadHistory,
   deleteDocument,
+  getMetadata,
+  createSubject,
+  createTopic,
 } from "../../services/api";
 
 const getCurrentUser = () => {
@@ -21,15 +27,12 @@ const getFileType = (fileName = "", fileType = "") => {
   const lowerName = fileName.toLowerCase();
   const lowerType = fileType.toLowerCase();
 
-  if (lowerName.endsWith(".pdf") || lowerType.includes("pdf")) {
-    return "pdf";
-  }
+  if (lowerName.endsWith(".pdf") || lowerType.includes("pdf")) return "pdf";
 
   if (
     lowerName.endsWith(".doc") ||
     lowerName.endsWith(".docx") ||
-    lowerType.includes("word") ||
-    lowerType.includes("document")
+    lowerType.includes("word")
   ) {
     return "docx";
   }
@@ -67,6 +70,15 @@ const formatDate = (date) => {
   return new Date(date).toISOString().split("T")[0];
 };
 
+const defaultUploadMeta = {
+  subjectId: "",
+  topicId: "",
+  documentTypeId: "",
+  levelId: "",
+  tags: "",
+  summary: "",
+};
+
 export default function MaterialsTab() {
   const fileRef = useRef(null);
 
@@ -74,8 +86,36 @@ export default function MaterialsTab() {
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [subjects, setSubjects] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [documentTypes, setDocumentTypes] = useState([]);
+  const [documentLevels, setDocumentLevels] = useState([]);
+
+  const [uploadMeta, setUploadMeta] = useState(defaultUploadMeta);
+  const [newSubject, setNewSubject] = useState({
+    subjectCode: "",
+    subjectName: "",
+    description: "",
+  });
+  const [newTopic, setNewTopic] = useState({
+    subjectId: "",
+    topicName: "",
+    description: "",
+  });
 
   const currentUser = getCurrentUser();
+
+  const filteredTopics = useMemo(() => {
+    if (!uploadMeta.subjectId) return topics;
+
+    return topics.filter(
+      (topic) => String(topic.subjectId) === String(uploadMeta.subjectId),
+    );
+  }, [topics, uploadMeta.subjectId]);
+
+  const newTopicSubjects = subjects;
 
   const fetchUploadHistory = async () => {
     try {
@@ -90,24 +130,97 @@ export default function MaterialsTab() {
     }
   };
 
+  const fetchMetadata = async () => {
+    try {
+      const data = await getMetadata();
+
+      if (data.success) {
+        const loadedSubjects = data.subjects || [];
+        const loadedTopics = data.topics || [];
+        const loadedTypes = data.documentTypes || [];
+        const loadedLevels = data.documentLevels || [];
+
+        setSubjects(loadedSubjects);
+        setTopics(loadedTopics);
+        setDocumentTypes(loadedTypes);
+        setDocumentLevels(loadedLevels);
+
+        setUploadMeta((prev) => {
+          const nextSubjectId = prev.subjectId || loadedSubjects[0]?.subjectId || "";
+          const topicOfSubject = loadedTopics.find(
+            (topic) => String(topic.subjectId) === String(nextSubjectId),
+          );
+
+          return {
+            ...prev,
+            subjectId: nextSubjectId,
+            topicId: prev.topicId || topicOfSubject?.topicId || "",
+            documentTypeId: prev.documentTypeId || loadedTypes[0]?.documentTypeId || "",
+            levelId: prev.levelId || loadedLevels[0]?.levelId || "",
+          };
+        });
+
+        setNewTopic((prev) => ({
+          ...prev,
+          subjectId: prev.subjectId || loadedSubjects[0]?.subjectId || "",
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Cannot load metadata");
+    }
+  };
+
   useEffect(() => {
+    fetchMetadata();
     fetchUploadHistory();
   }, []);
+
+  useEffect(() => {
+    if (!uploadMeta.subjectId) return;
+
+    const stillValid = filteredTopics.some(
+      (topic) => String(topic.topicId) === String(uploadMeta.topicId),
+    );
+
+    if (!stillValid) {
+      setUploadMeta((prev) => ({
+        ...prev,
+        topicId: filteredTopics[0]?.topicId || "",
+      }));
+    }
+  }, [uploadMeta.subjectId, filteredTopics]);
 
   const validateFile = (file) => {
     const name = file.name.toLowerCase();
 
-    if (!name.endsWith(".pdf") && !name.endsWith(".docx")) {
-      return "Only PDF and DOCX files are allowed.";
+    if (!name.endsWith(".pdf") && !name.endsWith(".docx") && !name.endsWith(".doc")) {
+      return "Only PDF, DOC and DOCX files are allowed.";
     }
 
     return "";
   };
 
+  const validateMetadataBeforeUpload = () => {
+    if (!uploadMeta.subjectId) return "Please select a subject.";
+    if (!uploadMeta.topicId) return "Please select a topic.";
+    if (!uploadMeta.documentTypeId) return "Please select a document type.";
+    if (!uploadMeta.levelId) return "Please select a level.";
+
+    return "";
+  };
+
+  const uploadWithMeta = async (file, extraOptions = {}) => {
+    return uploadTeacherFile(file, currentUser?.userId, {
+      ...uploadMeta,
+      ...extraOptions,
+    });
+  };
+
   const handleUploadFile = async (file) => {
     if (!file) return;
 
-    const validateMessage = validateFile(file);
+    const validateMessage = validateFile(file) || validateMetadataBeforeUpload();
 
     if (validateMessage) {
       setError(validateMessage);
@@ -116,26 +229,28 @@ export default function MaterialsTab() {
 
     setUploading(true);
     setError("");
+    setSuccess("");
 
     try {
-      const data = await uploadTeacherFile(file, currentUser?.userId);
+      const data = await uploadWithMeta(file);
 
       if (data.needConfirm) {
-        const ok = confirm(data.message);
+        const saveAsVersion = window.confirm(
+          `${data.message}\n\nOK = Save as new version\nCancel = Replace old file`,
+        );
 
-        if (ok) {
-          const retry = await uploadTeacherFile(file, currentUser?.userId, {
-            allowVersion: true,
-          });
+        const retry = await uploadWithMeta(file, {
+          duplicateAction: saveAsVersion ? "new_version" : "replace_old",
+          replaceDocumentId: data.existingDocumentId,
+          allowVersion: saveAsVersion,
+        });
 
-          if (retry.success) {
-            await fetchUploadHistory();
-            setError("");
-          } else {
-            setError(retry.error || retry.message || "Upload failed");
-          }
-        } else {
+        if (retry.success) {
+          await fetchUploadHistory();
+          setSuccess(retry.message || "Upload successful");
           setError("");
+        } else {
+          setError(retry.error || retry.message || "Upload failed");
         }
 
         return;
@@ -143,13 +258,14 @@ export default function MaterialsTab() {
 
       if (data.success) {
         await fetchUploadHistory();
+        setSuccess(data.message || "Upload successful");
         setError("");
       } else {
         setError(data.error || data.message || "Upload failed");
       }
     } catch (err) {
       console.error(err);
-      setError("Cannot connect to server");
+      setError(err.message || "Cannot connect to server");
     } finally {
       setUploading(false);
 
@@ -175,21 +291,12 @@ export default function MaterialsTab() {
   const getDocumentUrl = (file) => {
     if (!file?.fileUrl) return "#";
 
-    if (file.fileUrl.startsWith("http")) {
-      return file.fileUrl;
-    }
+    if (file.fileUrl.startsWith("http")) return file.fileUrl;
 
     return file.fileUrl;
   };
 
   const handleView = (file) => {
-    const type = getFileType(file.fileName, file.fileType);
-
-    if (type !== "pdf") {
-      alert("DOC/DOCX files cannot be previewed. Please download the file.");
-      return;
-    }
-
     const url = getDocumentUrl(file);
 
     if (url === "#") {
@@ -198,19 +305,6 @@ export default function MaterialsTab() {
     }
 
     window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  const handleDownload = (file) => {
-    if (!file?.documentId) {
-      alert("Không tìm thấy documentId để tải file.");
-      return;
-    }
-
-    window.open(
-      `${API_URL}/documents/download/${file.documentId}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
   };
 
   const handleDelete = async (documentId) => {
@@ -231,8 +325,253 @@ export default function MaterialsTab() {
     }
   };
 
+  const handleCreateSubject = async (e) => {
+    e.preventDefault();
+
+    if (!newSubject.subjectName.trim()) {
+      setError("Subject name is required.");
+      return;
+    }
+
+    try {
+      await createSubject({
+        ...newSubject,
+        createdBy: currentUser?.userId,
+      });
+
+      setNewSubject({ subjectCode: "", subjectName: "", description: "" });
+      setSuccess("Subject created.");
+      setError("");
+      await fetchMetadata();
+    } catch (err) {
+      setError(err.message || "Cannot create subject");
+    }
+  };
+
+  const handleCreateTopic = async (e) => {
+    e.preventDefault();
+
+    if (!newTopic.subjectId || !newTopic.topicName.trim()) {
+      setError("Subject and topic name are required.");
+      return;
+    }
+
+    try {
+      await createTopic({
+        ...newTopic,
+        createdBy: currentUser?.userId,
+      });
+
+      setNewTopic((prev) => ({ ...prev, topicName: "", description: "" }));
+      setSuccess("Topic created.");
+      setError("");
+      await fetchMetadata();
+    } catch (err) {
+      setError(err.message || "Cannot create topic");
+    }
+  };
+
   return (
     <>
+      <Card className="td-card mb-3">
+        <Card.Body>
+          <div className="td-section-label">Document Metadata</div>
+          <p className="td-empty-text mb-3">
+            Select metadata before uploading so the file appears in the correct subject and topic.
+          </p>
+
+          {error && <Alert variant="danger">{error}</Alert>}
+          {success && <Alert variant="success">{success}</Alert>}
+
+          <Row className="g-3">
+            <Col md={3}>
+              <Form.Label>Subject</Form.Label>
+              <Form.Select
+                value={uploadMeta.subjectId}
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({
+                    ...prev,
+                    subjectId: e.target.value,
+                    topicId: "",
+                  }))
+                }
+              >
+                <option value="">Select subject</option>
+                {subjects.map((subject) => (
+                  <option key={subject.subjectId} value={subject.subjectId}>
+                    {subject.subjectCode
+                      ? `${subject.subjectCode} - ${subject.subjectName}`
+                      : subject.subjectName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={3}>
+              <Form.Label>Topic</Form.Label>
+              <Form.Select
+                value={uploadMeta.topicId}
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({ ...prev, topicId: e.target.value }))
+                }
+              >
+                <option value="">Select topic</option>
+                {filteredTopics.map((topic) => (
+                  <option key={topic.topicId} value={topic.topicId}>
+                    {topic.topicName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={3}>
+              <Form.Label>Type</Form.Label>
+              <Form.Select
+                value={uploadMeta.documentTypeId}
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({
+                    ...prev,
+                    documentTypeId: e.target.value,
+                  }))
+                }
+              >
+                <option value="">Select type</option>
+                {documentTypes.map((type) => (
+                  <option key={type.documentTypeId} value={type.documentTypeId}>
+                    {type.typeName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={3}>
+              <Form.Label>Level</Form.Label>
+              <Form.Select
+                value={uploadMeta.levelId}
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({ ...prev, levelId: e.target.value }))
+                }
+              >
+                <option value="">Select level</option>
+                {documentLevels.map((level) => (
+                  <option key={level.levelId} value={level.levelId}>
+                    {level.levelName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={8}>
+              <Form.Label>Tags</Form.Label>
+              <Form.Control
+                value={uploadMeta.tags}
+                placeholder="rag, chatbot, requirement"
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({ ...prev, tags: e.target.value }))
+                }
+              />
+            </Col>
+
+            <Col md={4}>
+              <Form.Label>Short Summary</Form.Label>
+              <Form.Control
+                value={uploadMeta.summary}
+                placeholder="Optional"
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({ ...prev, summary: e.target.value }))
+                }
+              />
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+
+      <Card className="td-card mb-3">
+        <Card.Body>
+          <div className="td-section-label">Create Metadata</div>
+
+          <Row className="g-3">
+            <Col lg={6}>
+              <Form onSubmit={handleCreateSubject}>
+                <Row className="g-2">
+                  <Col md={4}>
+                    <Form.Control
+                      placeholder="Code"
+                      value={newSubject.subjectCode}
+                      onChange={(e) =>
+                        setNewSubject((prev) => ({
+                          ...prev,
+                          subjectCode: e.target.value,
+                        }))
+                      }
+                    />
+                  </Col>
+                  <Col md={5}>
+                    <Form.Control
+                      placeholder="Subject name"
+                      value={newSubject.subjectName}
+                      onChange={(e) =>
+                        setNewSubject((prev) => ({
+                          ...prev,
+                          subjectName: e.target.value,
+                        }))
+                      }
+                    />
+                  </Col>
+                  <Col md={3}>
+                    <Button type="submit" className="w-100">
+                      Add Subject
+                    </Button>
+                  </Col>
+                </Row>
+              </Form>
+            </Col>
+
+            <Col lg={6}>
+              <Form onSubmit={handleCreateTopic}>
+                <Row className="g-2">
+                  <Col md={4}>
+                    <Form.Select
+                      value={newTopic.subjectId}
+                      onChange={(e) =>
+                        setNewTopic((prev) => ({
+                          ...prev,
+                          subjectId: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">Subject</option>
+                      {newTopicSubjects.map((subject) => (
+                        <option key={subject.subjectId} value={subject.subjectId}>
+                          {subject.subjectCode || subject.subjectName}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Col>
+                  <Col md={5}>
+                    <Form.Control
+                      placeholder="Topic name"
+                      value={newTopic.topicName}
+                      onChange={(e) =>
+                        setNewTopic((prev) => ({
+                          ...prev,
+                          topicName: e.target.value,
+                        }))
+                      }
+                    />
+                  </Col>
+                  <Col md={3}>
+                    <Button type="submit" className="w-100">
+                      Add Topic
+                    </Button>
+                  </Col>
+                </Row>
+              </Form>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+
       <Card
         className={`td-upload-zone border-0 ${
           dragging ? "td-upload-zone--active" : ""
@@ -249,7 +588,7 @@ export default function MaterialsTab() {
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf,.docx"
+            accept=".pdf,.doc,.docx"
             style={{ display: "none" }}
             onChange={handleFileChange}
           />
@@ -263,7 +602,7 @@ export default function MaterialsTab() {
           </Card.Text>
 
           <Card.Text className="td-upload-hint mb-0">
-            PDF, DOCX · max 100MB
+            PDF, DOC, DOCX · max 100MB
           </Card.Text>
 
           <Button
@@ -278,14 +617,10 @@ export default function MaterialsTab() {
           >
             {uploading ? "Uploading..." : "Select Files"}
           </Button>
-
-          {error && (
-            <div style={{ color: "#dc2626", fontSize: 13 }}>{error}</div>
-          )}
         </Card.Body>
       </Card>
 
-      <Card className="td-card">
+      <Card className="td-card mt-3">
         <Card.Body>
           <div className="td-section-label">Upload History</div>
 
@@ -296,7 +631,6 @@ export default function MaterialsTab() {
               docs.map((file) => {
                 const type = getFileType(file.fileName, file.fileType);
                 const { cls, icon, label } = fileIcon(type);
-                const canPreview = type === "pdf";
 
                 return (
                   <ListGroup.Item
@@ -311,39 +645,23 @@ export default function MaterialsTab() {
                       <div className="td-file-name">{file.fileName}</div>
 
                       <div className="td-file-meta">
-                        {formatDate(file.uploadDate)} · {label} ·{" "}
-                        {file.reviewStatus}
+                        {formatDate(file.uploadDate)} · {label} · {file.reviewStatus}
+                        {file.subjectCode || file.topicName ? (
+                          <>
+                            {" "}· {file.subjectCode || "No Subject"} / {file.topicName || "Uncategorized"}
+                          </>
+                        ) : null}
                       </div>
                     </div>
 
                     <div className="td-file-actions">
-                      {canPreview ? (
-                        <button
-                          type="button"
-                          className="td-file-view"
-                          title="View file"
-                          onClick={() => handleView(file)}
-                        >
-                          <i className="bi bi-eye"></i>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="td-file-view td-file-view--disabled"
-                          title="DOC/DOCX cannot be previewed"
-                          disabled
-                        >
-                          <i className="bi bi-eye-slash"></i>
-                        </button>
-                      )}
-
                       <button
                         type="button"
-                        className="td-file-download"
-                        title="Download file"
-                        onClick={() => handleDownload(file)}
+                        className="td-file-view"
+                        title="View file"
+                        onClick={() => handleView(file)}
                       >
-                        <i className="bi bi-download"></i>
+                        <i className="bi bi-eye"></i>
                       </button>
 
                       <button

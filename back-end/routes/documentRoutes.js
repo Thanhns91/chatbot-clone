@@ -1,31 +1,445 @@
 import express from "express";
 import pool from "../db.js";
+import { qdrant, COLLECTION_NAME } from "../qdrant.js";
 
 const router = express.Router();
 
-// GET student uploaded files
-// GET student uploaded files
+const documentSelect = `
+  SELECT
+    d.id,
+    d.documentId,
+    d.fileName,
+    d.fileType,
+    d.fileUrl,
+    d.contentHash,
+    d.uploaderId,
+    d.uploadedBy,
+    d.uploadStatus,
+    d.reviewStatus,
+    d.errorMessage,
+    d.subjectId,
+    d.topicId,
+    d.documentTypeId,
+    d.levelId,
+    d.tags,
+    d.summary,
+    d.versionGroupId,
+    d.versionNo,
+    d.vectorDocumentId,
+    d.isDuplicate,
+    d.originalDocumentId,
+    d.isDeleted,
+    d.deletedAt,
+    d.replacedByDocumentId,
+    d.uploadDate,
+    d.updatedAt,
+    u.fullName AS uploaderName,
+    u.role AS uploaderRole,
+    s.subjectCode,
+    s.subjectName,
+    t.topicName,
+    dt.typeName AS documentTypeName,
+    dl.levelName
+  FROM Documents d
+  LEFT JOIN Users u ON d.uploaderId = u.userId
+  LEFT JOIN Subjects s ON d.subjectId = s.subjectId
+  LEFT JOIN Topics t ON d.topicId = t.topicId
+  LEFT JOIN DocumentTypes dt ON d.documentTypeId = dt.documentTypeId
+  LEFT JOIN DocumentLevels dl ON d.levelId = dl.levelId
+`;
+
+function parseNullableNumber(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+async function safeDeleteVectors(documentId) {
+  if (!documentId) return;
+
+  try {
+    await qdrant.delete(COLLECTION_NAME, {
+      wait: true,
+      filter: {
+        should: [
+          {
+            key: "documentId",
+            match: {
+              value: documentId,
+            },
+          },
+          {
+            key: "vectorDocumentId",
+            match: {
+              value: documentId,
+            },
+          },
+        ],
+      },
+    });
+  } catch (error) {
+    console.log("Delete Qdrant vectors failed:", error.message);
+  }
+}
+
+// ===== METADATA APIs =====
+router.get("/metadata", async (req, res) => {
+  try {
+    const [subjects] = await pool.query(`
+      SELECT subjectId, subjectCode, subjectName, description, createdBy, createdAt, updatedAt
+      FROM Subjects
+      ORDER BY subjectCode, subjectName
+    `);
+
+    const [topics] = await pool.query(`
+      SELECT
+        t.topicId,
+        t.subjectId,
+        t.topicName,
+        t.description,
+        t.createdBy,
+        t.createdAt,
+        t.updatedAt,
+        s.subjectCode,
+        s.subjectName
+      FROM Topics t
+      INNER JOIN Subjects s ON t.subjectId = s.subjectId
+      ORDER BY s.subjectCode, t.topicName
+    `);
+
+    const [documentTypes] = await pool.query(`
+      SELECT documentTypeId, typeName, description, createdBy, createdAt
+      FROM DocumentTypes
+      ORDER BY typeName
+    `);
+
+    const [documentLevels] = await pool.query(`
+      SELECT levelId, levelName, description, createdBy, createdAt
+      FROM DocumentLevels
+      ORDER BY levelId
+    `);
+
+    res.json({
+      success: true,
+      subjects,
+      topics,
+      documentTypes,
+      documentLevels,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Cannot load metadata",
+      detail: error.message,
+    });
+  }
+});
+
+router.get("/subjects", async (req, res) => {
+  try {
+    const [subjects] = await pool.query(`
+      SELECT subjectId, subjectCode, subjectName, description, createdBy, createdAt, updatedAt
+      FROM Subjects
+      ORDER BY subjectCode, subjectName
+    `);
+
+    res.json({ success: true, data: subjects });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+router.post("/subjects", async (req, res) => {
+  try {
+    const { subjectCode, subjectName, description, createdBy } = req.body;
+
+    if (!subjectName) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing subjectName",
+      });
+    }
+
+    const [result] = await pool.query(
+      `
+      INSERT INTO Subjects (subjectCode, subjectName, description, createdBy)
+      VALUES (?, ?, ?, ?)
+      `,
+      [subjectCode || null, subjectName, description || null, createdBy || null],
+    );
+
+    await pool.query(
+      `
+      INSERT IGNORE INTO Topics (subjectId, topicName, description, createdBy)
+      VALUES (?, 'Uncategorized', 'Chủ đề chưa phân loại', ?)
+      `,
+      [result.insertId, createdBy || null],
+    );
+
+    res.json({
+      success: true,
+      subjectId: result.insertId,
+      message: "Subject created",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+router.put("/subjects/:subjectId", async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+    const { subjectCode, subjectName, description } = req.body;
+
+    if (!subjectName) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing subjectName",
+      });
+    }
+
+    await pool.query(
+      `
+      UPDATE Subjects
+      SET subjectCode = ?, subjectName = ?, description = ?
+      WHERE subjectId = ?
+      `,
+      [subjectCode || null, subjectName, description || null, subjectId],
+    );
+
+    res.json({ success: true, message: "Subject updated" });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+router.get("/topics", async (req, res) => {
+  try {
+    const { subjectId } = req.query;
+
+    let sql = `
+      SELECT
+        t.topicId,
+        t.subjectId,
+        t.topicName,
+        t.description,
+        t.createdBy,
+        t.createdAt,
+        t.updatedAt,
+        s.subjectCode,
+        s.subjectName
+      FROM Topics t
+      INNER JOIN Subjects s ON t.subjectId = s.subjectId
+      WHERE 1 = 1
+    `;
+    const params = [];
+
+    if (subjectId) {
+      sql += ` AND t.subjectId = ?`;
+      params.push(subjectId);
+    }
+
+    sql += ` ORDER BY s.subjectCode, t.topicName`;
+
+    const [topics] = await pool.query(sql, params);
+
+    res.json({ success: true, data: topics });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+router.post("/topics", async (req, res) => {
+  try {
+    const { subjectId, topicName, description, createdBy } = req.body;
+
+    if (!subjectId || !topicName) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing subjectId or topicName",
+      });
+    }
+
+    const [result] = await pool.query(
+      `
+      INSERT INTO Topics (subjectId, topicName, description, createdBy)
+      VALUES (?, ?, ?, ?)
+      `,
+      [subjectId, topicName, description || null, createdBy || null],
+    );
+
+    res.json({
+      success: true,
+      topicId: result.insertId,
+      message: "Topic created",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+router.put("/topics/:topicId", async (req, res) => {
+  try {
+    const { topicId } = req.params;
+    const { subjectId, topicName, description } = req.body;
+
+    if (!subjectId || !topicName) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing subjectId or topicName",
+      });
+    }
+
+    await pool.query(
+      `
+      UPDATE Topics
+      SET subjectId = ?, topicName = ?, description = ?
+      WHERE topicId = ?
+      `,
+      [subjectId, topicName, description || null, topicId],
+    );
+
+    res.json({ success: true, message: "Topic updated" });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+router.get("/document-types", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT documentTypeId, typeName, description, createdBy, createdAt
+      FROM DocumentTypes
+      ORDER BY typeName
+    `);
+
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+router.post("/document-types", async (req, res) => {
+  try {
+    const { typeName, description, createdBy } = req.body;
+
+    if (!typeName) {
+      return res.status(400).json({ success: false, message: "Missing typeName" });
+    }
+
+    const [result] = await pool.query(
+      `
+      INSERT INTO DocumentTypes (typeName, description, createdBy)
+      VALUES (?, ?, ?)
+      `,
+      [typeName, description || null, createdBy || null],
+    );
+
+    res.json({ success: true, documentTypeId: result.insertId });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+router.get("/document-levels", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT levelId, levelName, description, createdBy, createdAt
+      FROM DocumentLevels
+      ORDER BY levelId
+    `);
+
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+router.post("/document-levels", async (req, res) => {
+  try {
+    const { levelName, description, createdBy } = req.body;
+
+    if (!levelName) {
+      return res.status(400).json({ success: false, message: "Missing levelName" });
+    }
+
+    const [result] = await pool.query(
+      `
+      INSERT INTO DocumentLevels (levelName, description, createdBy)
+      VALUES (?, ?, ?)
+      `,
+      [levelName, description || null, createdBy || null],
+    );
+
+    res.json({ success: true, levelId: result.insertId });
+  } catch (error) {
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
+// ===== DOCUMENT APIs =====
+router.get("/library", async (req, res) => {
+  try {
+    const { userId, role, subjectId, topicId } = req.query;
+
+    let sql = `
+      ${documentSelect}
+      WHERE d.uploadStatus = 'success'
+        AND d.isDeleted = FALSE
+    `;
+
+    const params = [];
+
+    if (role === "student") {
+      sql += `
+        AND (
+          d.uploadedBy = 'teacher'
+          OR d.uploaderId = ?
+        )
+      `;
+      params.push(userId || 0);
+    } else if (role === "teacher") {
+      sql += `
+        AND (
+          d.uploadedBy = 'teacher'
+          OR d.uploadedBy = 'student'
+        )
+      `;
+    }
+
+    if (subjectId) {
+      sql += ` AND d.subjectId = ?`;
+      params.push(subjectId);
+    }
+
+    if (topicId) {
+      sql += ` AND d.topicId = ?`;
+      params.push(topicId);
+    }
+
+    sql += ` ORDER BY s.subjectCode, t.topicName, d.uploadDate DESC`;
+
+    const [docs] = await pool.query(sql, params);
+
+    res.json({ success: true, data: docs });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Cannot load library documents",
+      detail: error.message,
+    });
+  }
+});
+
 router.get("/student-files", async (req, res) => {
   try {
     const [docs] = await pool.query(`
-      SELECT 
-        d.documentId,
-        d.fileName,
-        d.fileType,
-        d.fileUrl,
-        d.contentHash,
-        d.uploaderId,
-        d.uploadedBy,
-        d.uploadStatus,
-        d.reviewStatus,
-        d.uploadDate,
-        u.fullName AS uploaderName,
-        u.role AS uploaderRole
-      FROM Documents d
-      INNER JOIN Users u ON d.uploaderId = u.userId
+      ${documentSelect}
       WHERE d.uploadedBy = 'student'
         AND d.uploadStatus = 'success'
-        AND u.role = 'student'
+        AND d.isDeleted = FALSE
       ORDER BY d.uploadDate DESC
     `);
 
@@ -35,7 +449,6 @@ router.get("/student-files", async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-
     res.status(500).json({
       success: false,
       message: "Cannot load student files",
@@ -44,7 +457,6 @@ router.get("/student-files", async (req, res) => {
   }
 });
 
-// VIEW document by Cloudinary fileUrl
 router.get("/view/:documentId", async (req, res) => {
   try {
     const { documentId } = req.params;
@@ -54,6 +466,7 @@ router.get("/view/:documentId", async (req, res) => {
       SELECT fileUrl
       FROM Documents
       WHERE documentId = ?
+        AND isDeleted = FALSE
       `,
       [documentId],
     );
@@ -86,7 +499,6 @@ router.get("/view/:documentId", async (req, res) => {
   }
 });
 
-// DOWNLOAD document by Cloudinary fileUrl
 router.get("/download/:documentId", async (req, res) => {
   try {
     const { documentId } = req.params;
@@ -96,6 +508,7 @@ router.get("/download/:documentId", async (req, res) => {
       SELECT fileName, fileType, fileUrl
       FROM Documents
       WHERE documentId = ?
+        AND isDeleted = FALSE
       `,
       [documentId],
     );
@@ -146,27 +559,14 @@ router.get("/download/:documentId", async (req, res) => {
   }
 });
 
-// GET upload history của teacher
 router.get("/teacher-history", async (req, res) => {
   try {
     const { uploaderId } = req.query;
 
     let sql = `
-      SELECT 
-        d.documentId,
-        d.fileName,
-        d.fileType,
-        d.fileUrl,
-        d.contentHash,
-        d.uploaderId,
-        d.uploadedBy,
-        d.uploadStatus,
-        d.reviewStatus,
-        d.uploadDate,
-        u.fullName AS uploaderName
-      FROM Documents d
-      LEFT JOIN Users u ON d.uploaderId = u.userId
+      ${documentSelect}
       WHERE d.uploadedBy = 'teacher'
+        AND d.isDeleted = FALSE
     `;
 
     const params = [];
@@ -195,19 +595,18 @@ router.get("/teacher-history", async (req, res) => {
   }
 });
 
-// GET tất cả documents
 router.get("/teacher-stats", async (req, res) => {
   try {
     const [statsRows] = await pool.query(`
-  SELECT
-    COUNT(CASE WHEN d.uploadedBy = 'teacher' THEN 1 END) AS materials,
-    COUNT(CASE WHEN d.uploadedBy = 'student' AND u.role = 'student' THEN 1 END) AS studentFiles,
-    COUNT(CASE WHEN d.reviewStatus = 'approved' THEN 1 END) AS approved,
-    COUNT(CASE WHEN d.reviewStatus = 'private' THEN 1 END) AS privateFiles,
-    COUNT(CASE WHEN d.reviewStatus = 'pending' THEN 1 END) AS pending
-  FROM Documents d
-  LEFT JOIN Users u ON d.uploaderId = u.userId
-`);
+      SELECT
+        COUNT(CASE WHEN d.uploadedBy = 'teacher' AND d.isDeleted = FALSE THEN 1 END) AS materials,
+        COUNT(CASE WHEN d.uploadedBy = 'student' AND d.isDeleted = FALSE AND u.role = 'student' THEN 1 END) AS studentFiles,
+        COUNT(CASE WHEN d.reviewStatus = 'approved' AND d.isDeleted = FALSE THEN 1 END) AS approved,
+        COUNT(CASE WHEN d.reviewStatus = 'private' AND d.isDeleted = FALSE THEN 1 END) AS privateFiles,
+        COUNT(CASE WHEN d.reviewStatus = 'pending' AND d.isDeleted = FALSE THEN 1 END) AS pending
+      FROM Documents d
+      LEFT JOIN Users u ON d.uploaderId = u.userId
+    `);
 
     const [materialChart] = await pool.query(`
       SELECT 
@@ -215,38 +614,48 @@ router.get("/teacher-stats", async (req, res) => {
         COUNT(*) AS count
       FROM Documents
       WHERE uploadedBy = 'teacher'
+        AND isDeleted = FALSE
       GROUP BY DATE_FORMAT(uploadDate, '%Y-%m-%d')
       ORDER BY date
     `);
 
     const [studentChart] = await pool.query(`
-  SELECT 
-    DATE_FORMAT(d.uploadDate, '%Y-%m-%d') AS date,
-    COUNT(*) AS count
-  FROM Documents d
-  INNER JOIN Users u ON d.uploaderId = u.userId
-  WHERE d.uploadedBy = 'student'
-    AND d.uploadStatus = 'success'
-    AND u.role = 'student'
-  GROUP BY DATE_FORMAT(d.uploadDate, '%Y-%m-%d')
-  ORDER BY date
-`);
+      SELECT 
+        DATE_FORMAT(d.uploadDate, '%Y-%m-%d') AS date,
+        COUNT(*) AS count
+      FROM Documents d
+      INNER JOIN Users u ON d.uploaderId = u.userId
+      WHERE d.uploadedBy = 'student'
+        AND d.uploadStatus = 'success'
+        AND d.isDeleted = FALSE
+        AND u.role = 'student'
+      GROUP BY DATE_FORMAT(d.uploadDate, '%Y-%m-%d')
+      ORDER BY date
+    `);
 
     const [recentStudentFiles] = await pool.query(`
-  SELECT 
-    d.fileName,
-    d.fileType,
-    d.uploadDate,
-    d.reviewStatus,
-    u.fullName AS uploaderName
-  FROM Documents d
-  INNER JOIN Users u ON d.uploaderId = u.userId
-  WHERE d.uploadedBy = 'student'
-    AND d.uploadStatus = 'success'
-    AND u.role = 'student'
-  ORDER BY d.uploadDate DESC
-  LIMIT 4
-`);
+      ${documentSelect}
+      WHERE d.uploadedBy = 'student'
+        AND d.uploadStatus = 'success'
+        AND d.isDeleted = FALSE
+        AND u.role = 'student'
+      ORDER BY d.uploadDate DESC
+      LIMIT 4
+    `);
+
+    const [topicSummary] = await pool.query(`
+      SELECT
+        COALESCE(s.subjectCode, 'No Subject') AS subjectCode,
+        COALESCE(t.topicName, 'Uncategorized') AS topicName,
+        COUNT(*) AS count
+      FROM Documents d
+      LEFT JOIN Subjects s ON d.subjectId = s.subjectId
+      LEFT JOIN Topics t ON d.topicId = t.topicId
+      WHERE d.isDeleted = FALSE
+      GROUP BY s.subjectCode, t.topicName
+      ORDER BY count DESC
+      LIMIT 5
+    `);
 
     res.json({
       success: true,
@@ -256,6 +665,10 @@ router.get("/teacher-stats", async (req, res) => {
         approved: Number(statsRows[0].approved || 0),
         pending: Number(statsRows[0].pending || 0),
         privateFiles: Number(statsRows[0].privateFiles || 0),
+      },
+      summary: {
+        text: `Có ${Number(statsRows[0].materials || 0)} tài liệu giáo viên, ${Number(statsRows[0].studentFiles || 0)} file sinh viên và ${Number(statsRows[0].pending || 0)} tài liệu đang chờ xử lý.`,
+        topicSummary,
       },
       charts: {
         materialChart,
@@ -273,28 +686,99 @@ router.get("/teacher-stats", async (req, res) => {
   }
 });
 
+router.put("/:documentId/metadata", async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const {
+      subjectId,
+      topicId,
+      documentTypeId,
+      levelId,
+      tags,
+      summary,
+      reviewStatus,
+    } = req.body;
+
+    await pool.query(
+      `
+      UPDATE Documents
+      SET
+        subjectId = ?,
+        topicId = ?,
+        documentTypeId = ?,
+        levelId = ?,
+        tags = ?,
+        summary = ?,
+        reviewStatus = COALESCE(?, reviewStatus)
+      WHERE documentId = ?
+      `,
+      [
+        parseNullableNumber(subjectId),
+        parseNullableNumber(topicId),
+        parseNullableNumber(documentTypeId),
+        parseNullableNumber(levelId),
+        tags || null,
+        summary || null,
+        reviewStatus || null,
+        documentId,
+      ],
+    );
+
+    await pool.query("DELETE FROM DocumentTags WHERE documentId = ?", [
+      documentId,
+    ]);
+
+    const tagList = String(tags || "")
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    if (tagList.length > 0) {
+      await pool.query(
+        `
+        INSERT IGNORE INTO DocumentTags (documentId, tagName)
+        VALUES ?
+        `,
+        [tagList.map((tag) => [documentId, tag])],
+      );
+    }
+
+    res.json({ success: true, message: "Document metadata updated" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, detail: error.message });
+  }
+});
+
 router.get("/", async (req, res) => {
   try {
-    const [docs] = await pool.query(
-      `SELECT d.*, u.fullName as uploaderName 
-       FROM Documents d 
-       LEFT JOIN Users u ON d.uploaderId = u.userId
-       ORDER BY d.uploadDate DESC`,
-    );
+    const [docs] = await pool.query(`
+      ${documentSelect}
+      WHERE d.isDeleted = FALSE
+      ORDER BY d.uploadDate DESC
+    `);
+
     res.json({ success: true, data: docs });
   } catch (error) {
     res.status(500).json({ success: false, detail: error.message });
   }
 });
 
-// DELETE document
 router.delete("/:documentId", async (req, res) => {
   try {
     const { documentId } = req.params;
 
-    await pool.query("DELETE FROM Documents WHERE documentId = ?", [
-      documentId,
-    ]);
+    await pool.query(
+      `
+      UPDATE Documents
+      SET isDeleted = TRUE,
+          deletedAt = NOW()
+      WHERE documentId = ?
+      `,
+      [documentId],
+    );
+
+    await safeDeleteVectors(documentId);
 
     res.json({ success: true, message: "Xóa document thành công" });
   } catch (error) {

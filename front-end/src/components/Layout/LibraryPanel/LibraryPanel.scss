@@ -583,3 +583,38 @@ html[data-theme="dark"] {
     }
   }
 }
+
+.library-meta-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.library-meta-group__subject {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  padding: 8px 2px 2px;
+}
+
+.library-meta-group__topic {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 4px 0 8px;
+  padding-left: 4px;
+}
+
+.lesson-card__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.lesson-card__btn-open,
+.lesson-card__btn-ask {
+  flex: 1;
+}

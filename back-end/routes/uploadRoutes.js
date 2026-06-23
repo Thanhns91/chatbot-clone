@@ -35,9 +35,7 @@ function fixFileNameEncoding(fileName = "") {
   try {
     const decoded = Buffer.from(fileName, "latin1").toString("utf8");
 
-    if (decoded.includes("�")) {
-      return fileName;
-    }
+    if (decoded.includes(" ")) return fileName;
 
     return decoded;
   } catch {
@@ -60,6 +58,19 @@ function createContentHash(text) {
     .createHash("sha256")
     .update(normalizedText, "utf8")
     .digest("hex");
+}
+
+function parseNullableNumber(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function parseTags(tags) {
+  return String(tags || "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 }
 
 async function uploadDocumentToCloudinary(filePath, documentId, fileName) {
@@ -91,7 +102,6 @@ async function extractText(filePath, originalName) {
     const pdfData = await parser.getText();
 
     const rawText = pdfData.text || "";
-
     const formFeedPages = rawText.split(/\f+/).filter(Boolean);
 
     if (formFeedPages.length > 1) {
@@ -169,6 +179,7 @@ async function getDuplicateInfo(contentHash) {
       uploadDate
     FROM Documents
     WHERE uploadStatus = 'success'
+      AND isDeleted = FALSE
       AND contentHash = ?
     ORDER BY isDuplicate ASC, versionNo ASC, uploadDate ASC
     LIMIT 1
@@ -176,9 +187,7 @@ async function getDuplicateInfo(contentHash) {
     [contentHash],
   );
 
-  if (existingDocs.length === 0) {
-    return null;
-  }
+  if (existingDocs.length === 0) return null;
 
   const originalDoc = existingDocs[0];
 
@@ -206,10 +215,147 @@ async function getDuplicateInfo(contentHash) {
   };
 }
 
-async function notifyStudentsAboutTeacherUpload(documentId, fileName) {
+async function validateMetadata({ subjectId, topicId, documentTypeId, levelId }) {
+  if (subjectId) {
+    const [rows] = await pool.query(
+      "SELECT subjectId FROM Subjects WHERE subjectId = ? LIMIT 1",
+      [subjectId],
+    );
+    if (rows.length === 0) throw new Error("Invalid subjectId");
+  }
+
+  if (topicId) {
+    const [rows] = await pool.query(
+      `
+      SELECT topicId
+      FROM Topics
+      WHERE topicId = ?
+        AND (? IS NULL OR subjectId = ?)
+      LIMIT 1
+      `,
+      [topicId, subjectId, subjectId],
+    );
+    if (rows.length === 0) throw new Error("Invalid topicId");
+  }
+
+  if (documentTypeId) {
+    const [rows] = await pool.query(
+      "SELECT documentTypeId FROM DocumentTypes WHERE documentTypeId = ? LIMIT 1",
+      [documentTypeId],
+    );
+    if (rows.length === 0) throw new Error("Invalid documentTypeId");
+  }
+
+  if (levelId) {
+    const [rows] = await pool.query(
+      "SELECT levelId FROM DocumentLevels WHERE levelId = ? LIMIT 1",
+      [levelId],
+    );
+    if (rows.length === 0) throw new Error("Invalid levelId");
+  }
+}
+
+async function insertDocumentTags(connection, documentId, tags) {
+  const tagList = parseTags(tags);
+
+  if (tagList.length === 0) return;
+
+  await connection.query(
+    `
+    INSERT IGNORE INTO DocumentTags (documentId, tagName)
+    VALUES ?
+    `,
+    [tagList.map((tag) => [documentId, tag])],
+  );
+}
+
+async function insertDocumentVersion(
+  connection,
+  {
+    documentId,
+    versionGroupId,
+    versionNo,
+    contentHash,
+    vectorDocumentId,
+    actionType,
+    replacedDocumentId,
+    createdBy,
+  },
+) {
+  if (versionGroupId) {
+    await connection.query(
+      `
+      UPDATE DocumentVersions
+      SET isCurrent = FALSE
+      WHERE versionGroupId = ?
+      `,
+      [versionGroupId],
+    );
+  }
+
+  await connection.query(
+    `
+    INSERT INTO DocumentVersions
+    (
+      documentId,
+      versionGroupId,
+      versionNo,
+      contentHash,
+      vectorDocumentId,
+      actionType,
+      replacedDocumentId,
+      isCurrent,
+      createdBy
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, ?)
+    `,
+    [
+      documentId,
+      versionGroupId,
+      versionNo,
+      contentHash,
+      vectorDocumentId,
+      actionType,
+      replacedDocumentId || null,
+      createdBy || null,
+    ],
+  );
+}
+
+async function insertStudentActivity(
+  connection,
+  { userId, activityType, documentId, subjectId, topicId, metadata },
+) {
+  if (!userId || !activityType) return;
+
+  await connection.query(
+    `
+    INSERT INTO StudentActivities
+    (
+      userId,
+      activityType,
+      documentId,
+      subjectId,
+      topicId,
+      metadata
+    )
+    VALUES (?, ?, ?, ?, ?, ?)
+    `,
+    [
+      userId,
+      activityType,
+      documentId || null,
+      subjectId || null,
+      topicId || null,
+      metadata ? JSON.stringify(metadata) : null,
+    ],
+  );
+}
+
+async function notifyStudentsAboutTeacherUpload(connection, documentId, fileName) {
   if (!documentId) return;
 
-  const [students] = await pool.query(
+  const [students] = await connection.query(
     `
     SELECT userId
     FROM Users
@@ -223,17 +369,19 @@ async function notifyStudentsAboutTeacherUpload(documentId, fileName) {
   const values = students.map((student) => [
     student.userId,
     documentId,
+    null,
     "New teacher material uploaded",
     `Teacher uploaded a new file: ${fileName}`,
     "student_upload",
   ]);
 
-  await pool.query(
+  await connection.query(
     `
     INSERT INTO Notifications
     (
       receiverId,
       documentId,
+      feedbackId,
       title,
       message,
       type
@@ -244,17 +392,79 @@ async function notifyStudentsAboutTeacherUpload(documentId, fileName) {
   );
 }
 
-async function safeNotifyTeacherUpload(uploadedBy, documentId, fileName) {
+async function safeNotifyTeacherUpload(connection, uploadedBy, documentId, fileName) {
   if (uploadedBy !== "teacher") return;
 
   try {
-    await notifyStudentsAboutTeacherUpload(documentId, fileName);
+    await notifyStudentsAboutTeacherUpload(connection, documentId, fileName);
   } catch (notifyError) {
     console.log("Create notification failed:", notifyError.message);
   }
 }
 
+async function safeDeleteVectors(documentId) {
+  if (!documentId) return;
+
+  try {
+    await qdrant.delete(COLLECTION_NAME, {
+      wait: true,
+      filter: {
+        should: [
+          {
+            key: "documentId",
+            match: {
+              value: documentId,
+            },
+          },
+          {
+            key: "vectorDocumentId",
+            match: {
+              value: documentId,
+            },
+          },
+        ],
+      },
+    });
+  } catch (error) {
+    console.log("Delete Qdrant vectors failed:", error.message);
+  }
+}
+
+async function upsertDocumentVectors({ chunks, documentId, fileName, uploadedBy, uploaderId, metadata }) {
+  const points = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const vector = await embedText(chunks[i]);
+
+    points.push({
+      id: uuidv4(),
+      vector,
+      payload: {
+        documentId,
+        vectorDocumentId: documentId,
+        fileName,
+        uploadedBy,
+        uploaderId,
+        text: chunks[i],
+        chunkIndex: i,
+        subjectId: metadata.subjectId || null,
+        topicId: metadata.topicId || null,
+        documentTypeId: metadata.documentTypeId || null,
+        levelId: metadata.levelId || null,
+      },
+    });
+  }
+
+  await qdrant.upsert(COLLECTION_NAME, {
+    points,
+  });
+
+  return points.length;
+}
+
 router.post("/", upload.single("file"), async (req, res) => {
+  let connection;
+
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -307,8 +517,25 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     const uploadedBy = uploader.role;
     const reviewStatus = uploadedBy === "teacher" ? "approved" : "private";
+
+    const metadata = {
+      subjectId: parseNullableNumber(req.body.subjectId),
+      topicId: parseNullableNumber(req.body.topicId),
+      documentTypeId: parseNullableNumber(req.body.documentTypeId),
+      levelId: parseNullableNumber(req.body.levelId),
+      tags: req.body.tags || null,
+      summary: req.body.summary || null,
+    };
+
+    await validateMetadata(metadata);
+
     const allowVersion =
       req.body.allowVersion === "true" || req.body.allowVersion === true;
+
+    const duplicateAction =
+      req.body.duplicateAction || (allowVersion ? "new_version" : "");
+
+    const replaceDocumentId = req.body.replaceDocumentId || null;
 
     const documentId = uuidv4();
 
@@ -321,41 +548,54 @@ router.post("/", upload.single("file"), async (req, res) => {
     const contentHash = createContentHash(text);
     const duplicateInfo = await getDuplicateInfo(contentHash);
 
-    if (duplicateInfo) {
+    if (duplicateInfo && !duplicateAction) {
+      cleanupFile(req.file.path);
+
+      return res.json({
+        success: true,
+        duplicate: true,
+        needConfirm: true,
+        versionCreated: false,
+        duplicateType: "content",
+        message: "File content already exists. Choose how you want to continue.",
+        actions: [
+          {
+            key: "new_version",
+            label: `Save as Version ${duplicateInfo.nextVersion}`,
+          },
+          {
+            key: "replace_old",
+            label: "Replace old file",
+          },
+        ],
+        currentFileName: fileName,
+        existingDocumentId: duplicateInfo.originalDoc.documentId,
+        existingFileName: duplicateInfo.originalDoc.fileName,
+        nextVersion: duplicateInfo.nextVersion,
+        versionGroupId: duplicateInfo.versionGroupId,
+        vectorDocumentId: duplicateInfo.vectorDocumentId,
+        originalDocumentId: duplicateInfo.originalDocumentId,
+      });
+    }
+
+    const fileUrl = await uploadDocumentToCloudinary(
+      req.file.path,
+      documentId,
+      fileName,
+    );
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    if (duplicateInfo && duplicateAction === "new_version") {
       const {
-        originalDoc,
         versionGroupId,
         vectorDocumentId,
         originalDocumentId,
         nextVersion,
       } = duplicateInfo;
 
-      if (!allowVersion) {
-        cleanupFile(req.file.path);
-
-        return res.json({
-          success: true,
-          duplicate: true,
-          needConfirm: true,
-          versionCreated: false,
-          duplicateType: "content",
-          message: `File content already exists. Do you want to save it as Version ${nextVersion}?`,
-          currentFileName: fileName,
-          existingFileName: originalDoc.fileName,
-          nextVersion,
-          versionGroupId,
-          vectorDocumentId,
-          originalDocumentId,
-        });
-      }
-
-      const fileUrl = await uploadDocumentToCloudinary(
-        req.file.path,
-        documentId,
-        fileName,
-      );
-
-      await pool.query(
+      await connection.query(
         `
         INSERT INTO Documents
         (
@@ -369,13 +609,19 @@ router.post("/", upload.single("file"), async (req, res) => {
           uploadStatus,
           reviewStatus,
           errorMessage,
+          subjectId,
+          topicId,
+          documentTypeId,
+          levelId,
+          tags,
+          summary,
           versionGroupId,
           versionNo,
           vectorDocumentId,
           isDuplicate,
           originalDocumentId
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, NULL, ?, ?, ?, TRUE, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)
         `,
         [
           documentId,
@@ -386,6 +632,12 @@ router.post("/", upload.single("file"), async (req, res) => {
           uploaderId,
           uploadedBy,
           reviewStatus,
+          metadata.subjectId,
+          metadata.topicId,
+          metadata.documentTypeId,
+          metadata.levelId,
+          metadata.tags,
+          metadata.summary,
           versionGroupId,
           nextVersion,
           vectorDocumentId,
@@ -393,22 +645,37 @@ router.post("/", upload.single("file"), async (req, res) => {
         ],
       );
 
-      await safeNotifyTeacherUpload(uploadedBy, documentId, fileName);
-
-      documents.push({
+      await insertDocumentVersion(connection, {
         documentId,
-        fileName,
-        fileUrl,
-        contentHash,
-        uploadedBy,
-        reviewStatus,
         versionGroupId,
         versionNo: nextVersion,
+        contentHash,
         vectorDocumentId,
-        isDuplicate: true,
-        originalDocumentId,
-        createdAt: new Date().toISOString(),
+        actionType: "new_version",
+        replacedDocumentId: null,
+        createdBy: uploaderId,
       });
+
+      await insertDocumentTags(connection, documentId, metadata.tags);
+
+      if (uploadedBy === "student") {
+        await insertStudentActivity(connection, {
+          userId: uploaderId,
+          activityType: "upload_document",
+          documentId,
+          subjectId: metadata.subjectId,
+          topicId: metadata.topicId,
+          metadata: {
+            action: "new_version",
+            fileName,
+            versionNo: nextVersion,
+          },
+        });
+      }
+
+      await safeNotifyTeacherUpload(connection, uploadedBy, documentId, fileName);
+
+      await connection.commit();
 
       cleanupFile(req.file.path);
 
@@ -426,6 +693,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         contentHash,
         uploadedBy,
         reviewStatus,
+        ...metadata,
         versionGroupId,
         versionNo: nextVersion,
         vectorDocumentId,
@@ -435,11 +703,20 @@ router.post("/", upload.single("file"), async (req, res) => {
       });
     }
 
-    const versionGroupId = documentId;
-    const versionNo = 1;
+    const replaceTargetDocumentId =
+      replaceDocumentId || duplicateInfo?.originalDoc?.documentId || null;
+
+    const shouldReplaceOld = duplicateAction === "replace_old" && replaceTargetDocumentId;
+
+    const versionGroupId = shouldReplaceOld
+      ? duplicateInfo?.versionGroupId || replaceTargetDocumentId
+      : documentId;
+
+    const versionNo = shouldReplaceOld ? duplicateInfo?.nextVersion || 2 : 1;
     const vectorDocumentId = documentId;
-    const isDuplicate = false;
-    const originalDocumentId = null;
+    const originalDocumentId = shouldReplaceOld
+      ? duplicateInfo?.originalDocumentId || replaceTargetDocumentId
+      : null;
 
     const chunks = semanticChunk(text);
 
@@ -447,37 +724,39 @@ router.post("/", upload.single("file"), async (req, res) => {
       throw new Error("Cannot create chunks from this document.");
     }
 
-    const fileUrl = await uploadDocumentToCloudinary(
-      req.file.path,
+    const totalChunks = await upsertDocumentVectors({
+      chunks,
       documentId,
       fileName,
-    );
-
-    const points = [];
-
-    for (let i = 0; i < chunks.length; i++) {
-      const vector = await embedText(chunks[i]);
-
-      points.push({
-        id: uuidv4(),
-        vector,
-        payload: {
-          documentId,
-          vectorDocumentId,
-          fileName,
-          uploadedBy,
-          uploaderId,
-          text: chunks[i],
-          chunkIndex: i,
-        },
-      });
-    }
-
-    await qdrant.upsert(COLLECTION_NAME, {
-      points,
+      uploadedBy,
+      uploaderId,
+      metadata,
     });
 
-    await pool.query(
+    if (shouldReplaceOld) {
+      await connection.query(
+        `
+        UPDATE Documents
+        SET isDeleted = TRUE,
+            deletedAt = NOW(),
+            replacedByDocumentId = ?
+        WHERE documentId = ?
+        `,
+        [documentId, replaceTargetDocumentId],
+      );
+
+      await connection.query(
+        `
+        UPDATE DocumentVersions
+        SET isCurrent = FALSE
+        WHERE documentId = ?
+           OR versionGroupId = ?
+        `,
+        [replaceTargetDocumentId, versionGroupId],
+      );
+    }
+
+    await connection.query(
       `
       INSERT INTO Documents
       (
@@ -490,13 +769,19 @@ router.post("/", upload.single("file"), async (req, res) => {
         uploadedBy,
         uploadStatus,
         reviewStatus,
+        subjectId,
+        topicId,
+        documentTypeId,
+        levelId,
+        tags,
+        summary,
         versionGroupId,
         versionNo,
         vectorDocumentId,
         isDuplicate,
         originalDocumentId
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         documentId,
@@ -507,15 +792,78 @@ router.post("/", upload.single("file"), async (req, res) => {
         uploaderId,
         uploadedBy,
         reviewStatus,
+        metadata.subjectId,
+        metadata.topicId,
+        metadata.documentTypeId,
+        metadata.levelId,
+        metadata.tags,
+        metadata.summary,
         versionGroupId,
         versionNo,
         vectorDocumentId,
-        isDuplicate,
+        false,
         originalDocumentId,
       ],
     );
 
-    await safeNotifyTeacherUpload(uploadedBy, documentId, fileName);
+    await insertDocumentVersion(connection, {
+      documentId,
+      versionGroupId,
+      versionNo,
+      contentHash,
+      vectorDocumentId,
+      actionType: shouldReplaceOld ? "replace_old" : "original",
+      replacedDocumentId: shouldReplaceOld ? replaceTargetDocumentId : null,
+      createdBy: uploaderId,
+    });
+
+    await insertDocumentTags(connection, documentId, metadata.tags);
+
+    if (uploadedBy === "student") {
+      await insertStudentActivity(connection, {
+        userId: uploaderId,
+        activityType: "upload_document",
+        documentId,
+        subjectId: metadata.subjectId,
+        topicId: metadata.topicId,
+        metadata: {
+          action: shouldReplaceOld ? "replace_old" : "original",
+          fileName,
+          versionNo,
+        },
+      });
+    }
+
+    if (shouldReplaceOld) {
+      await connection.query(
+        `
+        INSERT INTO Notifications
+        (
+          receiverId,
+          documentId,
+          feedbackId,
+          title,
+          message,
+          type
+        )
+        VALUES (?, ?, NULL, ?, ?, 'document_replaced')
+        `,
+        [
+          uploaderId,
+          documentId,
+          "Document replaced",
+          `File ${fileName} replaced the old document.`,
+        ],
+      );
+    }
+
+    await safeNotifyTeacherUpload(connection, uploadedBy, documentId, fileName);
+
+    await connection.commit();
+
+    if (shouldReplaceOld) {
+      await safeDeleteVectors(replaceTargetDocumentId);
+    }
 
     documents.push({
       documentId,
@@ -524,10 +872,11 @@ router.post("/", upload.single("file"), async (req, res) => {
       contentHash,
       uploadedBy,
       reviewStatus,
+      ...metadata,
       versionGroupId,
       versionNo,
       vectorDocumentId,
-      isDuplicate,
+      isDuplicate: false,
       originalDocumentId,
       createdAt: new Date().toISOString(),
     });
@@ -536,10 +885,14 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     return res.json({
       success: true,
-      duplicate: false,
+      duplicate: Boolean(duplicateInfo),
       needConfirm: false,
-      versionCreated: false,
-      message: `Uploaded "${fileName}" successfully.`,
+      versionCreated: shouldReplaceOld || false,
+      replacedOld: shouldReplaceOld,
+      duplicateType: duplicateInfo ? "content" : null,
+      message: shouldReplaceOld
+        ? `Replaced old file with "${fileName}" successfully.`
+        : `Uploaded "${fileName}" successfully.`,
       documentId,
       fileName,
       fileType,
@@ -547,16 +900,24 @@ router.post("/", upload.single("file"), async (req, res) => {
       contentHash,
       uploadedBy,
       reviewStatus,
+      ...metadata,
       versionGroupId,
       versionNo,
       vectorDocumentId,
-      isDuplicate,
+      isDuplicate: false,
       originalDocumentId,
-      totalChunks: chunks.length,
+      totalChunks,
     });
   } catch (error) {
-    console.log(error);
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.log("Rollback failed:", rollbackError.message);
+      }
+    }
 
+    console.log(error);
     cleanupFile(req.file?.path);
 
     return res.status(500).json({
@@ -564,6 +925,8 @@ router.post("/", upload.single("file"), async (req, res) => {
       error: "Upload failed",
       detail: error.message,
     });
+  } finally {
+    if (connection) connection.release();
   }
 });
 

@@ -3,39 +3,43 @@ import pool from "../db.js";
 
 const router = express.Router();
 
+/**
+ * GET /notifications/:userId
+ * Lấy danh sách thông báo của user
+ */
 router.get("/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
 
     const [notifications] = await pool.query(
       `
-  SELECT
-    n.notificationId,
-    n.receiverId,
-    n.documentId,
-    n.title,
-    n.message,
-    n.type,
-    n.isRead,
-    n.createdAt,
+      SELECT
+        n.notificationId,
+        n.receiverId,
+        n.documentId,
+        n.title,
+        n.message,
+        n.type,
+        n.isRead,
+        n.createdAt,
 
-    d.id AS documentDbId,
-    d.documentId AS fileDocumentId,
-    d.fileName,
-    d.fileType,
-    d.fileUrl,
-    d.uploadedBy,
-    d.reviewStatus,
-    d.uploadDate,
+        d.id AS documentDbId,
+        d.documentId AS fileDocumentId,
+        d.fileName,
+        d.fileType,
+        d.fileUrl,
+        d.uploadedBy,
+        d.reviewStatus,
+        d.uploadDate,
 
-    u.fullName AS uploaderName
-  FROM Notifications n
-  LEFT JOIN Documents d ON n.documentId = d.documentId
-  LEFT JOIN Users u ON d.uploaderId = u.userId
-  WHERE n.receiverId = ?
-  ORDER BY n.createdAt DESC
-  `,
-      [userId],
+        u.fullName AS uploaderName
+      FROM Notifications n
+      LEFT JOIN Documents d ON n.documentId = d.id
+      LEFT JOIN Users u ON d.uploaderId = u.userId
+      WHERE n.receiverId = ?
+      ORDER BY n.createdAt DESC
+      `,
+      [userId]
     );
 
     const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -71,7 +75,7 @@ router.get("/:userId/unread-count", async (req, res) => {
       WHERE receiverId = ?
         AND isRead = FALSE
       `,
-      [userId],
+      [userId]
     );
 
     res.json({
@@ -100,7 +104,7 @@ router.put("/:notificationId/read", async (req, res) => {
       SET isRead = TRUE
       WHERE notificationId = ?
       `,
-      [notificationId],
+      [notificationId]
     );
 
     res.json({
@@ -129,7 +133,7 @@ router.put("/user/:userId/read-all", async (req, res) => {
       SET isRead = TRUE
       WHERE receiverId = ?
       `,
-      [userId],
+      [userId]
     );
 
     res.json({

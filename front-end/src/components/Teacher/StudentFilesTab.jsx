@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Row,
   Col,
@@ -8,11 +8,11 @@ import {
   Table,
   Badge,
   Modal,
+  Alert,
 } from "react-bootstrap";
+import { getMetadata, updateDocumentMetadata, deleteDocument } from "../../services/api";
 
 const API = import.meta.env.VITE_API_URL;
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
 
 function fileIcon(name = "") {
   const ext = name.split(".").pop().toLowerCase();
@@ -31,14 +31,14 @@ function typeLabel(name = "") {
   const ext = name.split(".").pop().toLowerCase();
   if (ext === "pdf") return { label: "PDF", color: "danger" };
   if (["doc", "docx"].includes(ext)) return { label: "DOCX", color: "primary" };
-  if (["mp4", "mov", "avi"].includes(ext))
-    return { label: "VIDEO", color: "info" };
-  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext))
-    return { label: "IMAGE", color: "success" };
+  if (["mp4", "mov", "avi"].includes(ext)) return { label: "VIDEO", color: "info" };
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return { label: "IMAGE", color: "success" };
   return { label: "OTHER", color: "secondary" };
 }
 
 function formatDate(iso) {
+  if (!iso) return "-";
+
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -46,38 +46,93 @@ function formatDate(iso) {
   });
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+const emptyEditForm = {
+  subjectId: "",
+  topicId: "",
+  documentTypeId: "",
+  levelId: "",
+  tags: "",
+  summary: "",
+  reviewStatus: "",
+};
 
 export default function StudentFilesTab() {
   const [files, setFiles] = useState([]);
   const [search, setSearch] = useState("");
-  const [showUpload, setShowUpload] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [subjects, setSubjects] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [documentTypes, setDocumentTypes] = useState([]);
+  const [documentLevels, setDocumentLevels] = useState([]);
+
+  const [editFile, setEditFile] = useState(null);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [saving, setSaving] = useState(false);
+
+  const filteredEditTopics = useMemo(() => {
+    if (!editForm.subjectId) return topics;
+
+    return topics.filter(
+      (topic) => String(topic.subjectId) === String(editForm.subjectId),
+    );
+  }, [topics, editForm.subjectId]);
+
+  const fetchStudentFiles = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await fetch(`${API}/documents/student-files`);
+      const data = await res.json();
+
+      if (data.success) {
+        setFiles(data.data || []);
+      } else {
+        setError(data.message || "Cannot load student files");
+      }
+    } catch (error) {
+      console.error("Cannot load student files", error);
+      setError("Cannot load student files");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMetadata = async () => {
+    try {
+      const data = await getMetadata();
+
+      if (data.success) {
+        setSubjects(data.subjects || []);
+        setTopics(data.topics || []);
+        setDocumentTypes(data.documentTypes || []);
+        setDocumentLevels(data.documentLevels || []);
+      }
+    } catch (error) {
+      console.error("Cannot load metadata", error);
+    }
+  };
 
   useEffect(() => {
-    const fetchStudentFiles = async () => {
-      try {
-        const res = await fetch(`${API}/documents/student-files`);
-        const data = await res.json();
-
-        if (data.success) {
-          setFiles(data.data || []);
-        }
-      } catch (error) {
-        console.error("Cannot load student files", error);
-      }
-    };
-
+    fetchMetadata();
     fetchStudentFiles();
   }, []);
 
   const filtered = files.filter((f) => {
     const fileName = f.fileName || f.name || "";
     const uploaderName = f.uploaderName || "";
+    const subject = `${f.subjectCode || ""} ${f.subjectName || ""}`;
+    const topic = f.topicName || "";
+
+    const keyword = search.toLowerCase();
 
     return (
-      fileName.toLowerCase().includes(search.toLowerCase()) ||
-      uploaderName.toLowerCase().includes(search.toLowerCase())
+      fileName.toLowerCase().includes(keyword) ||
+      uploaderName.toLowerCase().includes(keyword) ||
+      subject.toLowerCase().includes(keyword) ||
+      topic.toLowerCase().includes(keyword)
     );
   });
 
@@ -87,29 +142,12 @@ export default function StudentFilesTab() {
   ).length;
   const otherCount = totalDocs - pdfCount;
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(e.type === "dragenter" || e.type === "dragover");
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    // handle dropped files here
-  };
-
   const getRawFileUrl = (file) => {
     if (file?.fileUrl) {
-      return file.fileUrl.startsWith("http")
-        ? file.fileUrl
-        : `${API}${file.fileUrl}`;
+      return file.fileUrl.startsWith("http") ? file.fileUrl : `${API}${file.fileUrl}`;
     }
 
-    if (file?.documentId) {
-      return `${API}/documents/view/${file.documentId}`;
-    }
+    if (file?.documentId) return `${API}/documents/view/${file.documentId}`;
 
     return "";
   };
@@ -124,16 +162,11 @@ export default function StudentFilesTab() {
     if (!rawUrl) return "";
 
     const ext = getFileExt(file);
-
     const previewableDocs = ["pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx"];
-
-    // Không dùng Google Viewer cho localhost vì Google không truy cập được localhost
     const isLocalhost = rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1");
 
     if (previewableDocs.includes(ext) && !isLocalhost) {
-      return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(
-        rawUrl
-      )}`;
+      return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(rawUrl)}`;
     }
 
     return rawUrl;
@@ -156,24 +189,7 @@ export default function StudentFilesTab() {
       return;
     }
 
-    window.open(
-      `${API}/documents/download/${file.documentId}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
-
-  const getDownloadUrl = (file) => {
-    const url = getDocumentUrl(file);
-
-    if (!url) return "";
-
-    // Cloudinary: ép tải xuống thay vì mở tab
-    if (url.includes("res.cloudinary.com") && url.includes("/upload/")) {
-      return url.replace("/upload/", "/upload/fl_attachment/");
-    }
-
-    return url;
+    window.open(`${API}/documents/download/${file.documentId}`, "_blank", "noopener,noreferrer");
   };
 
   const handleDelete = async (documentId) => {
@@ -181,16 +197,10 @@ export default function StudentFilesTab() {
     if (!ok) return;
 
     try {
-      const res = await fetch(`${API}/documents/${documentId}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
+      const data = await deleteDocument(documentId);
 
       if (data.success) {
-        setFiles((prev) =>
-          prev.filter((file) => file.documentId !== documentId)
-        );
+        setFiles((prev) => prev.filter((file) => file.documentId !== documentId));
       } else {
         alert(data.message || "Xóa file thất bại.");
       }
@@ -200,24 +210,80 @@ export default function StudentFilesTab() {
     }
   };
 
+  const openEditModal = (file) => {
+    setEditFile(file);
+    setEditForm({
+      subjectId: file.subjectId || "",
+      topicId: file.topicId || "",
+      documentTypeId: file.documentTypeId || "",
+      levelId: file.levelId || "",
+      tags: file.tags || "",
+      summary: file.summary || "",
+      reviewStatus: file.reviewStatus || "private",
+    });
+  };
+
+  const closeEditModal = () => {
+    setEditFile(null);
+    setEditForm(emptyEditForm);
+    setSaving(false);
+  };
+
+  const handleSaveMetadata = async () => {
+    if (!editFile?.documentId || saving) return;
+
+    try {
+      setSaving(true);
+
+      const data = await updateDocumentMetadata(editFile.documentId, editForm);
+
+      if (data.success) {
+        await fetchStudentFiles();
+        closeEditModal();
+      } else {
+        alert(data.message || "Cannot update metadata");
+      }
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Cannot update metadata");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!editForm.subjectId) return;
+
+    const valid = filteredEditTopics.some(
+      (topic) => String(topic.topicId) === String(editForm.topicId),
+    );
+
+    if (!valid) {
+      setEditForm((prev) => ({
+        ...prev,
+        topicId: filteredEditTopics[0]?.topicId || "",
+      }));
+    }
+  }, [editForm.subjectId, filteredEditTopics]);
+
   return (
     <>
-      {/* ── Top bar ── */}
-<div className="td-sfile-topbar">
-  <div className="td-sfile-searchbox">
-    <i className="bi bi-search td-sfile-searchbox__icon" />
+      <div className="td-sfile-topbar">
+        <div className="td-sfile-searchbox">
+          <i className="bi bi-search td-sfile-searchbox__icon" />
 
-    <Form.Control
-      type="search"
-      placeholder="Search"
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-      className="td-sfile-searchbox__input"
-    />
-  </div>
-</div>
+          <Form.Control
+            type="search"
+            placeholder="Search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="td-sfile-searchbox__input"
+          />
+        </div>
+      </div>
 
-      {/* ── Stat cards ── */}
+      {error && <Alert variant="danger">{error}</Alert>}
+
       <Row className="g-3 mb-4">
         <Col md={4}>
           <Card className="td-sfile-stat-card">
@@ -251,15 +317,15 @@ export default function StudentFilesTab() {
         </Col>
       </Row>
 
-      {/* ── File table ── */}
       <Card className="td-sfile-table-card">
         <Card.Body>
-          <div className="td-sfile-table-title">All Documents</div>
+          <div className="td-sfile-table-title">All Student Documents</div>
           <div className="td-sfile-table-wrap">
             <Table className="td-sfile-table" borderless>
               <thead>
                 <tr>
                   <th>NAME</th>
+                  <th>METADATA</th>
                   <th>TYPE</th>
                   <th>UPLOADED</th>
                   <th>UPLOADER</th>
@@ -267,20 +333,26 @@ export default function StudentFilesTab() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {loading ? (
                   <tr>
-                    <td colSpan={5} className="td-sfile-empty">
+                    <td colSpan={6} className="td-sfile-empty">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="td-sfile-empty">
                       No documents found
                     </td>
                   </tr>
                 ) : (
-                    filtered.map((f) => {
-                      const fileName = f.fileName || f.name || "";
-                      const uploadedAt = f.uploadDate || f.uploadedAt;
-                      const uploaderName = f.uploaderName || "Student";
+                  filtered.map((f) => {
+                    const fileName = f.fileName || f.name || "";
+                    const uploadedAt = f.uploadDate || f.uploadedAt;
+                    const uploaderName = f.uploaderName || "Student";
+                    const { cls, icon } = fileIcon(fileName);
+                    const { label, color } = typeLabel(fileName);
 
-                      const { cls, icon } = fileIcon(fileName);
-                      const { label, color } = typeLabel(fileName);
                     return (
                       <tr key={f.documentId || f.id}>
                         <td>
@@ -291,54 +363,73 @@ export default function StudentFilesTab() {
                             <div>
                               <div className="td-sfile-fname">{fileName}</div>
                               <div className="td-sfile-fsize">
-                                {f.reviewStatus || f.size || "private"}
+                                {f.reviewStatus || "private"}
                               </div>
                             </div>
                           </div>
                         </td>
+
+                        <td>
+                          <div className="td-sfile-fname">
+                            {f.subjectCode || "No Subject"}
+                          </div>
+                          <div className="td-sfile-fsize">
+                            {f.topicName || "Uncategorized"} · {f.documentTypeName || "No Type"} · {f.levelName || "No Level"}
+                          </div>
+                        </td>
+
                         <td>
                           <Badge bg={color} className="td-sfile-type-badge">
                             {label}
                           </Badge>
                         </td>
-                        <td className="td-sfile-date">
-                          {formatDate(uploadedAt)}
-                        </td>
+                        <td className="td-sfile-date">{formatDate(uploadedAt)}</td>
                         <td className="td-sfile-uploader">{uploaderName}</td>
                         <td>
                           <div className="td-sfile-actions">
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            className="td-sfile-action-btn"
-                            title="View"
-                            onClick={() => handleView(f)}
-                            disabled={!f.fileUrl && !f.documentId}
-                          >
-                            <i className="bi bi-eye" />
-                          </Button>
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              className="td-sfile-action-btn"
+                              title="View"
+                              onClick={() => handleView(f)}
+                              disabled={!f.fileUrl && !f.documentId}
+                            >
+                              <i className="bi bi-eye" />
+                            </Button>
 
-                          <Button
-                            variant="outline-secondary"
-                            size="sm"
-                            className="td-sfile-action-btn"
-                            title="Download"
-                            onClick={() => handleDownload(f)}
-                            disabled={!f.documentId}
-                          >
-                            <i className="bi bi-download" />
-                          </Button>
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              className="td-sfile-action-btn"
+                              title="Download"
+                              onClick={() => handleDownload(f)}
+                              disabled={!f.documentId}
+                            >
+                              <i className="bi bi-download" />
+                            </Button>
 
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            className="td-sfile-action-btn"
-                            title="Delete"
-                            onClick={() => handleDelete(f.documentId)}
-                            disabled={!f.documentId}
-                          >
-                            <i className="bi bi-trash3" />
-                          </Button>
+                            <Button
+                              variant="outline-success"
+                              size="sm"
+                              className="td-sfile-action-btn"
+                              title="Edit Metadata"
+                              onClick={() => openEditModal(f)}
+                              disabled={!f.documentId}
+                            >
+                              <i className="bi bi-pencil-square" />
+                            </Button>
+
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              className="td-sfile-action-btn"
+                              title="Delete"
+                              onClick={() => handleDelete(f.documentId)}
+                              disabled={!f.documentId}
+                            >
+                              <i className="bi bi-trash3" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -351,46 +442,143 @@ export default function StudentFilesTab() {
         </Card.Body>
       </Card>
 
-      {/* ── Upload Modal ── */}
-      <Modal
-        show={showUpload}
-        onHide={() => setShowUpload(false)}
-        centered
-        size="md"
-      >
+      <Modal show={Boolean(editFile)} onHide={closeEditModal} centered size="lg">
         <Modal.Header closeButton className="td-modal-header">
           <Modal.Title className="td-modal-title">
-            <i className="bi bi-upload" /> Upload Document
+            <i className="bi bi-pencil-square" /> Edit Metadata
           </Modal.Title>
         </Modal.Header>
+
         <Modal.Body className="p-4">
-          <div
-            className={`td-sfile-drop-zone ${dragActive ? "td-sfile-drop-zone--active" : ""}`}
-            onDragEnter={handleDrag}
-            onDragOver={handleDrag}
-            onDragLeave={handleDrag}
-            onDrop={handleDrop}
-          >
-            <div className="td-upload-icon">
-              <i className="bi bi-cloud-arrow-up-fill" />
-            </div>
-            <p className="td-upload-title">Drag & drop files here</p>
-            <p className="td-upload-hint">PDF, DOCX, MP4, images supported</p>
-            <Button variant="primary" size="sm" className="td-select-btn mt-1">
-              Browse Files
-            </Button>
+          <div className="mb-3">
+            <strong>{editFile?.fileName}</strong>
           </div>
+
+          <Row className="g-3">
+            <Col md={6}>
+              <Form.Label>Subject</Form.Label>
+              <Form.Select
+                value={editForm.subjectId}
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    subjectId: e.target.value,
+                    topicId: "",
+                  }))
+                }
+              >
+                <option value="">Select subject</option>
+                {subjects.map((subject) => (
+                  <option key={subject.subjectId} value={subject.subjectId}>
+                    {subject.subjectCode
+                      ? `${subject.subjectCode} - ${subject.subjectName}`
+                      : subject.subjectName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={6}>
+              <Form.Label>Topic</Form.Label>
+              <Form.Select
+                value={editForm.topicId}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, topicId: e.target.value }))
+                }
+              >
+                <option value="">Select topic</option>
+                {filteredEditTopics.map((topic) => (
+                  <option key={topic.topicId} value={topic.topicId}>
+                    {topic.topicName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={4}>
+              <Form.Label>Document Type</Form.Label>
+              <Form.Select
+                value={editForm.documentTypeId}
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    documentTypeId: e.target.value,
+                  }))
+                }
+              >
+                <option value="">Select type</option>
+                {documentTypes.map((type) => (
+                  <option key={type.documentTypeId} value={type.documentTypeId}>
+                    {type.typeName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={4}>
+              <Form.Label>Level</Form.Label>
+              <Form.Select
+                value={editForm.levelId}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, levelId: e.target.value }))
+                }
+              >
+                <option value="">Select level</option>
+                {documentLevels.map((level) => (
+                  <option key={level.levelId} value={level.levelId}>
+                    {level.levelName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={4}>
+              <Form.Label>Status</Form.Label>
+              <Form.Select
+                value={editForm.reviewStatus}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, reviewStatus: e.target.value }))
+                }
+              >
+                <option value="private">Private</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </Form.Select>
+            </Col>
+
+            <Col md={12}>
+              <Form.Label>Tags</Form.Label>
+              <Form.Control
+                value={editForm.tags}
+                placeholder="rag, chatbot, requirement"
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, tags: e.target.value }))
+                }
+              />
+            </Col>
+
+            <Col md={12}>
+              <Form.Label>Summary</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={editForm.summary}
+                placeholder="Short note about this document"
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, summary: e.target.value }))
+                }
+              />
+            </Col>
+          </Row>
         </Modal.Body>
+
         <Modal.Footer className="td-modal-footer">
-          <Button
-            variant="outline-secondary"
-            size="sm"
-            onClick={() => setShowUpload(false)}
-          >
+          <Button variant="outline-secondary" size="sm" onClick={closeEditModal}>
             Cancel
           </Button>
-          <Button variant="primary" size="sm">
-            Upload
+          <Button variant="primary" size="sm" onClick={handleSaveMetadata} disabled={saving}>
+            {saving ? "Saving..." : "Save Metadata"}
           </Button>
         </Modal.Footer>
       </Modal>
