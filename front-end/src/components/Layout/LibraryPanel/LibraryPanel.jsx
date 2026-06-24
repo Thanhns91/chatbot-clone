@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import Button from "react-bootstrap/Button";
-import { publishDocument } from "../../services/api";
+import { publishDocument } from "../../../services/api";
 import "./LibraryPanel.scss";
 
 const getFileIcon = (fileName = "") => {
