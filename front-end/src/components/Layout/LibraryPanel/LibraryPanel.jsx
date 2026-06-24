@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import Button from "react-bootstrap/Button";
+import { publishDocument } from "../../services/api";
 import "./LibraryPanel.scss";
 
 const getFileIcon = (fileName = "") => {
@@ -50,6 +51,28 @@ const getTopicLabel = (doc) => {
   return doc.topicName || "Uncategorized";
 };
 
+const getStoredUser = () => {
+  try {
+    const rawUser =
+      localStorage.getItem("user") ||
+      sessionStorage.getItem("user") ||
+      localStorage.getItem("currentUser") ||
+      sessionStorage.getItem("currentUser");
+
+    return rawUser ? JSON.parse(rawUser) : null;
+  } catch {
+    return null;
+  }
+};
+
+const isPrivateStudentFile = (doc) => {
+  return doc?.uploadedBy === "student" && doc?.reviewStatus === "private";
+};
+
+const isApprovedStudentFile = (doc) => {
+  return doc?.uploadedBy === "student" && doc?.reviewStatus === "approved";
+};
+
 const groupByMetadata = (files) => {
   const subjectMap = new Map();
 
@@ -88,16 +111,29 @@ const LibraryPanel = ({
   documents = [],
   selectedDocument,
   onSelectDocument,
+  user: propUser,
+  onDocumentsChanged,
 }) => {
   const [activeTab, setActiveTab] = useState("teacher");
+  const [publishingId, setPublishingId] = useState(null);
+  const [statusOverrides, setStatusOverrides] = useState({});
+
+  const currentUser = propUser || getStoredUser();
+
+  const visibleDocuments = useMemo(() => {
+    return documents.map((doc) => ({
+      ...doc,
+      reviewStatus: statusOverrides[doc.documentId] || doc.reviewStatus,
+    }));
+  }, [documents, statusOverrides]);
 
   const teacherFiles = useMemo(() => {
-    return documents.filter((doc) => doc.uploadedBy === "teacher");
-  }, [documents]);
+    return visibleDocuments.filter((doc) => doc.uploadedBy === "teacher");
+  }, [visibleDocuments]);
 
   const studentFiles = useMemo(() => {
-    return documents.filter((doc) => doc.uploadedBy === "student");
-  }, [documents]);
+    return visibleDocuments.filter((doc) => doc.uploadedBy === "student");
+  }, [visibleDocuments]);
 
   const currentFiles = activeTab === "teacher" ? teacherFiles : studentFiles;
   const groupedFiles = useMemo(() => groupByMetadata(currentFiles), [currentFiles]);
@@ -108,6 +144,45 @@ const LibraryPanel = ({
     if (!rawUrl) return;
 
     window.open(rawUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handlePublishDocument = async (doc) => {
+    if (!currentUser?.userId) {
+      window.alert("Bạn cần đăng nhập để public file.");
+      return;
+    }
+
+    const ok = window.confirm(
+      `Public file "${doc.fileName}"?\nTeacher và Admin sẽ xem được file này.`,
+    );
+
+    if (!ok) return;
+
+    try {
+      setPublishingId(doc.documentId);
+
+      const result = await publishDocument(doc.documentId, currentUser.userId);
+
+      if (!result.success) {
+        throw new Error(result.message || "Public file thất bại");
+      }
+
+      setStatusOverrides((prev) => ({
+        ...prev,
+        [doc.documentId]: "approved",
+      }));
+
+      onDocumentsChanged?.({
+        ...doc,
+        reviewStatus: "approved",
+      });
+
+      window.alert("File đã được public. Teacher và Admin có thể xem file này.");
+    } catch (error) {
+      window.alert(error.message || "Public file thất bại");
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   const renderEmpty = () => (
@@ -134,6 +209,13 @@ const LibraryPanel = ({
     const isActive =
       String(selectedDocument?.documentId) === String(doc.documentId);
 
+    const isOwner =
+      currentUser?.userId &&
+      Number(doc.uploaderId) === Number(currentUser.userId);
+
+    const canPublish =
+      activeTab === "student" && isOwner && isPrivateStudentFile(doc);
+
     return (
       <div
         key={`${doc.uploadedBy}-${doc.documentId}`}
@@ -158,6 +240,33 @@ const LibraryPanel = ({
                 ? `Teacher: ${doc.uploaderName || "Unknown"}`
                 : "My Upload"}
             </div>
+
+            {doc.uploadedBy === "student" && (
+              <div
+                className={`lesson-card__status ${
+                  isPrivateStudentFile(doc)
+                    ? "lesson-card__status--private"
+                    : isApprovedStudentFile(doc)
+                    ? "lesson-card__status--public"
+                    : "lesson-card__status--pending"
+                }`}
+              >
+                <i
+                  className={
+                    isPrivateStudentFile(doc)
+                      ? "bi bi-lock-fill"
+                      : isApprovedStudentFile(doc)
+                      ? "bi bi-globe2"
+                      : "bi bi-hourglass-split"
+                  }
+                ></i>
+                {isPrivateStudentFile(doc)
+                  ? "Private"
+                  : isApprovedStudentFile(doc)
+                  ? "Public"
+                  : doc.reviewStatus || "Pending"}
+              </div>
+            )}
           </div>
         </div>
 
@@ -187,6 +296,18 @@ const LibraryPanel = ({
             <i className="bi bi-chat-dots me-1"></i>
             {isActive ? "Using" : "Ask AI"}
           </Button>
+
+          {canPublish && (
+            <Button
+              variant="success"
+              className="lesson-card__btn-public"
+              onClick={() => handlePublishDocument(doc)}
+              disabled={publishingId === doc.documentId}
+            >
+              <i className="bi bi-globe2 me-1"></i>
+              {publishingId === doc.documentId ? "..." : "Public"}
+            </Button>
+          )}
         </div>
       </div>
     );

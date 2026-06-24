@@ -206,6 +206,18 @@ export async function updateDocumentMetadata(documentId, payload) {
   return parseJsonResponse(res);
 }
 
+export async function publishDocument(documentId, userId) {
+  const res = await fetch(`${API_URL}/documents/${documentId}/publish`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ userId }),
+  });
+
+  return parseJsonResponse(res);
+}
+
 export async function getTeacherDocuments() {
   const res = await fetch(`${API_URL}/documents`);
   return res.json();

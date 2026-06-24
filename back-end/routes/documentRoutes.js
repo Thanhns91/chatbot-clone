@@ -392,6 +392,8 @@ router.get("/library", async (req, res) => {
     const params = [];
 
     if (role === "student") {
+      // Student thấy tài liệu teacher + tài liệu chính mình upload,
+      // kể cả file của chính mình đang private.
       sql += `
         AND (
           d.uploadedBy = 'teacher'
@@ -399,11 +401,13 @@ router.get("/library", async (req, res) => {
         )
       `;
       params.push(userId || 0);
-    } else if (role === "teacher") {
+    } else if (role === "teacher" || role === "admin") {
+      // Teacher/Admin chỉ thấy file student đã public = approved.
+      // File student private sẽ bị ẩn.
       sql += `
         AND (
           d.uploadedBy = 'teacher'
-          OR d.uploadedBy = 'student'
+          OR (d.uploadedBy = 'student' AND d.reviewStatus = 'approved')
         )
       `;
     }
@@ -439,6 +443,7 @@ router.get("/student-files", async (req, res) => {
       ${documentSelect}
       WHERE d.uploadedBy = 'student'
         AND d.uploadStatus = 'success'
+        AND d.reviewStatus = 'approved'
         AND d.isDeleted = FALSE
       ORDER BY d.uploadDate DESC
     `);
@@ -600,7 +605,7 @@ router.get("/teacher-stats", async (req, res) => {
     const [statsRows] = await pool.query(`
       SELECT
         COUNT(CASE WHEN d.uploadedBy = 'teacher' AND d.isDeleted = FALSE THEN 1 END) AS materials,
-        COUNT(CASE WHEN d.uploadedBy = 'student' AND d.isDeleted = FALSE AND u.role = 'student' THEN 1 END) AS studentFiles,
+        COUNT(CASE WHEN d.uploadedBy = 'student' AND d.reviewStatus = 'approved' AND d.isDeleted = FALSE AND u.role = 'student' THEN 1 END) AS studentFiles,
         COUNT(CASE WHEN d.reviewStatus = 'approved' AND d.isDeleted = FALSE THEN 1 END) AS approved,
         COUNT(CASE WHEN d.reviewStatus = 'private' AND d.isDeleted = FALSE THEN 1 END) AS privateFiles,
         COUNT(CASE WHEN d.reviewStatus = 'pending' AND d.isDeleted = FALSE THEN 1 END) AS pending
@@ -627,6 +632,7 @@ router.get("/teacher-stats", async (req, res) => {
       INNER JOIN Users u ON d.uploaderId = u.userId
       WHERE d.uploadedBy = 'student'
         AND d.uploadStatus = 'success'
+        AND d.reviewStatus = 'approved'
         AND d.isDeleted = FALSE
         AND u.role = 'student'
       GROUP BY DATE_FORMAT(d.uploadDate, '%Y-%m-%d')
@@ -637,6 +643,7 @@ router.get("/teacher-stats", async (req, res) => {
       ${documentSelect}
       WHERE d.uploadedBy = 'student'
         AND d.uploadStatus = 'success'
+        AND d.reviewStatus = 'approved'
         AND d.isDeleted = FALSE
         AND u.role = 'student'
       ORDER BY d.uploadDate DESC
@@ -652,6 +659,7 @@ router.get("/teacher-stats", async (req, res) => {
       LEFT JOIN Subjects s ON d.subjectId = s.subjectId
       LEFT JOIN Topics t ON d.topicId = t.topicId
       WHERE d.isDeleted = FALSE
+        AND (d.uploadedBy <> 'student' OR d.reviewStatus = 'approved')
       GROUP BY s.subjectCode, t.topicName
       ORDER BY count DESC
       LIMIT 5
@@ -731,11 +739,117 @@ router.put("/:documentId/metadata", async (req, res) => {
   }
 });
 
+
+router.put("/:documentId/publish", async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing userId",
+      });
+    }
+
+    const [rows] = await pool.query(
+      `
+      SELECT documentId, fileName, uploaderId, uploadedBy, reviewStatus
+      FROM Documents
+      WHERE documentId = ?
+        AND isDeleted = FALSE
+      LIMIT 1
+      `,
+      [documentId],
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found",
+      });
+    }
+
+    const doc = rows[0];
+
+    if (doc.uploadedBy !== "student") {
+      return res.status(400).json({
+        success: false,
+        message: "Only student documents can be published by this action",
+      });
+    }
+
+    if (Number(doc.uploaderId) !== Number(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only publish your own document",
+      });
+    }
+
+    await pool.query(
+      `
+      UPDATE Documents
+      SET reviewStatus = 'approved'
+      WHERE documentId = ?
+      `,
+      [documentId],
+    );
+
+    try {
+      const [receivers] = await pool.query(
+        `
+        SELECT userId
+        FROM Users
+        WHERE role IN ('teacher', 'admin')
+          AND status = 'active'
+        `,
+      );
+
+      if (receivers.length > 0) {
+        await pool.query(
+          `
+          INSERT INTO Notifications
+          (receiverId, documentId, feedbackId, title, message, type)
+          VALUES ?
+          `,
+          [
+            receivers.map((receiver) => [
+              receiver.userId,
+              documentId,
+              null,
+              "Student file published",
+              `Student made a file public: ${doc.fileName}`,
+              "document_approved",
+            ]),
+          ],
+        );
+      }
+    } catch (notifyError) {
+      console.log("Create publish notification failed:", notifyError.message);
+    }
+
+    res.json({
+      success: true,
+      message: "File is now public",
+      documentId,
+      reviewStatus: "approved",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Cannot publish document",
+      detail: error.message,
+    });
+  }
+});
+
 router.get("/", async (req, res) => {
   try {
     const [docs] = await pool.query(`
       ${documentSelect}
       WHERE d.isDeleted = FALSE
+        AND (d.uploadedBy <> 'student' OR d.reviewStatus = 'approved')
       ORDER BY d.uploadDate DESC
     `);
 

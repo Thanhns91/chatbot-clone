@@ -66,6 +66,7 @@ function parseNullableNumber(value) {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+
 async function uploadDocumentToCloudinary(filePath, documentId, fileName) {
   const safeName =
     fileName
@@ -846,6 +847,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         createdBy: uploaderId,
       });
 
+
       if (uploadedBy === "student") {
         await insertStudentActivity(connection, {
           userId: uploaderId,
@@ -1004,6 +1006,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       replacedDocumentId: shouldReplaceOld ? replaceTargetDocumentId : null,
       createdBy: uploaderId,
     });
+
 
     if (uploadedBy === "student") {
       await insertStudentActivity(connection, {
