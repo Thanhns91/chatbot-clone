@@ -16,6 +16,20 @@ const normalizeUser = (user) => ({
   avatarUrl: user.avatar_url || "",
 });
 
+const normalizeEmail = (email = "") => {
+  return String(email || "").trim().toLowerCase();
+};
+
+const isValidEmail = (email = "") => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(
+    String(email || "").trim(),
+  );
+};
+
+const normalizeName = (name = "") => {
+  return String(name || "").trim().replace(/\s+/g, " ");
+};
+
 const isBcryptHash = (value = "") => {
   return (
     value.startsWith("$2a$") ||
@@ -38,7 +52,9 @@ const checkPassword = async (inputPassword, storedPassword) => {
 // REGISTER
 router.post("/register", async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
+    const fullName = normalizeName(req.body.fullName);
+    const email = normalizeEmail(req.body.email);
+    const { password } = req.body;
 
     if (!fullName || !email || !password) {
       return res.status(400).json({
@@ -47,9 +63,23 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Email không hợp lệ",
+      });
+    }
+
+    if (String(password).length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
+    }
+
     const [existingUsers] = await pool.query(
       "SELECT userId FROM Users WHERE email = ?",
-      [email]
+      [email],
     );
 
     if (existingUsers.length > 0) {
@@ -66,7 +96,7 @@ router.post("/register", async (req, res) => {
       INSERT INTO Users (fullName, email, passwordHash, role, status)
       VALUES (?, ?, ?, 'student', 'active')
       `,
-      [fullName, email, passwordHash]
+      [fullName, email, passwordHash],
     );
 
     return res.json({
@@ -87,9 +117,10 @@ router.post("/register", async (req, res) => {
 // LOGIN
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body.email);
+    const { password } = req.body;
 
-    if (!email || !password) {
+    if (!email || !password || !isValidEmail(email)) {
       return res.status(400).json({
         success: false,
         message: "Email or password is incorrect",
@@ -143,12 +174,20 @@ router.post("/login", async (req, res) => {
 // GOOGLE LOGIN
 router.post("/google-login", async (req, res) => {
   try {
-    const { email, fullName } = req.body;
+    const email = normalizeEmail(req.body.email);
+    const fullName = normalizeName(req.body.fullName);
 
     if (!email || !fullName) {
       return res.status(400).json({
         success: false,
         message: "Thiếu thông tin",
+      });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Email không hợp lệ",
       });
     }
 
@@ -177,7 +216,7 @@ router.post("/google-login", async (req, res) => {
       INSERT INTO Users (fullName, email, passwordHash, role, status)
       VALUES (?, ?, '', 'student', 'active')
       `,
-      [fullName, email]
+      [fullName, email],
     );
 
     const [newUser] = await pool.query("SELECT * FROM Users WHERE email = ?", [
@@ -202,7 +241,8 @@ router.post("/google-login", async (req, res) => {
 // ADMIN - TẠO TÀI KHOẢN GIÁO VIÊN
 router.post("/admin/create-teacher", async (req, res) => {
   try {
-    const { fullName, email } = req.body;
+    const fullName = normalizeName(req.body.fullName);
+    const email = normalizeEmail(req.body.email);
 
     if (!fullName || !email) {
       return res.status(400).json({
@@ -211,9 +251,16 @@ router.post("/admin/create-teacher", async (req, res) => {
       });
     }
 
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Email không hợp lệ",
+      });
+    }
+
     const [existing] = await pool.query(
       "SELECT userId FROM Users WHERE email = ?",
-      [email]
+      [email],
     );
 
     if (existing.length > 0) {
@@ -231,7 +278,7 @@ router.post("/admin/create-teacher", async (req, res) => {
       INSERT INTO Users (fullName, email, passwordHash, role, status)
       VALUES (?, ?, ?, 'teacher', 'active')
       `,
-      [fullName, email, passwordHash]
+      [fullName, email, passwordHash],
     );
 
     try {
@@ -259,6 +306,10 @@ router.post("/admin/create-teacher", async (req, res) => {
       success: true,
       mailSent: true,
       message: `Tạo tài khoản và gửi mail đến ${email} thành công!`,
+      teacher: {
+        fullName,
+        email,
+      },
     });
   } catch (error) {
     console.log(error);

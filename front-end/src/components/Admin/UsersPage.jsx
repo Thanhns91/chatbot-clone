@@ -10,6 +10,20 @@ import {
   createTeacherAccount,
 } from "../../services/api";
 
+const normalizeEmail = (email = "") => {
+  return String(email || "").trim().toLowerCase();
+};
+
+const isValidEmail = (email = "") => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(
+    String(email || "").trim(),
+  );
+};
+
+const normalizeName = (name = "") => {
+  return String(name || "").trim().replace(/\s+/g, " ");
+};
+
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +49,7 @@ export default function UsersPage() {
           role: u.role,
           joinDate: u.createdAt?.split("T")[0] || "-",
           status: u.status,
-        }))
+        })),
       );
     } catch (err) {
       console.error(err);
@@ -85,13 +99,13 @@ export default function UsersPage() {
       await updateUserStatus(id, newStatus);
 
       setUsers((prev) =>
-        prev.map((u) => (u.id === id ? { ...u, status: newStatus } : u))
+        prev.map((u) => (u.id === id ? { ...u, status: newStatus } : u)),
       );
 
       toast.success(
         newStatus === "blocked"
           ? "Block user thành công!"
-          : "Unblock user thành công!"
+          : "Unblock user thành công!",
       );
     } catch (err) {
       console.error(err);
@@ -100,8 +114,16 @@ export default function UsersPage() {
   };
 
   const createTeacher = async () => {
-    if (!form.name.trim() || !form.email.trim()) {
+    const cleanName = normalizeName(form.name);
+    const cleanEmail = normalizeEmail(form.email);
+
+    if (!cleanName || !cleanEmail) {
       setError("Vui lòng nhập đầy đủ tên và email.");
+      return;
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      setError("Email không hợp lệ. Ví dụ đúng: teacher@gmail.com");
       return;
     }
 
@@ -109,7 +131,7 @@ export default function UsersPage() {
     setError("");
 
     try {
-      const data = await createTeacherAccount(form.name, form.email);
+      const data = await createTeacherAccount(cleanName, cleanEmail);
 
       if (!data.success) {
         setError(data.message || "Tạo tài khoản thất bại.");
@@ -120,7 +142,27 @@ export default function UsersPage() {
 
       setForm({ name: "", email: "" });
       setModal(false);
-      toast.success("Tạo tài khoản teacher thành công!");
+
+      if (data.mailSent === false) {
+        const teacher = data.teacher || {};
+
+        await Swal.fire({
+          icon: "warning",
+          title: "Tạo tài khoản thành công",
+          html: `
+            <div style="text-align:left">
+              <p>Gửi email thất bại, vui lòng copy thông tin này gửi thủ công cho giáo viên:</p>
+              <p><b>Email:</b> ${teacher.email || cleanEmail}</p>
+              <p><b>Mật khẩu mặc định:</b> ${
+                teacher.defaultPassword || "12345"
+              }</p>
+            </div>
+          `,
+          confirmButtonText: "Đã hiểu",
+        });
+      } else {
+        toast.success("Tạo tài khoản teacher và gửi email thành công!");
+      }
     } catch (err) {
       console.error(err);
       setError("Không thể kết nối server.");
@@ -307,9 +349,16 @@ export default function UsersPage() {
             <Form.Control
               placeholder="Enter teacher name"
               value={form.name}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, name: e.target.value }))
+              onChange={(e) => {
+                setError("");
+                setForm((p) => ({ ...p, name: e.target.value }));
+              }}
+              onBlur={() =>
+                setForm((p) => ({ ...p, name: normalizeName(p.name) }))
               }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") createTeacher();
+              }}
             />
           </Form.Group>
 
@@ -321,10 +370,21 @@ export default function UsersPage() {
               type="email"
               placeholder="teacher@example.com"
               value={form.email}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, email: e.target.value }))
+              isInvalid={Boolean(form.email.trim()) && !isValidEmail(form.email)}
+              onChange={(e) => {
+                setError("");
+                setForm((p) => ({ ...p, email: e.target.value }));
+              }}
+              onBlur={() =>
+                setForm((p) => ({ ...p, email: normalizeEmail(p.email) }))
               }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") createTeacher();
+              }}
             />
+            <Form.Control.Feedback type="invalid">
+              Email không hợp lệ. Ví dụ đúng: teacher@gmail.com
+            </Form.Control.Feedback>
           </Form.Group>
 
           {error && (
@@ -346,7 +406,12 @@ export default function UsersPage() {
           <button
             className="btn-purple"
             onClick={createTeacher}
-            disabled={submitting}
+            disabled={
+              submitting ||
+              !normalizeName(form.name) ||
+              !normalizeEmail(form.email) ||
+              !isValidEmail(form.email)
+            }
           >
             {submitting ? "Đang tạo..." : "Create Account"}
           </button>
