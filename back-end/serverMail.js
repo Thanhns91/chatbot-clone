@@ -1,13 +1,29 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import dns from "dns";
 
 dotenv.config();
 
+// Ép Node ưu tiên IPv4 để tránh lỗi ENETUNREACH IPv6 trên Railway
+dns.setDefaultResultOrder("ipv4first");
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // port 587 dùng STARTTLS
+  family: 4, // ép dùng IPv4
+
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
+  },
+
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 20000,
+
+  tls: {
+    rejectUnauthorized: true,
   },
 });
 
