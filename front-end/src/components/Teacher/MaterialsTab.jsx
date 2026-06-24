@@ -6,6 +6,7 @@ import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Form from "react-bootstrap/Form";
 import Alert from "react-bootstrap/Alert";
+import Modal from "react-bootstrap/Modal";
 import {
   uploadTeacherFile,
   getTeacherUploadHistory,
@@ -79,6 +80,18 @@ const defaultUploadMeta = {
   summary: "",
 };
 
+const defaultNewSubject = {
+  subjectCode: "",
+  subjectName: "",
+  description: "",
+};
+
+const defaultNewTopic = {
+  subjectId: "",
+  topicName: "",
+  description: "",
+};
+
 export default function MaterialsTab() {
   const fileRef = useRef(null);
 
@@ -88,22 +101,17 @@ export default function MaterialsTab() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
+
   const [subjects, setSubjects] = useState([]);
   const [topics, setTopics] = useState([]);
   const [documentTypes, setDocumentTypes] = useState([]);
   const [documentLevels, setDocumentLevels] = useState([]);
 
   const [uploadMeta, setUploadMeta] = useState(defaultUploadMeta);
-  const [newSubject, setNewSubject] = useState({
-    subjectCode: "",
-    subjectName: "",
-    description: "",
-  });
-  const [newTopic, setNewTopic] = useState({
-    subjectId: "",
-    topicName: "",
-    description: "",
-  });
+  const [newSubject, setNewSubject] = useState(defaultNewSubject);
+  const [newTopic, setNewTopic] = useState(defaultNewTopic);
 
   const currentUser = getCurrentUser();
 
@@ -114,8 +122,6 @@ export default function MaterialsTab() {
       (topic) => String(topic.subjectId) === String(uploadMeta.subjectId),
     );
   }, [topics, uploadMeta.subjectId]);
-
-  const newTopicSubjects = subjects;
 
   const fetchUploadHistory = async () => {
     try {
@@ -145,20 +151,11 @@ export default function MaterialsTab() {
         setDocumentTypes(loadedTypes);
         setDocumentLevels(loadedLevels);
 
-        setUploadMeta((prev) => {
-          const nextSubjectId = prev.subjectId || loadedSubjects[0]?.subjectId || "";
-          const topicOfSubject = loadedTopics.find(
-            (topic) => String(topic.subjectId) === String(nextSubjectId),
-          );
-
-          return {
-            ...prev,
-            subjectId: nextSubjectId,
-            topicId: prev.topicId || topicOfSubject?.topicId || "",
-            documentTypeId: prev.documentTypeId || loadedTypes[0]?.documentTypeId || "",
-            levelId: prev.levelId || loadedLevels[0]?.levelId || "",
-          };
-        });
+        setUploadMeta((prev) => ({
+          ...prev,
+          documentTypeId: prev.documentTypeId || loadedTypes[0]?.documentTypeId || "",
+          levelId: prev.levelId || loadedLevels[0]?.levelId || "",
+        }));
 
         setNewTopic((prev) => ({
           ...prev,
@@ -186,7 +183,7 @@ export default function MaterialsTab() {
     if (!stillValid) {
       setUploadMeta((prev) => ({
         ...prev,
-        topicId: filteredTopics[0]?.topicId || "",
+        topicId: "",
       }));
     }
   }, [uploadMeta.subjectId, filteredTopics]);
@@ -201,26 +198,49 @@ export default function MaterialsTab() {
     return "";
   };
 
-  const validateMetadataBeforeUpload = () => {
-    if (!uploadMeta.subjectId) return "Please select a subject.";
-    if (!uploadMeta.topicId) return "Please select a topic.";
-    if (!uploadMeta.documentTypeId) return "Please select a document type.";
-    if (!uploadMeta.levelId) return "Please select a level.";
+  const validateMetadataBeforeUpload = () => "";
 
-    return "";
+  const openUploadModal = async (file) => {
+    if (!file) return;
+
+    const validateMessage = validateFile(file);
+
+    if (validateMessage) {
+      setError(validateMessage);
+      return;
+    }
+
+    await fetchMetadata();
+    setPendingFile(file);
+    setUploadMeta(defaultUploadMeta);
+    setError("");
+    setSuccess("");
+    setShowUploadModal(true);
   };
 
-  const uploadWithMeta = async (file, extraOptions = {}) => {
-    return uploadTeacherFile(file, currentUser?.userId, {
+  const closeUploadModal = () => {
+    if (uploading) return;
+
+    setShowUploadModal(false);
+    setPendingFile(null);
+    setUploadMeta(defaultUploadMeta);
+
+    if (fileRef.current) {
+      fileRef.current.value = "";
+    }
+  };
+
+  const uploadWithMeta = async (extraOptions = {}) => {
+    return uploadTeacherFile(pendingFile, currentUser?.userId, {
       ...uploadMeta,
       ...extraOptions,
     });
   };
 
-  const handleUploadFile = async (file) => {
-    if (!file) return;
+  const handleConfirmUpload = async () => {
+    if (!pendingFile) return;
 
-    const validateMessage = validateFile(file) || validateMetadataBeforeUpload();
+    const validateMessage = validateMetadataBeforeUpload();
 
     if (validateMessage) {
       setError(validateMessage);
@@ -232,34 +252,25 @@ export default function MaterialsTab() {
     setSuccess("");
 
     try {
-      const data = await uploadWithMeta(file);
+      let data = await uploadWithMeta();
 
       if (data.needConfirm) {
         const saveAsVersion = window.confirm(
           `${data.message}\n\nOK = Save as new version\nCancel = Replace old file`,
         );
 
-        const retry = await uploadWithMeta(file, {
+        data = await uploadWithMeta({
           duplicateAction: saveAsVersion ? "new_version" : "replace_old",
           replaceDocumentId: data.existingDocumentId,
           allowVersion: saveAsVersion,
         });
-
-        if (retry.success) {
-          await fetchUploadHistory();
-          setSuccess(retry.message || "Upload successful");
-          setError("");
-        } else {
-          setError(retry.error || retry.message || "Upload failed");
-        }
-
-        return;
       }
 
       if (data.success) {
         await fetchUploadHistory();
         setSuccess(data.message || "Upload successful");
         setError("");
+        closeUploadModal();
       } else {
         setError(data.error || data.message || "Upload failed");
       }
@@ -277,7 +288,7 @@ export default function MaterialsTab() {
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
-    handleUploadFile(file);
+    openUploadModal(file);
   };
 
   const handleDrop = (e) => {
@@ -285,7 +296,7 @@ export default function MaterialsTab() {
     setDragging(false);
 
     const file = e.dataTransfer.files?.[0];
-    handleUploadFile(file);
+    openUploadModal(file);
   };
 
   const getDocumentUrl = (file) => {
@@ -334,15 +345,27 @@ export default function MaterialsTab() {
     }
 
     try {
-      await createSubject({
+      const result = await createSubject({
         ...newSubject,
         createdBy: currentUser?.userId,
       });
 
-      setNewSubject({ subjectCode: "", subjectName: "", description: "" });
+      setNewSubject(defaultNewSubject);
       setSuccess("Subject created.");
       setError("");
       await fetchMetadata();
+
+      if (result.subjectId) {
+        setUploadMeta((prev) => ({
+          ...prev,
+          subjectId: result.subjectId,
+          topicId: "",
+        }));
+        setNewTopic((prev) => ({
+          ...prev,
+          subjectId: result.subjectId,
+        }));
+      }
     } catch (err) {
       setError(err.message || "Cannot create subject");
     }
@@ -351,14 +374,17 @@ export default function MaterialsTab() {
   const handleCreateTopic = async (e) => {
     e.preventDefault();
 
-    if (!newTopic.subjectId || !newTopic.topicName.trim()) {
+    const subjectIdForTopic = newTopic.subjectId || uploadMeta.subjectId;
+
+    if (!subjectIdForTopic || !newTopic.topicName.trim()) {
       setError("Subject and topic name are required.");
       return;
     }
 
     try {
-      await createTopic({
+      const result = await createTopic({
         ...newTopic,
+        subjectId: subjectIdForTopic,
         createdBy: currentUser?.userId,
       });
 
@@ -366,6 +392,14 @@ export default function MaterialsTab() {
       setSuccess("Topic created.");
       setError("");
       await fetchMetadata();
+
+      if (result.topicId) {
+        setUploadMeta((prev) => ({
+          ...prev,
+          subjectId: subjectIdForTopic,
+          topicId: result.topicId,
+        }));
+      }
     } catch (err) {
       setError(err.message || "Cannot create topic");
     }
@@ -373,204 +407,8 @@ export default function MaterialsTab() {
 
   return (
     <>
-      <Card className="td-card mb-3">
-        <Card.Body>
-          <div className="td-section-label">Document Metadata</div>
-          <p className="td-empty-text mb-3">
-            Select metadata before uploading so the file appears in the correct subject and topic.
-          </p>
-
-          {error && <Alert variant="danger">{error}</Alert>}
-          {success && <Alert variant="success">{success}</Alert>}
-
-          <Row className="g-3">
-            <Col md={3}>
-              <Form.Label>Subject</Form.Label>
-              <Form.Select
-                value={uploadMeta.subjectId}
-                onChange={(e) =>
-                  setUploadMeta((prev) => ({
-                    ...prev,
-                    subjectId: e.target.value,
-                    topicId: "",
-                  }))
-                }
-              >
-                <option value="">Select subject</option>
-                {subjects.map((subject) => (
-                  <option key={subject.subjectId} value={subject.subjectId}>
-                    {subject.subjectCode
-                      ? `${subject.subjectCode} - ${subject.subjectName}`
-                      : subject.subjectName}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
-
-            <Col md={3}>
-              <Form.Label>Topic</Form.Label>
-              <Form.Select
-                value={uploadMeta.topicId}
-                onChange={(e) =>
-                  setUploadMeta((prev) => ({ ...prev, topicId: e.target.value }))
-                }
-              >
-                <option value="">Select topic</option>
-                {filteredTopics.map((topic) => (
-                  <option key={topic.topicId} value={topic.topicId}>
-                    {topic.topicName}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
-
-            <Col md={3}>
-              <Form.Label>Type</Form.Label>
-              <Form.Select
-                value={uploadMeta.documentTypeId}
-                onChange={(e) =>
-                  setUploadMeta((prev) => ({
-                    ...prev,
-                    documentTypeId: e.target.value,
-                  }))
-                }
-              >
-                <option value="">Select type</option>
-                {documentTypes.map((type) => (
-                  <option key={type.documentTypeId} value={type.documentTypeId}>
-                    {type.typeName}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
-
-            <Col md={3}>
-              <Form.Label>Level</Form.Label>
-              <Form.Select
-                value={uploadMeta.levelId}
-                onChange={(e) =>
-                  setUploadMeta((prev) => ({ ...prev, levelId: e.target.value }))
-                }
-              >
-                <option value="">Select level</option>
-                {documentLevels.map((level) => (
-                  <option key={level.levelId} value={level.levelId}>
-                    {level.levelName}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
-
-            <Col md={8}>
-              <Form.Label>Tags</Form.Label>
-              <Form.Control
-                value={uploadMeta.tags}
-                placeholder="rag, chatbot, requirement"
-                onChange={(e) =>
-                  setUploadMeta((prev) => ({ ...prev, tags: e.target.value }))
-                }
-              />
-            </Col>
-
-            <Col md={4}>
-              <Form.Label>Short Summary</Form.Label>
-              <Form.Control
-                value={uploadMeta.summary}
-                placeholder="Optional"
-                onChange={(e) =>
-                  setUploadMeta((prev) => ({ ...prev, summary: e.target.value }))
-                }
-              />
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
-
-      <Card className="td-card mb-3">
-        <Card.Body>
-          <div className="td-section-label">Create Metadata</div>
-
-          <Row className="g-3">
-            <Col lg={6}>
-              <Form onSubmit={handleCreateSubject}>
-                <Row className="g-2">
-                  <Col md={4}>
-                    <Form.Control
-                      placeholder="Code"
-                      value={newSubject.subjectCode}
-                      onChange={(e) =>
-                        setNewSubject((prev) => ({
-                          ...prev,
-                          subjectCode: e.target.value,
-                        }))
-                      }
-                    />
-                  </Col>
-                  <Col md={5}>
-                    <Form.Control
-                      placeholder="Subject name"
-                      value={newSubject.subjectName}
-                      onChange={(e) =>
-                        setNewSubject((prev) => ({
-                          ...prev,
-                          subjectName: e.target.value,
-                        }))
-                      }
-                    />
-                  </Col>
-                  <Col md={3}>
-                    <Button type="submit" className="w-100">
-                      Add Subject
-                    </Button>
-                  </Col>
-                </Row>
-              </Form>
-            </Col>
-
-            <Col lg={6}>
-              <Form onSubmit={handleCreateTopic}>
-                <Row className="g-2">
-                  <Col md={4}>
-                    <Form.Select
-                      value={newTopic.subjectId}
-                      onChange={(e) =>
-                        setNewTopic((prev) => ({
-                          ...prev,
-                          subjectId: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value="">Subject</option>
-                      {newTopicSubjects.map((subject) => (
-                        <option key={subject.subjectId} value={subject.subjectId}>
-                          {subject.subjectCode || subject.subjectName}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Col>
-                  <Col md={5}>
-                    <Form.Control
-                      placeholder="Topic name"
-                      value={newTopic.topicName}
-                      onChange={(e) =>
-                        setNewTopic((prev) => ({
-                          ...prev,
-                          topicName: e.target.value,
-                        }))
-                      }
-                    />
-                  </Col>
-                  <Col md={3}>
-                    <Button type="submit" className="w-100">
-                      Add Topic
-                    </Button>
-                  </Col>
-                </Row>
-              </Form>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+      {error && <Alert variant="danger">{error}</Alert>}
+      {success && <Alert variant="success">{success}</Alert>}
 
       <Card
         className={`td-upload-zone border-0 ${
@@ -602,7 +440,7 @@ export default function MaterialsTab() {
           </Card.Text>
 
           <Card.Text className="td-upload-hint mb-0">
-            PDF, DOC, DOCX · max 100MB
+            Metadata will be auto-filled after upload. You can edit it before uploading if needed.
           </Card.Text>
 
           <Button
@@ -615,10 +453,224 @@ export default function MaterialsTab() {
               fileRef.current?.click();
             }}
           >
-            {uploading ? "Uploading..." : "Select Files"}
+            {uploading ? "Uploading..." : "Select File"}
           </Button>
         </Card.Body>
       </Card>
+
+      <Modal show={showUploadModal} onHide={closeUploadModal} centered size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Document metadata</Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body>
+          <p className="text-muted mb-3">
+            File: <b>{pendingFile?.name}</b><br />
+            Leave fields empty to let the system auto-fill metadata.
+          </p>
+
+          <Row className="g-3">
+            <Col md={6}>
+              <Form.Label>Subject / Môn học</Form.Label>
+              <Form.Select
+                value={uploadMeta.subjectId}
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({
+                    ...prev,
+                    subjectId: e.target.value,
+                    topicId: "",
+                  }))
+                }
+              >
+                <option value="">Select subject</option>
+                {subjects.map((subject) => (
+                  <option key={subject.subjectId} value={subject.subjectId}>
+                    {subject.subjectCode
+                      ? `${subject.subjectCode} - ${subject.subjectName}`
+                      : subject.subjectName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={6}>
+              <Form.Label>Topic / Chủ đề</Form.Label>
+              <Form.Select
+                value={uploadMeta.topicId}
+                disabled={!uploadMeta.subjectId}
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({
+                    ...prev,
+                    topicId: e.target.value,
+                  }))
+                }
+              >
+                <option value="">Select topic</option>
+                {filteredTopics.map((topic) => (
+                  <option key={topic.topicId} value={topic.topicId}>
+                    {topic.topicName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={6}>
+              <Form.Label>Document Type</Form.Label>
+              <Form.Select
+                value={uploadMeta.documentTypeId}
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({
+                    ...prev,
+                    documentTypeId: e.target.value,
+                  }))
+                }
+              >
+                <option value="">Select type</option>
+                {documentTypes.map((type) => (
+                  <option key={type.documentTypeId} value={type.documentTypeId}>
+                    {type.typeName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={6}>
+              <Form.Label>Level</Form.Label>
+              <Form.Select
+                value={uploadMeta.levelId}
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({
+                    ...prev,
+                    levelId: e.target.value,
+                  }))
+                }
+              >
+                <option value="">Select level</option>
+                {documentLevels.map((level) => (
+                  <option key={level.levelId} value={level.levelId}>
+                    {level.levelName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={6}>
+              <Form.Label>Tags</Form.Label>
+              <Form.Control
+                value={uploadMeta.tags}
+                placeholder="rag, chatbot, week 1"
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({ ...prev, tags: e.target.value }))
+                }
+              />
+            </Col>
+
+            <Col md={6}>
+              <Form.Label>Tên/Ghi chú tài liệu</Form.Label>
+              <Form.Control
+                value={uploadMeta.summary}
+                placeholder="Ví dụ: Slide RAG tuần 1"
+                onChange={(e) =>
+                  setUploadMeta((prev) => ({
+                    ...prev,
+                    summary: e.target.value,
+                  }))
+                }
+              />
+            </Col>
+          </Row>
+
+          <hr />
+
+          <div className="td-section-label mb-2">Teacher quick metadata</div>
+          <p className="td-empty-text mb-3">
+            Nếu chưa có môn học hoặc chủ đề, teacher có thể tạo nhanh tại đây rồi chọn để upload.
+          </p>
+
+          <Form onSubmit={handleCreateSubject} className="mb-3">
+            <Row className="g-2">
+              <Col md={3}>
+                <Form.Control
+                  placeholder="Code"
+                  value={newSubject.subjectCode}
+                  onChange={(e) =>
+                    setNewSubject((prev) => ({
+                      ...prev,
+                      subjectCode: e.target.value,
+                    }))
+                  }
+                />
+              </Col>
+              <Col md={6}>
+                <Form.Control
+                  placeholder="Subject name"
+                  value={newSubject.subjectName}
+                  onChange={(e) =>
+                    setNewSubject((prev) => ({
+                      ...prev,
+                      subjectName: e.target.value,
+                    }))
+                  }
+                />
+              </Col>
+              <Col md={3}>
+                <Button type="submit" className="w-100" disabled={uploading}>
+                  Add Subject
+                </Button>
+              </Col>
+            </Row>
+          </Form>
+
+          <Form onSubmit={handleCreateTopic}>
+            <Row className="g-2">
+              <Col md={3}>
+                <Form.Select
+                  value={newTopic.subjectId || uploadMeta.subjectId}
+                  onChange={(e) =>
+                    setNewTopic((prev) => ({
+                      ...prev,
+                      subjectId: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Subject</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.subjectId} value={subject.subjectId}>
+                      {subject.subjectCode || subject.subjectName}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+              <Col md={6}>
+                <Form.Control
+                  placeholder="Topic name"
+                  value={newTopic.topicName}
+                  onChange={(e) =>
+                    setNewTopic((prev) => ({
+                      ...prev,
+                      topicName: e.target.value,
+                    }))
+                  }
+                />
+              </Col>
+              <Col md={3}>
+                <Button type="submit" className="w-100" disabled={uploading}>
+                  Add Topic
+                </Button>
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+
+        <Modal.Footer>
+          <Button variant="secondary" disabled={uploading} onClick={closeUploadModal}>
+            Cancel
+          </Button>
+          <Button variant="primary" disabled={uploading} onClick={handleConfirmUpload}>
+            {uploading ? "Uploading..." : "Upload"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <Card className="td-card mt-3">
         <Card.Body>
@@ -646,9 +698,20 @@ export default function MaterialsTab() {
 
                       <div className="td-file-meta">
                         {formatDate(file.uploadDate)} · {label} · {file.reviewStatus}
-                        {file.subjectCode || file.topicName ? (
+                        <br />
+                        <b>Subject:</b> {file.subjectCode || "No Subject"} / {file.topicName || "Uncategorized"}
+                        <br />
+                        <b>Type:</b> {file.documentTypeName || "No Type"} · <b>Level:</b> {file.levelName || "No Level"}
+                        {file.tags ? (
                           <>
-                            {" "}· {file.subjectCode || "No Subject"} / {file.topicName || "Uncategorized"}
+                            <br />
+                            <b>Tags:</b> {file.tags}
+                          </>
+                        ) : null}
+                        {file.summary ? (
+                          <>
+                            <br />
+                            <b>Summary:</b> {file.summary}
                           </>
                         ) : null}
                       </div>

@@ -66,13 +66,6 @@ function parseNullableNumber(value) {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-function parseTags(tags) {
-  return String(tags || "")
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-}
-
 async function uploadDocumentToCloudinary(filePath, documentId, fileName) {
   const safeName =
     fileName
@@ -215,6 +208,211 @@ async function getDuplicateInfo(contentHash) {
   };
 }
 
+
+function normalizeForMeta(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scoreMetadataCandidate(text, values = []) {
+  const haystack = normalizeForMeta(text);
+
+  return values.reduce((score, value) => {
+    const keyword = normalizeForMeta(value);
+    if (!keyword) return score;
+
+    if (haystack.includes(keyword)) return score + Math.max(3, keyword.length);
+
+    return score;
+  }, 0);
+}
+
+function getFirstTextSummary(text = "", fileName = "") {
+  const cleaned = String(text || "")
+    .replace(/\s+/g, " ")
+    .replace(/PAGE\s+\d+/gi, "")
+    .trim();
+
+  if (!cleaned) return `Auto metadata for ${fileName}`;
+
+  return cleaned.length > 240 ? `${cleaned.slice(0, 240).trim()}...` : cleaned;
+}
+
+function buildAutoTags({ subject, topic, documentType, level, fileName }) {
+  const ext = String(fileName || "").split(".").pop()?.toLowerCase();
+  const tags = [
+    subject?.subjectCode,
+    subject?.subjectName,
+    topic?.topicName,
+    documentType?.typeName,
+    level?.levelName,
+    ext,
+  ]
+    .filter(Boolean)
+    .map((item) => String(item).trim())
+    .filter(Boolean);
+
+  return [...new Set(tags)].slice(0, 8).join(", ");
+}
+
+function pickBestSubject(subjects, fileName, text) {
+  if (!subjects.length) return null;
+
+  const source = `${fileName}\n${String(text || "").slice(0, 5000)}`;
+
+  const scored = subjects
+    .map((subject) => ({
+      subject,
+      score: scoreMetadataCandidate(source, [
+        subject.subjectCode,
+        subject.subjectName,
+        subject.description,
+      ]),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  return scored[0]?.score > 0 ? scored[0].subject : subjects[0];
+}
+
+function pickBestTopic(topics, subjectId, fileName, text) {
+  const subjectTopics = topics.filter(
+    (topic) => String(topic.subjectId) === String(subjectId),
+  );
+
+  if (!subjectTopics.length) return null;
+
+  const source = `${fileName}\n${String(text || "").slice(0, 5000)}`;
+
+  const scored = subjectTopics
+    .map((topic) => ({
+      topic,
+      score: scoreMetadataCandidate(source, [topic.topicName, topic.description]),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const uncategorized = subjectTopics.find((topic) =>
+    normalizeForMeta(topic.topicName).includes("uncategorized"),
+  );
+
+  return scored[0]?.score > 0 ? scored[0].topic : uncategorized || subjectTopics[0];
+}
+
+function pickBestDocumentType(documentTypes, fileName, uploadedBy) {
+  if (!documentTypes.length) return null;
+
+  const name = normalizeForMeta(fileName);
+
+  const typeHints = [
+    { keys: ["assignment", "bai tap", "homework", "exercise", "submission"], name: "Assignment" },
+    { keys: ["slide", "ppt", "pptx", "presentation"], name: "Slide" },
+    { keys: ["case", "case study"], name: "Case Study" },
+    { keys: ["research", "paper", "journal"], name: "Research Paper" },
+    { keys: ["reference", "tham khao", "ref"], name: "Reference" },
+    { keys: ["lecture", "lesson", "bai giang", "material"], name: "Lecture" },
+  ];
+
+  const matchedHint = typeHints.find((hint) => hint.keys.some((key) => name.includes(key)));
+
+  const wantedName = matchedHint?.name || (uploadedBy === "student" ? "Assignment" : "Lecture");
+
+  return (
+    documentTypes.find(
+      (type) => normalizeForMeta(type.typeName) === normalizeForMeta(wantedName),
+    ) || documentTypes[0]
+  );
+}
+
+function pickBestLevel(documentLevels, text) {
+  if (!documentLevels.length) return null;
+
+  const content = normalizeForMeta(text);
+  const advancedWords = ["advanced", "nang cao", "architecture", "evaluation", "optimization", "research"];
+  const beginnerWords = ["basic", "intro", "introduction", "co ban", "overview", "tong quan"];
+
+  let wantedName = "Intermediate";
+
+  if (advancedWords.some((word) => content.includes(normalizeForMeta(word)))) {
+    wantedName = "Advanced";
+  } else if (beginnerWords.some((word) => content.includes(normalizeForMeta(word)))) {
+    wantedName = "Beginner";
+  }
+
+  return (
+    documentLevels.find(
+      (level) => normalizeForMeta(level.levelName) === normalizeForMeta(wantedName),
+    ) || documentLevels[0]
+  );
+}
+
+async function autoFillMetadata(metadata, { text, fileName, uploadedBy }) {
+  const [subjects] = await pool.query(`
+    SELECT subjectId, subjectCode, subjectName, description
+    FROM Subjects
+    ORDER BY subjectCode, subjectName
+  `);
+
+  const [topics] = await pool.query(`
+    SELECT topicId, subjectId, topicName, description
+    FROM Topics
+    ORDER BY topicName
+  `);
+
+  const [documentTypes] = await pool.query(`
+    SELECT documentTypeId, typeName, description
+    FROM DocumentTypes
+    ORDER BY typeName
+  `);
+
+  const [documentLevels] = await pool.query(`
+    SELECT levelId, levelName, description
+    FROM DocumentLevels
+    ORDER BY levelId
+  `);
+
+  const selectedSubject = metadata.subjectId
+    ? subjects.find((subject) => String(subject.subjectId) === String(metadata.subjectId))
+    : pickBestSubject(subjects, fileName, text);
+
+  const subjectId = metadata.subjectId || selectedSubject?.subjectId || null;
+
+  const selectedTopic = metadata.topicId
+    ? topics.find((topic) => String(topic.topicId) === String(metadata.topicId))
+    : pickBestTopic(topics, subjectId, fileName, text);
+
+  const selectedType = metadata.documentTypeId
+    ? documentTypes.find(
+        (type) => String(type.documentTypeId) === String(metadata.documentTypeId),
+      )
+    : pickBestDocumentType(documentTypes, fileName, uploadedBy);
+
+  const selectedLevel = metadata.levelId
+    ? documentLevels.find((level) => String(level.levelId) === String(metadata.levelId))
+    : pickBestLevel(documentLevels, text);
+
+  return {
+    subjectId,
+    topicId: metadata.topicId || selectedTopic?.topicId || null,
+    documentTypeId: metadata.documentTypeId || selectedType?.documentTypeId || null,
+    levelId: metadata.levelId || selectedLevel?.levelId || null,
+    tags:
+      metadata.tags ||
+      buildAutoTags({
+        subject: selectedSubject,
+        topic: selectedTopic,
+        documentType: selectedType,
+        level: selectedLevel,
+        fileName,
+      }),
+    summary: metadata.summary || getFirstTextSummary(text, fileName),
+  };
+}
+
 async function validateMetadata({ subjectId, topicId, documentTypeId, levelId }) {
   if (subjectId) {
     const [rows] = await pool.query(
@@ -253,20 +451,6 @@ async function validateMetadata({ subjectId, topicId, documentTypeId, levelId })
     );
     if (rows.length === 0) throw new Error("Invalid levelId");
   }
-}
-
-async function insertDocumentTags(connection, documentId, tags) {
-  const tagList = parseTags(tags);
-
-  if (tagList.length === 0) return;
-
-  await connection.query(
-    `
-    INSERT IGNORE INTO DocumentTags (documentId, tagName)
-    VALUES ?
-    `,
-    [tagList.map((tag) => [documentId, tag])],
-  );
 }
 
 async function insertDocumentVersion(
@@ -518,7 +702,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     const uploadedBy = uploader.role;
     const reviewStatus = uploadedBy === "teacher" ? "approved" : "private";
 
-    const metadata = {
+    let metadata = {
       subjectId: parseNullableNumber(req.body.subjectId),
       topicId: parseNullableNumber(req.body.topicId),
       documentTypeId: parseNullableNumber(req.body.documentTypeId),
@@ -526,8 +710,6 @@ router.post("/", upload.single("file"), async (req, res) => {
       tags: req.body.tags || null,
       summary: req.body.summary || null,
     };
-
-    await validateMetadata(metadata);
 
     const allowVersion =
       req.body.allowVersion === "true" || req.body.allowVersion === true;
@@ -544,6 +726,14 @@ router.post("/", upload.single("file"), async (req, res) => {
     if (!text || text.trim().length === 0) {
       throw new Error("Cannot extract text from this file.");
     }
+
+    metadata = await autoFillMetadata(metadata, {
+      text,
+      fileName,
+      uploadedBy,
+    });
+
+    await validateMetadata(metadata);
 
     const contentHash = createContentHash(text);
     const duplicateInfo = await getDuplicateInfo(contentHash);
@@ -655,8 +845,6 @@ router.post("/", upload.single("file"), async (req, res) => {
         replacedDocumentId: null,
         createdBy: uploaderId,
       });
-
-      await insertDocumentTags(connection, documentId, metadata.tags);
 
       if (uploadedBy === "student") {
         await insertStudentActivity(connection, {
@@ -816,8 +1004,6 @@ router.post("/", upload.single("file"), async (req, res) => {
       replacedDocumentId: shouldReplaceOld ? replaceTargetDocumentId : null,
       createdBy: uploaderId,
     });
-
-    await insertDocumentTags(connection, documentId, metadata.tags);
 
     if (uploadedBy === "student") {
       await insertStudentActivity(connection, {

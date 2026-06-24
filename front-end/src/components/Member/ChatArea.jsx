@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Form from "react-bootstrap/Form";
+import Modal from "react-bootstrap/Modal";
+import Button from "react-bootstrap/Button";
 import logo7 from "../../assets/images/7.png";
 import {
   uploadFile,
@@ -7,6 +9,7 @@ import {
   getChatMessages,
   saveChatMessage,
   updateChatSession,
+  getMetadata,
 } from "../../services/api";
 import "./Member.scss";
 
@@ -15,15 +18,13 @@ const makeId = () => {
   return String(Date.now() + Math.random());
 };
 
-const dedupeDocuments = (docs = []) => {
-  const map = new Map();
-
-  docs.filter(Boolean).forEach((doc) => {
-    if (!doc.documentId) return;
-    map.set(String(doc.documentId), doc);
-  });
-
-  return Array.from(map.values());
+const defaultUploadMeta = {
+  subjectId: "",
+  topicId: "",
+  documentTypeId: "",
+  levelId: "",
+  tags: "",
+  summary: "",
 };
 
 const ChatArea = ({
@@ -36,28 +37,23 @@ const ChatArea = ({
   setAvailableDocuments,
 }) => {
   const fileInputRef = useRef(null);
-  const chatBodyRef = useRef(null);
-  const messagesEndRef = useRef(null);
-  const shouldAutoScrollRef = useRef(true);
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [approvedAnswers, setApprovedAnswers] = useState([]);
-  const [selectedDocuments, setSelectedDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const selectedDocumentIds = useMemo(() => {
-    return selectedDocuments.map((doc) => doc.documentId).filter(Boolean);
-  }, [selectedDocuments]);
-
-  const selectedDocumentLabel = useMemo(() => {
-    if (selectedDocuments.length === 0) return "";
-    if (selectedDocuments.length === 1) return selectedDocuments[0].fileName;
-    return `${selectedDocuments.length} files`;
-  }, [selectedDocuments]);
+  const [pendingUploadFile, setPendingUploadFile] = useState(null);
+  const [showUploadMetaModal, setShowUploadMetaModal] = useState(false);
+  const [metadataLoading, setMetadataLoading] = useState(false);
+  const [subjects, setSubjects] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [documentTypes, setDocumentTypes] = useState([]);
+  const [documentLevels, setDocumentLevels] = useState([]);
+  const [uploadMeta, setUploadMeta] = useState(defaultUploadMeta);
 
   const showToast = (type, title, message = "") => {
     const toastId = Date.now();
@@ -77,48 +73,38 @@ const ChatArea = ({
     }, 3200);
   };
 
-  const handleScroll = () => {
-    const el = chatBodyRef.current;
-    if (!el) return;
+  const filteredTopics = useMemo(() => {
+    if (!uploadMeta.subjectId) return topics;
 
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    shouldAutoScrollRef.current = distanceFromBottom < 120;
-  };
-
-  useEffect(() => {
-    if (!shouldAutoScrollRef.current) return;
-
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
-  }, [messages.length, loading]);
-
-  useEffect(() => {
-    if (!selectedDocument?.documentId) return;
-
-    setSelectedDocuments((prev) =>
-      dedupeDocuments([
-        ...prev,
-        {
-          documentId: selectedDocument.documentId,
-          fileName: selectedDocument.fileName || "Uploaded document",
-          fileType: selectedDocument.fileType,
-          fileUrl: selectedDocument.fileUrl,
-          uploadedBy: selectedDocument.uploadedBy,
-          uploaderId: selectedDocument.uploaderId,
-          reviewStatus: selectedDocument.reviewStatus,
-        },
-      ]),
+    return topics.filter(
+      (topic) => String(topic.subjectId) === String(uploadMeta.subjectId),
     );
-  }, [selectedDocument]);
+  }, [topics, uploadMeta.subjectId]);
+
+  const loadMetadata = async () => {
+    try {
+      setMetadataLoading(true);
+      const data = await getMetadata();
+
+      if (data.success) {
+        setSubjects(data.subjects || []);
+        setTopics(data.topics || []);
+        setDocumentTypes(data.documentTypes || []);
+        setDocumentLevels(data.documentLevels || []);
+      }
+    } catch (error) {
+      console.log("Cannot load metadata:", error);
+      showToast("error", "Cannot load metadata", error.message);
+    } finally {
+      setMetadataLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadMessages = async () => {
       if (!conversationId) {
         setMessages([]);
         setSelectedDocument?.(null);
-        setSelectedDocuments([]);
         setApprovedAnswers([]);
         return;
       }
@@ -157,15 +143,10 @@ const ChatArea = ({
         setMessages(formatted);
 
         if (activeConversation?.documentId) {
-          const doc = {
+          setSelectedDocument?.({
             documentId: activeConversation.documentId,
             fileName: activeConversation.fileName || "Uploaded document",
-          };
-
-          setSelectedDocument?.(doc);
-          setSelectedDocuments([doc]);
-        } else {
-          setSelectedDocuments([]);
+          });
         }
 
         setApprovedAnswers([]);
@@ -177,138 +158,161 @@ const ChatArea = ({
     };
 
     loadMessages();
-  }, [conversationId, setSelectedDocument]);
+  }, [
+    conversationId,
+    activeConversation?.documentId,
+    activeConversation?.fileName,
+    setSelectedDocument,
+  ]);
 
-  const handleChooseFile = () => {
+  const handleChooseFile = async () => {
     if (!conversationId) {
-      showToast(
-        "warning",
-        "New chat required",
-        "Bạn cần tạo New Chat trước khi upload tài liệu.",
-      );
+      alert("Bạn cần tạo New Chat trước khi upload tài liệu.");
       return;
     }
 
+    await loadMetadata();
     fileInputRef.current?.click();
   };
 
-  const uploadDocumentToServer = async (file, allowVersion = false) => {
-    const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
-
-    let result = await uploadFile(file, {
-      uploadedBy,
-      uploaderId: user?.userId,
-      allowVersion,
-    });
-
-    if (result.duplicate && result.needConfirm) {
-      result = await uploadFile(file, {
-        uploadedBy,
-        uploaderId: user?.userId,
-        allowVersion: true,
-      });
-    }
-
-    if (result.error || result.success === false) {
-      throw new Error(result.detail || result.message || result.error);
-    }
-
-    if (!result.documentId) {
-      throw new Error(result.message || "Upload failed: missing documentId");
-    }
-
-    await updateChatSession(conversationId, {
-      documentId: result.documentId,
-    });
-
-    const uploadedDocument = {
-      documentId: result.documentId,
-      fileName: result.fileName,
-      fileType: result.fileType,
-      fileUrl: result.fileUrl,
-      totalChunks: result.totalChunks,
-      uploaderId: user?.userId,
-      uploadedBy,
-      reviewStatus:
-        result.reviewStatus ||
-        (uploadedBy === "teacher" ? "approved" : "private"),
-      versionNo: result.versionNo || 1,
-      versionGroupId: result.versionGroupId,
-      vectorDocumentId: result.vectorDocumentId,
-      isDuplicate: Boolean(result.isDuplicate || result.duplicate),
-      uploadDate: new Date().toISOString(),
-    };
-
-    setSelectedDocument?.(uploadedDocument);
-
-    setSelectedDocuments((prev) =>
-      dedupeDocuments([...prev, uploadedDocument]),
-    );
-
-    setAvailableDocuments?.((prev) => {
-      const existed = prev.some(
-        (item) => String(item.documentId) === String(result.documentId),
-      );
-
-      if (existed) return prev;
-
-      return [uploadedDocument, ...prev];
-    });
-
-    onConversationUpdated?.({
-      id: conversationId,
-      documentId: result.documentId,
-      fileName: result.fileName,
-      preview: result.versionCreated
-        ? `Saved as Version ${result.versionNo}: ${result.fileName}`
-        : result.fileName,
-      messageCount: activeConversation?.messageCount || 0,
-    });
-
-    return uploadedDocument;
+  const resetUploadMetaModal = () => {
+    setPendingUploadFile(null);
+    setShowUploadMetaModal(false);
+    setUploadMeta(defaultUploadMeta);
   };
 
   const handleUpload = async (event) => {
-    const files = Array.from(event.target.files || []);
+    const file = event.target.files?.[0];
 
-    if (files.length === 0 || !conversationId) return;
+    if (!file || !conversationId) return;
+
+    setPendingUploadFile(file);
+    setUploadMeta(defaultUploadMeta);
+    setShowUploadMetaModal(true);
+
+    event.target.value = "";
+  };
+
+  const buildUploadedDocument = (result, uploadedBy) => ({
+    documentId: result.documentId,
+    fileName: result.fileName,
+    fileType: result.fileType,
+    fileUrl: result.fileUrl,
+    totalChunks: result.totalChunks,
+    uploaderId: user?.userId,
+    uploadedBy,
+    reviewStatus:
+      result.reviewStatus || (uploadedBy === "teacher" ? "approved" : "private"),
+    subjectId: result.subjectId || uploadMeta.subjectId,
+    topicId: result.topicId || uploadMeta.topicId,
+    documentTypeId: result.documentTypeId || uploadMeta.documentTypeId,
+    levelId: result.levelId || uploadMeta.levelId,
+    tags: result.tags || uploadMeta.tags,
+    summary: result.summary || uploadMeta.summary,
+    subjectCode: result.subjectCode,
+    subjectName: result.subjectName,
+    topicName: result.topicName,
+    documentTypeName: result.documentTypeName,
+    levelName: result.levelName,
+    versionNo: result.versionNo || 1,
+    versionGroupId: result.versionGroupId,
+    vectorDocumentId: result.vectorDocumentId,
+    isDuplicate: Boolean(result.isDuplicate || result.duplicate),
+    uploadDate: new Date().toISOString(),
+  });
+
+  const doUpload = async (extraOptions = {}) => {
+    const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
+
+    return uploadFile(pendingUploadFile, {
+      uploadedBy,
+      uploaderId: user?.userId,
+      subjectId: uploadMeta.subjectId,
+      topicId: uploadMeta.topicId,
+      documentTypeId: uploadMeta.documentTypeId,
+      levelId: uploadMeta.levelId,
+      tags: uploadMeta.tags,
+      summary: uploadMeta.summary,
+      ...extraOptions,
+    });
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!pendingUploadFile || !conversationId) return;
 
     try {
       setUploading(true);
-      shouldAutoScrollRef.current = false;
 
-      const uploadedDocs = [];
+      let result = await doUpload();
 
-      for (const file of files) {
-        const uploadedDoc = await uploadDocumentToServer(file, false);
-
-        if (uploadedDoc) {
-          uploadedDocs.push(uploadedDoc);
-        }
-      }
-
-      if (uploadedDocs.length > 0) {
-        setSelectedDocuments((prev) =>
-          dedupeDocuments([...prev, ...uploadedDocs]),
+      if (result.needConfirm) {
+        const saveAsVersion = window.confirm(
+          `${result.message || "File already exists."}\n\nOK = Save as new version\nCancel = Replace old file`,
         );
 
-        setSelectedDocument?.(uploadedDocs[uploadedDocs.length - 1]);
+        result = await doUpload({
+          duplicateAction: saveAsVersion ? "new_version" : "replace_old",
+          replaceDocumentId: result.existingDocumentId,
+        });
+      }
 
+      if (result.error || result.success === false) {
+        throw new Error(result.detail || result.message || result.error);
+      }
+
+      await updateChatSession(conversationId, {
+        documentId: result.documentId,
+      });
+
+      const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
+      const uploadedDocument = buildUploadedDocument(result, uploadedBy);
+
+      setSelectedDocument?.(uploadedDocument);
+
+      setAvailableDocuments?.((prev) => {
+        const existed = prev.some(
+          (item) => String(item.documentId) === String(result.documentId),
+        );
+
+        if (existed) return prev;
+
+        return [uploadedDocument, ...prev];
+      });
+
+      if (result.replacedOld) {
+        showToast("success", "File replaced", result.fileName);
+      } else if (result.duplicate) {
         showToast(
           "success",
-          "Upload successful!",
-          `${uploadedDocs.length} file(s) uploaded and used in this chat.`,
+          "File already exists!",
+          `Saved as Version ${result.versionNo || 2} in your library.`,
         );
+      } else {
+        showToast("success", "Upload successful!");
       }
+
+      onConversationUpdated?.({
+        id: conversationId,
+        documentId: result.documentId,
+        fileName: result.fileName,
+        preview: result.duplicate
+          ? `Saved as Version ${result.versionNo || 2}: ${result.fileName}`
+          : result.fileName,
+        messageCount: (activeConversation?.messageCount || 0) + 1,
+      });
+
+      resetUploadMetaModal();
     } catch (error) {
-      showToast(
-        "error",
-        "Upload failed",
-        error.message || "Cannot upload these files.",
-      );
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: makeId(),
+          role: "system",
+          content: `Upload thất bại: ${error.message}`,
+        },
+      ]);
     } finally {
       setUploading(false);
-      event.target.value = "";
     }
   };
 
@@ -317,16 +321,7 @@ const ChatArea = ({
 
     if (!userText || loading || !conversationId) return;
 
-    if (userText.length > 3000) {
-      showToast(
-        "warning",
-        "Question too long",
-        "Câu hỏi quá dài. Bạn hãy chia nhỏ câu hỏi hoặc hỏi từng phần.",
-      );
-      return;
-    }
-
-    if (selectedDocumentIds.length === 0) {
+    if (!selectedDocument?.documentId) {
       setMessages((prev) => [
         ...prev,
         {
@@ -339,8 +334,6 @@ const ChatArea = ({
       ]);
       return;
     }
-
-    shouldAutoScrollRef.current = true;
 
     const userMessage = {
       id: makeId(),
@@ -369,14 +362,11 @@ const ChatArea = ({
         });
       }
 
-      const result = await sendMessage({
-        documentId: selectedDocumentIds[0],
-        documentIds: selectedDocumentIds,
-        sessionId: conversationId,
-        message: userText,
+      const result = await sendMessage(
+        selectedDocument.documentId,
+        userText,
         approvedAnswers,
-        responseLanguage: localStorage.getItem("chatLanguage") || "vi",
-      });
+      );
 
       const aiAnswer = result.answer || "Không có phản hồi.";
 
@@ -447,11 +437,163 @@ const ChatArea = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.doc,.docx,.xlsx,.xls"
-        multiple
+        accept=".pdf,.doc,.docx"
         hidden
         onChange={handleUpload}
       />
+
+      <Modal
+        show={showUploadMetaModal}
+        onHide={() => {
+          if (!uploading) resetUploadMetaModal();
+        }}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Document metadata</Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body>
+          <p className="text-muted mb-3">
+            File: <b>{pendingUploadFile?.name}</b><br />
+            Leave fields empty to let the system auto-fill metadata.
+          </p>
+
+          {metadataLoading && <p className="text-muted">Loading metadata...</p>}
+
+          <Form.Group className="mb-3">
+            <Form.Label>Subject</Form.Label>
+            <Form.Select
+              value={uploadMeta.subjectId}
+              onChange={(e) =>
+                setUploadMeta((prev) => ({
+                  ...prev,
+                  subjectId: e.target.value,
+                  topicId: "",
+                }))
+              }
+            >
+              <option value="">Auto-fill subject</option>
+              {subjects.map((subject) => (
+                <option key={subject.subjectId} value={subject.subjectId}>
+                  {subject.subjectCode
+                    ? `${subject.subjectCode} - ${subject.subjectName}`
+                    : subject.subjectName}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Topic</Form.Label>
+            <Form.Select
+              value={uploadMeta.topicId}
+              onChange={(e) =>
+                setUploadMeta((prev) => ({
+                  ...prev,
+                  topicId: e.target.value,
+                }))
+              }
+              disabled={!uploadMeta.subjectId}
+            >
+              <option value="">Auto-fill topic</option>
+              {filteredTopics.map((topic) => (
+                <option key={topic.topicId} value={topic.topicId}>
+                  {topic.topicName}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Document Type</Form.Label>
+            <Form.Select
+              value={uploadMeta.documentTypeId}
+              onChange={(e) =>
+                setUploadMeta((prev) => ({
+                  ...prev,
+                  documentTypeId: e.target.value,
+                }))
+              }
+            >
+              <option value="">Auto-fill type</option>
+              {documentTypes.map((type) => (
+                <option key={type.documentTypeId} value={type.documentTypeId}>
+                  {type.typeName}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Level</Form.Label>
+            <Form.Select
+              value={uploadMeta.levelId}
+              onChange={(e) =>
+                setUploadMeta((prev) => ({
+                  ...prev,
+                  levelId: e.target.value,
+                }))
+              }
+            >
+              <option value="">Auto-fill level</option>
+              {documentLevels.map((level) => (
+                <option key={level.levelId} value={level.levelId}>
+                  {level.levelName}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Tags</Form.Label>
+            <Form.Control
+              value={uploadMeta.tags}
+              placeholder="example: rag, week 1, assignment"
+              onChange={(e) =>
+                setUploadMeta((prev) => ({
+                  ...prev,
+                  tags: e.target.value,
+                }))
+              }
+            />
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label>Tên/Ghi chú tài liệu</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={uploadMeta.summary}
+              placeholder="Ví dụ: Bài tập RAG của Khang / ghi chú ngắn"
+              onChange={(e) =>
+                setUploadMeta((prev) => ({
+                  ...prev,
+                  summary: e.target.value,
+                }))
+              }
+            />
+          </Form.Group>
+        </Modal.Body>
+
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            disabled={uploading}
+            onClick={resetUploadMetaModal}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="primary"
+            disabled={uploading}
+            onClick={handleConfirmUpload}
+          >
+            {uploading ? "Uploading..." : "Upload"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {toast && (
         <div className={`member-toast member-toast--${toast.type}`}>
@@ -483,11 +625,7 @@ const ChatArea = ({
         </div>
       )}
 
-      <div
-        ref={chatBodyRef}
-        className="member-chat__body"
-        onScroll={handleScroll}
-      >
+      <div className="member-chat__body">
         {loadingMessages ? (
           <p>Đang tải tin nhắn...</p>
         ) : messages.length === 0 ? (
@@ -501,11 +639,11 @@ const ChatArea = ({
           </div>
         ) : (
           <div className="member-chat__messages">
-            {selectedDocuments.length > 0 && (
+            {selectedDocument && (
               <div className="member-chat__document-info">
                 <i className="ti ti-file-text" />
                 <span>
-                  Đang hỏi theo: <b>{selectedDocumentLabel}</b>
+                  Đang hỏi theo file: <b>{selectedDocument.fileName}</b>
                 </span>
               </div>
             )}
@@ -549,8 +687,6 @@ const ChatArea = ({
                 </div>
               </div>
             )}
-
-            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
@@ -576,10 +712,9 @@ const ChatArea = ({
         <Form.Control
           className="member-chat__input"
           type="text"
-          maxLength={3000}
           placeholder={
-            selectedDocuments.length > 0
-              ? `Hỏi nội dung trong ${selectedDocumentLabel}...`
+            selectedDocument
+              ? `Hỏi nội dung trong ${selectedDocument.fileName}...`
               : "Chọn file trong Library hoặc upload tài liệu trước..."
           }
           value={message}

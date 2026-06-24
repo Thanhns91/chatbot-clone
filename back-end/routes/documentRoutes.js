@@ -724,25 +724,6 @@ router.put("/:documentId/metadata", async (req, res) => {
       ],
     );
 
-    await pool.query("DELETE FROM DocumentTags WHERE documentId = ?", [
-      documentId,
-    ]);
-
-    const tagList = String(tags || "")
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-
-    if (tagList.length > 0) {
-      await pool.query(
-        `
-        INSERT IGNORE INTO DocumentTags (documentId, tagName)
-        VALUES ?
-        `,
-        [tagList.map((tag) => [documentId, tag])],
-      );
-    }
-
     res.json({ success: true, message: "Document metadata updated" });
   } catch (error) {
     console.log(error);
