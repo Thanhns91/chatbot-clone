@@ -181,6 +181,17 @@ const ChatArea = ({
     setUploadMeta(defaultUploadMeta);
   };
 
+  const handleOpenPendingFile = (file) => {
+    if (!file) return;
+
+    const fileUrl = URL.createObjectURL(file);
+    window.open(fileUrl, "_blank", "noopener,noreferrer");
+
+    setTimeout(() => {
+      URL.revokeObjectURL(fileUrl);
+    }, 30000);
+  };
+
   const handleUpload = async (event) => {
     const file = event.target.files?.[0];
 
@@ -193,33 +204,62 @@ const ChatArea = ({
     event.target.value = "";
   };
 
-  const buildUploadedDocument = (result, uploadedBy) => ({
-    documentId: result.documentId,
-    fileName: result.fileName,
-    fileType: result.fileType,
-    fileUrl: result.fileUrl,
-    totalChunks: result.totalChunks,
-    uploaderId: user?.userId,
-    uploadedBy,
-    reviewStatus:
-      result.reviewStatus || (uploadedBy === "teacher" ? "approved" : "private"),
-    subjectId: result.subjectId || uploadMeta.subjectId,
-    topicId: result.topicId || uploadMeta.topicId,
-    documentTypeId: result.documentTypeId || uploadMeta.documentTypeId,
-    levelId: result.levelId || uploadMeta.levelId,
-    tags: result.tags || uploadMeta.tags,
-    summary: result.summary || uploadMeta.summary,
-    subjectCode: result.subjectCode,
-    subjectName: result.subjectName,
-    topicName: result.topicName,
-    documentTypeName: result.documentTypeName,
-    levelName: result.levelName,
-    versionNo: result.versionNo || 1,
-    versionGroupId: result.versionGroupId,
-    vectorDocumentId: result.vectorDocumentId,
-    isDuplicate: Boolean(result.isDuplicate || result.duplicate),
-    uploadDate: new Date().toISOString(),
-  });
+  const findById = (list, idKey, idValue) => {
+    if (!idValue) return null;
+
+    return list.find((item) => String(item[idKey]) === String(idValue));
+  };
+
+  const buildUploadedDocument = (result, uploadedBy) => {
+    const subjectId = result.subjectId || uploadMeta.subjectId;
+    const topicId = result.topicId || uploadMeta.topicId;
+    const documentTypeId = result.documentTypeId || uploadMeta.documentTypeId;
+    const levelId = result.levelId || uploadMeta.levelId;
+
+    const subject = findById(subjects, "subjectId", subjectId);
+    const topic = findById(topics, "topicId", topicId);
+    const documentType = findById(
+      documentTypes,
+      "documentTypeId",
+      documentTypeId,
+    );
+    const level = findById(documentLevels, "levelId", levelId);
+    
+    return {
+      documentId: result.documentId,
+      fileName: result.fileName,
+      fileType: result.fileType,
+      fileUrl: result.fileUrl,
+      totalChunks: result.totalChunks,
+
+      uploaderId: user?.userId,
+      uploadedBy,
+
+      reviewStatus:
+        result.reviewStatus ||
+        (uploadedBy === "teacher" ? "approved" : "private"),
+
+      subjectId,
+      topicId,
+      documentTypeId,
+      levelId,
+
+      tags: result.tags || uploadMeta.tags,
+      summary: result.summary || uploadMeta.summary,
+
+      subjectCode: result.subjectCode || subject?.subjectCode || "",
+      subjectName: result.subjectName || subject?.subjectName || "",
+      topicName: result.topicName || topic?.topicName || "Uncategorized",
+      documentTypeName: result.documentTypeName || documentType?.typeName || "",
+      levelName: result.levelName || level?.levelName || "",
+
+      versionNo: result.versionNo || 1,
+      versionGroupId: result.versionGroupId,
+      vectorDocumentId: result.vectorDocumentId,
+      isDuplicate: Boolean(result.isDuplicate || result.duplicate),
+      uploadDate: result.uploadDate || new Date().toISOString(),
+    };
+  };
 
   const doUpload = async (extraOptions = {}) => {
     const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
@@ -454,10 +494,28 @@ const ChatArea = ({
         </Modal.Header>
 
         <Modal.Body>
-          <p className="text-muted mb-3">
-            File: <b>{pendingUploadFile?.name}</b><br />
-            Leave fields empty to let the system auto-fill metadata.
-          </p>
+          <div className="mb-3">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <p className="text-muted mb-0">
+                File: <b>{pendingUploadFile?.name}</b>
+              </p>
+
+              <Button
+                type="button"
+                variant="outline-primary"
+                size="sm"
+                onClick={() => handleOpenPendingFile(pendingUploadFile)}
+                disabled={!pendingUploadFile}
+              >
+                <i className="bi bi-box-arrow-up-right me-1" />
+                Open file
+              </Button>
+            </div>
+
+            <p className="text-muted mb-0 mt-1">
+              Leave fields empty to let the system auto-fill metadata.
+            </p>
+          </div>
 
           {metadataLoading && <p className="text-muted">Loading metadata...</p>}
 

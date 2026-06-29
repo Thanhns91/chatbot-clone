@@ -230,6 +230,17 @@ export default function MaterialsTab() {
     }
   };
 
+  const handleOpenPendingFile = (file) => {
+    if (!file) return;
+
+    const fileUrl = URL.createObjectURL(file);
+    window.open(fileUrl, "_blank", "noopener,noreferrer");
+
+    setTimeout(() => {
+      URL.revokeObjectURL(fileUrl);
+    }, 30000);
+  };
+
   const uploadWithMeta = async (extraOptions = {}) => {
     return uploadTeacherFile(pendingFile, currentUser?.userId, {
       ...uploadMeta,
@@ -464,10 +475,28 @@ export default function MaterialsTab() {
         </Modal.Header>
 
         <Modal.Body>
-          <p className="text-muted mb-3">
-            File: <b>{pendingFile?.name}</b><br />
-            Leave fields empty to let the system auto-fill metadata.
-          </p>
+          <div className="mb-3">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <p className="text-muted mb-0">
+                File: <b>{pendingFile?.name}</b>
+              </p>
+
+              <Button
+                type="button"
+                variant="outline-primary"
+                size="sm"
+                onClick={() => handleOpenPendingFile(pendingFile)}
+                disabled={!pendingFile}
+              >
+                <i className="bi bi-box-arrow-up-right me-1" />
+                Open file
+              </Button>
+            </div>
+
+            <p className="text-muted mb-0 mt-1">
+              Leave fields empty to let the system auto-fill metadata.
+            </p>
+          </div>
 
           <Row className="g-3">
             <Col md={6}>
