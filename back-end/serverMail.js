@@ -4,7 +4,7 @@ dotenv.config();
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const MAIL_FROM =
-  process.env.MAIL_FROM || "AI Learning <onboarding@resend.dev>";
+  process.env.MAIL_FROM || "AI Learning <noreply@chatbot-swp.online>";
 
 function escapeHtml(value = "") {
   return String(value || "")
