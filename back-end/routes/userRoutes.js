@@ -655,8 +655,7 @@ router.put("/:id/profile", async (req, res) => {
         ],
       );
     }
-    }
-
+    
     await connection.commit();
 
     const updatedUser = await getProfileById(id);
