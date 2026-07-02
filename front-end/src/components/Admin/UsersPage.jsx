@@ -265,7 +265,6 @@ export default function UsersPage() {
     <>
       <div className="admin-topbar">
         <h1>User Management</h1>
-        <p>Mỗi dòng thể hiện tổng tài liệu, dung lượng, file public/private của từng user.</p>
       </div>
 
       <div className="admin-body">
@@ -299,9 +298,6 @@ export default function UsersPage() {
                 <span style={{ fontWeight: 600, fontSize: 15 }}>
                   User Overview
                 </span>
-              </div>
-              <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                Summary: tổng quan mỗi user theo tài liệu, dung lượng và trạng thái public/private.
               </div>
             </div>
 
@@ -478,7 +474,7 @@ export default function UsersPage() {
 
           {error && (
             <div style={{ color: "#b91c1c", fontSize: 13, marginBottom: 12 }}>
-              ❌ {error}
+              {error}
             </div>
           )}
         </Modal.Body>

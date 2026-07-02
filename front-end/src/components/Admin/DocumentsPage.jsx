@@ -164,7 +164,6 @@ export default function DocumentsPage() {
     <>
       <div className="admin-topbar">
         <h1>Documents</h1>
-        <p>Mỗi tài liệu hiển thị public/private, dung lượng, metadata và số lần dùng trong chat.</p>
       </div>
 
       <div className="admin-body">
@@ -199,10 +198,6 @@ export default function DocumentsPage() {
           <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
             All Documents
           </div>
-          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>
-            Summary: danh sách này cho biết tài liệu thuộc môn nào, ai upload, đang public/private và đã dùng trong bao nhiêu phiên chat.
-          </div>
-
           <div className="table-responsive">
             <Table className="admin-table mb-0">
               <thead>
@@ -250,10 +245,6 @@ export default function DocumentsPage() {
                               >
                                 {d.fileName}
                               </a>
-
-                              <div style={{ fontSize: 12, color: "#64748b" }}>
-                                {d.summary || "No summary"}
-                              </div>
                             </div>
                           </div>
                         </td>

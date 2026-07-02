@@ -234,17 +234,6 @@ function scoreMetadataCandidate(text, values = []) {
   }, 0);
 }
 
-function getFirstTextSummary(text = "", fileName = "") {
-  const cleaned = String(text || "")
-    .replace(/\s+/g, " ")
-    .replace(/PAGE\s+\d+/gi, "")
-    .trim();
-
-  if (!cleaned) return `Auto metadata for ${fileName}`;
-
-  return cleaned.length > 240 ? `${cleaned.slice(0, 240).trim()}...` : cleaned;
-}
-
 function buildAutoTags({ subject, topic, documentType, level, fileName }) {
   const ext = String(fileName || "").split(".").pop()?.toLowerCase();
   const tags = [
@@ -410,7 +399,7 @@ async function autoFillMetadata(metadata, { text, fileName, uploadedBy }) {
         level: selectedLevel,
         fileName,
       }),
-    summary: metadata.summary || getFirstTextSummary(text, fileName),
+    summary: metadata.summary || null,
   };
 }
 
