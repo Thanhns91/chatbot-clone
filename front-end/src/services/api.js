@@ -363,6 +363,16 @@ export async function saveChatMessage(sessionId, sender, message) {
   });
 }
 
+
+export async function updateChatMessageApproved(messageId, isApproved) {
+  return requestJson(`/chat-history/messages/${messageId}/approved`, {
+    method: "PUT",
+    body: {
+      isApproved,
+    },
+  });
+}
+
 export async function updateChatSession(sessionId, data) {
   return requestJson(`/chat-history/sessions/${sessionId}`, {
     method: "PUT",

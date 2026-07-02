@@ -173,7 +173,14 @@ router.get("/messages/:sessionId", async (req, res) => {
 
     const [messages] = await pool.query(
       `
-      SELECT messageId, sessionId, sender, message, createdAt
+      SELECT
+        messageId,
+        sessionId,
+        sender,
+        message,
+        COALESCE(isApproved, FALSE) AS isApproved,
+        approvedAt,
+        createdAt
       FROM ChatMessages
       WHERE sessionId = ?
       ORDER BY createdAt ASC
@@ -229,6 +236,53 @@ router.post("/messages", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Cannot save message",
+      detail: error.message,
+    });
+  }
+});
+
+
+router.put("/messages/:messageId/approved", async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { isApproved } = req.body;
+
+    const approvedValue =
+      isApproved === true ||
+      isApproved === "true" ||
+      isApproved === 1 ||
+      isApproved === "1";
+
+    const [result] = await pool.query(
+      `
+      UPDATE ChatMessages
+      SET
+        isApproved = ?,
+        approvedAt = CASE WHEN ? = TRUE THEN NOW() ELSE NULL END
+      WHERE messageId = ?
+        AND sender = 'ai'
+      `,
+      [approvedValue, approvedValue, messageId],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "AI message not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Approved status updated",
+      messageId,
+      isApproved: approvedValue,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Cannot update approved status",
       detail: error.message,
     });
   }

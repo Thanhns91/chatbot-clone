@@ -10,6 +10,7 @@ import {
   saveChatMessage,
   updateChatSession,
   getMetadata,
+  updateChatMessageApproved,
 } from "../../services/api";
 import "./Member.scss";
 
@@ -255,7 +256,7 @@ const ChatArea = ({
                   id: item.messageId,
                   role: item.sender,
                   content: item.message,
-                  approved: false,
+                  approved: Boolean(item.isApproved),
                   question: "",
                 };
 
@@ -280,7 +281,15 @@ const ChatArea = ({
           });
         }
 
-        setApprovedAnswers([]);
+        const approvedFromDb = formatted
+          .filter((msg) => msg.role === "ai" && msg.approved)
+          .map((msg) => ({
+            id: msg.id,
+            question: msg.question || "",
+            answer: msg.content,
+          }));
+
+        setApprovedAnswers(approvedFromDb);
       } catch (error) {
         console.log("Cannot load messages:", error);
       } finally {
@@ -517,7 +526,21 @@ const ChatArea = ({
     setLoading(true);
 
     try {
-      await saveChatMessage(conversationId, "user", userText);
+      const savedUserMessage = await saveChatMessage(
+        conversationId,
+        "user",
+        userText,
+      );
+
+      if (savedUserMessage?.messageId) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === userMessage.id
+              ? { ...msg, id: savedUserMessage.messageId }
+              : msg,
+          ),
+        );
+      }
 
       const oldMessageCount = activeConversation?.messageCount || 0;
 
@@ -541,10 +564,10 @@ const ChatArea = ({
 
       const aiAnswer = result.answer || "Không có phản hồi.";
 
-      await saveChatMessage(conversationId, "ai", aiAnswer);
+      const savedAiMessage = await saveChatMessage(conversationId, "ai", aiAnswer);
 
       const aiMessage = {
-        id: makeId(),
+        id: savedAiMessage?.messageId || makeId(),
         role: "ai",
         content: aiAnswer,
         question: userText,
@@ -578,29 +601,72 @@ const ChatArea = ({
     }
   };
 
-  const handleToggleApproved = (aiMessage) => {
+  const handleToggleApproved = async (aiMessage) => {
+    if (!aiMessage?.id || String(aiMessage.id).startsWith("temp-")) return;
+
+    const nextApproved = !aiMessage.approved;
+
     setMessages((prev) =>
       prev.map((msg) =>
-        msg.id === aiMessage.id ? { ...msg, approved: !msg.approved } : msg,
+        msg.id === aiMessage.id
+          ? { ...msg, approved: nextApproved }
+          : msg,
       ),
     );
 
     setApprovedAnswers((prev) => {
       const existed = prev.some((item) => item.id === aiMessage.id);
 
-      if (existed) {
-        return prev.filter((item) => item.id !== aiMessage.id);
+      if (nextApproved) {
+        if (existed) return prev;
+
+        return [
+          ...prev,
+          {
+            id: aiMessage.id,
+            question: aiMessage.question || "",
+            answer: aiMessage.content,
+          },
+        ];
       }
 
-      return [
-        ...prev,
-        {
-          id: aiMessage.id,
-          question: aiMessage.question || "",
-          answer: aiMessage.content,
-        },
-      ];
+      return prev.filter((item) => item.id !== aiMessage.id);
     });
+
+    try {
+      await updateChatMessageApproved(aiMessage.id, nextApproved);
+    } catch (error) {
+      console.log("Cannot update approved status:", error);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessage.id
+            ? { ...msg, approved: aiMessage.approved }
+            : msg,
+        ),
+      );
+
+      setApprovedAnswers((prev) => {
+        const existed = prev.some((item) => item.id === aiMessage.id);
+
+        if (aiMessage.approved) {
+          if (existed) return prev;
+
+          return [
+            ...prev,
+            {
+              id: aiMessage.id,
+              question: aiMessage.question || "",
+              answer: aiMessage.content,
+            },
+          ];
+        }
+
+        return prev.filter((item) => item.id !== aiMessage.id);
+      });
+
+      showToast("error", "Không thể lưu ngôi sao", error.message);
+    }
   };
 
   return (
@@ -891,14 +957,6 @@ const ChatArea = ({
           disabled={uploading || loading}
         >
           <i className="ti ti-paperclip" />
-        </button>
-
-        <button
-          className="member-chat__tool-btn member-chat__tool-btn--mic"
-          title="Voice input"
-          type="button"
-        >
-          <i className="ti ti-microphone" />
         </button>
 
         <Form.Control
