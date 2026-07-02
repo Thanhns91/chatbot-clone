@@ -660,6 +660,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     const fileName = fixFileNameEncoding(req.file.originalname);
     const fileType = req.file.mimetype;
+    const fileSizeBytes = Number(req.file.size || 0);
     const uploaderId = Number(req.body.uploaderId);
 
     if (!uploaderId) {
@@ -794,6 +795,7 @@ router.post("/", upload.single("file"), async (req, res) => {
           fileName,
           fileType,
           fileUrl,
+          fileSizeBytes,
           contentHash,
           uploaderId,
           uploadedBy,
@@ -812,13 +814,14 @@ router.post("/", upload.single("file"), async (req, res) => {
           isDuplicate,
           originalDocumentId
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'success', ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)
         `,
         [
           documentId,
           fileName,
           fileType,
           fileUrl,
+          fileSizeBytes,
           contentHash,
           uploaderId,
           uploadedBy,
@@ -880,6 +883,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         fileName,
         fileType,
         fileUrl,
+        fileSizeBytes,
         contentHash,
         uploadedBy,
         reviewStatus,
@@ -954,6 +958,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         fileName,
         fileType,
         fileUrl,
+        fileSizeBytes,
         contentHash,
         uploaderId,
         uploadedBy,
@@ -971,13 +976,14 @@ router.post("/", upload.single("file"), async (req, res) => {
         isDuplicate,
         originalDocumentId
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         documentId,
         fileName,
         fileType,
         fileUrl,
+        fileSizeBytes,
         contentHash,
         uploaderId,
         uploadedBy,
@@ -1058,6 +1064,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       documentId,
       fileName,
       fileUrl,
+      fileSizeBytes,
       contentHash,
       uploadedBy,
       reviewStatus,
@@ -1086,6 +1093,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       fileName,
       fileType,
       fileUrl,
+      fileSizeBytes,
       contentHash,
       uploadedBy,
       reviewStatus,

@@ -27,6 +27,137 @@ const defaultUploadMeta = {
   summary: "",
 };
 
+const splitTags = (value = "") => {
+  return String(value || "")
+    .split(/[\n,]+/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+};
+
+const joinTags = (tags = []) => {
+  const normalized = tags
+    .map((tag) => String(tag || "").trim())
+    .filter(Boolean);
+
+  return [...new Set(normalized)].join(", ");
+};
+
+const TagInput = ({ value, onChange, placeholder = "Add tag..." }) => {
+  const [input, setInput] = useState("");
+
+  const tags = useMemo(() => splitTags(value), [value]);
+
+  const addTags = (rawValue = "") => {
+    const nextTags = splitTags(rawValue);
+
+    if (nextTags.length === 0) return;
+
+    onChange(joinTags([...tags, ...nextTags]));
+    setInput("");
+  };
+
+  const removeTag = (tagToRemove) => {
+    onChange(joinTags(tags.filter((tag) => tag !== tagToRemove)));
+  };
+
+  const handleKeyDown = (event) => {
+    if (["Enter", "Tab", ","].includes(event.key)) {
+      event.preventDefault();
+      addTags(input);
+      return;
+    }
+
+    if (event.key === "Backspace" && !input && tags.length > 0) {
+      removeTag(tags[tags.length - 1]);
+    }
+  };
+
+  const handlePaste = (event) => {
+    const text = event.clipboardData.getData("text");
+
+    if (text.includes(",") || text.includes("\n")) {
+      event.preventDefault();
+      addTags(text);
+    }
+  };
+
+  return (
+    <div
+      className="tag-select-input"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 8,
+        minHeight: 48,
+        padding: "8px 10px",
+        border: "1px solid #dee2e6",
+        borderRadius: 10,
+        background: "#fff",
+      }}
+      onClick={(event) => {
+        const inputEl = event.currentTarget.querySelector("input");
+        inputEl?.focus();
+      }}
+    >
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 9px",
+            borderRadius: 999,
+            background: "#e0f2fe",
+            color: "#075985",
+            fontWeight: 700,
+            fontSize: 13,
+          }}
+        >
+          {tag}
+          <button
+            type="button"
+            aria-label={`Remove ${tag}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              removeTag(tag);
+            }}
+            style={{
+              border: 0,
+              background: "transparent",
+              color: "#075985",
+              fontWeight: 900,
+              lineHeight: 1,
+              padding: 0,
+              cursor: "pointer",
+            }}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+
+      <input
+        value={input}
+        placeholder={tags.length === 0 ? placeholder : ""}
+        onChange={(event) => setInput(event.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={() => addTags(input)}
+        onPaste={handlePaste}
+        style={{
+          flex: 1,
+          minWidth: 150,
+          border: 0,
+          outline: 0,
+          fontSize: 15,
+          background: "transparent",
+        }}
+      />
+    </div>
+  );
+};
+
 const ChatArea = ({
   conversationId,
   user,
@@ -605,16 +736,19 @@ const ChatArea = ({
 
           <Form.Group className="mb-3">
             <Form.Label>Tags</Form.Label>
-            <Form.Control
+            <TagInput
               value={uploadMeta.tags}
-              placeholder="example: rag, week 1, assignment"
-              onChange={(e) =>
+              placeholder="Type a tag then press Enter, Tab, or comma"
+              onChange={(tags) =>
                 setUploadMeta((prev) => ({
                   ...prev,
-                  tags: e.target.value,
+                  tags,
                 }))
               }
             />
+            <Form.Text className="text-muted">
+              Example: rag, week 1, assignment. Tags will be saved as comma-separated text.
+            </Form.Text>
           </Form.Group>
 
           <Form.Group>

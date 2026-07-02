@@ -18,44 +18,295 @@ async function parseJsonResponse(res) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data.message || data.error || data.detail || "Request failed");
+    throw new Error(
+      data.message || data.error || data.detail || "Request failed",
+    );
   }
 
   return data;
 }
+
+async function requestJson(path, options = {}) {
+  const { method = "GET", body, headers = {} } = options;
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  return parseJsonResponse(res);
+}
+
+async function requestForm(path, formData, options = {}) {
+  const { method = "POST" } = options;
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method,
+    body: formData,
+  });
+
+  return parseJsonResponse(res);
+}
+
+/* =========================
+   UPLOAD
+========================= */
 
 export async function uploadFile(file, options = {}) {
   const formData = new FormData();
 
   formData.append("file", file);
 
-  if (options.uploadedBy) formData.append("uploadedBy", options.uploadedBy);
-  if (options.uploaderId) formData.append("uploaderId", options.uploaderId);
+  const fields = [
+    "uploadedBy",
+    "uploaderId",
+    "duplicateAction",
+    "replaceDocumentId",
+    "subjectId",
+    "topicId",
+    "documentTypeId",
+    "levelId",
+    "tags",
+    "summary",
+  ];
 
-  if (options.allowVersion) formData.append("allowVersion", "true");
-  if (options.duplicateAction) {
-    formData.append("duplicateAction", options.duplicateAction);
-  }
-  if (options.replaceDocumentId) {
-    formData.append("replaceDocumentId", options.replaceDocumentId);
-  }
-
-  if (options.subjectId) formData.append("subjectId", options.subjectId);
-  if (options.topicId) formData.append("topicId", options.topicId);
-  if (options.documentTypeId) {
-    formData.append("documentTypeId", options.documentTypeId);
-  }
-  if (options.levelId) formData.append("levelId", options.levelId);
-  if (options.tags) formData.append("tags", options.tags);
-  if (options.summary) formData.append("summary", options.summary);
-
-  const res = await fetch(`${API_URL}/upload`, {
-    method: "POST",
-    body: formData,
+  fields.forEach((field) => {
+    if (options[field]) {
+      formData.append(field, options[field]);
+    }
   });
 
-  return res.json();
+  if (options.allowVersion) {
+    formData.append("allowVersion", "true");
+  }
+
+  return requestForm("/upload", formData);
 }
+
+export async function uploadTeacherFile(file, uploaderId, options = {}) {
+  return uploadFile(file, {
+    ...options,
+    uploadedBy: "teacher",
+    uploaderId,
+  });
+}
+
+/* =========================
+   AUTH / ADMIN
+========================= */
+
+export async function createTeacherAccount(fullName, email) {
+  return requestJson("/auth/admin/create-teacher", {
+    method: "POST",
+    body: {
+      fullName,
+      email,
+    },
+  });
+}
+
+/* =========================
+   USERS
+========================= */
+
+export async function getUsers() {
+  return requestJson("/users");
+}
+
+export async function getDashboardStats() {
+  return requestJson("/users/stats");
+}
+
+export async function getUserProfile(userId) {
+  return requestJson(`/users/${userId}/profile`);
+}
+
+export async function updateUserProfile(userId, payload) {
+  return requestJson(`/users/${userId}/profile`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function uploadAvatar(userId, file) {
+  const formData = new FormData();
+  formData.append("avatar", file);
+
+  return requestForm(`/users/${userId}/avatar`, formData);
+}
+
+export async function changePassword(userId, currentPassword, newPassword) {
+  return requestJson(`/users/${userId}/password`, {
+    method: "PUT",
+    body: {
+      currentPassword,
+      newPassword,
+    },
+  });
+}
+
+export async function updateUserStatus(userId, status) {
+  return requestJson(`/users/${userId}/status`, {
+    method: "PUT",
+    body: {
+      status,
+    },
+  });
+}
+
+export async function updateUserRole(userId, role) {
+  return requestJson(`/users/${userId}/role`, {
+    method: "PUT",
+    body: {
+      role,
+    },
+  });
+}
+
+export async function deleteUser(userId) {
+  return requestJson(`/users/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getUserOverview(userId) {
+  return requestJson(`/users/${userId}/overview`);
+}
+
+export async function getUserDocuments(userId) {
+  return requestJson(`/users/${userId}/documents`);
+}
+
+/* =========================
+   DOCUMENTS
+========================= */
+
+export async function getDocuments() {
+  return requestJson("/documents");
+}
+
+export async function getDocumentDetail(documentId) {
+  return requestJson(`/documents/${documentId}/detail`);
+}
+
+export async function deleteDocument(documentId) {
+  return requestJson(`/documents/${documentId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getLibraryDocuments(userId, role, filters = {}) {
+  return requestJson(
+    `/documents/library${buildQuery({
+      userId,
+      role,
+      subjectId: filters.subjectId,
+      topicId: filters.topicId,
+    })}`,
+  );
+}
+
+export async function getTeacherUploadHistory(teacherId) {
+  return requestJson(
+    teacherId
+      ? `/documents/teacher-history?uploaderId=${teacherId}`
+      : "/documents/teacher-history",
+  );
+}
+
+export async function getTeacherStats() {
+  return requestJson("/documents/teacher-stats");
+}
+
+export async function updateDocumentMetadata(documentId, payload) {
+  return requestJson(`/documents/${documentId}/metadata`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function publishDocument(documentId, userId) {
+  return requestJson(`/documents/${documentId}/publish`, {
+    method: "PUT",
+    body: {
+      userId,
+    },
+  });
+}
+
+/* =========================
+   DOCUMENT METADATA
+========================= */
+
+export async function getMetadata() {
+  return requestJson("/documents/metadata");
+}
+
+export async function getSubjects() {
+  return requestJson("/documents/subjects");
+}
+
+export async function createSubject(payload) {
+  return requestJson("/documents/subjects", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateSubject(subjectId, payload) {
+  return requestJson(`/documents/subjects/${subjectId}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function getTopics(subjectId) {
+  return requestJson(`/documents/topics${buildQuery({ subjectId })}`);
+}
+
+export async function createTopic(payload) {
+  return requestJson("/documents/topics", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateTopic(topicId, payload) {
+  return requestJson(`/documents/topics/${topicId}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function getDocumentTypes() {
+  return requestJson("/documents/document-types");
+}
+
+export async function createDocumentType(payload) {
+  return requestJson("/documents/document-types", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function getDocumentLevels() {
+  return requestJson("/documents/document-levels");
+}
+
+export async function createDocumentLevel(payload) {
+  return requestJson("/documents/document-levels", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+/* =========================
+   CHAT
+========================= */
 
 export async function sendMessage(
   payloadOrDocumentId,
@@ -75,414 +326,106 @@ export async function sendMessage(
           sessionId,
         };
 
-  const res = await fetch(`${API_URL}/chat`, {
+  return requestJson("/chat", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
+    body: payload,
   });
-
-  return res.json();
-}
-
-export async function uploadTeacherFile(file, uploaderId, options = {}) {
-  return uploadFile(file, {
-    ...options,
-    uploadedBy: "teacher",
-    uploaderId,
-  });
-}
-
-export async function getMetadata() {
-  const res = await fetch(`${API_URL}/documents/metadata`);
-  return parseJsonResponse(res);
-}
-
-export async function getSubjects() {
-  const res = await fetch(`${API_URL}/documents/subjects`);
-  return parseJsonResponse(res);
-}
-
-export async function createSubject(payload) {
-  const res = await fetch(`${API_URL}/documents/subjects`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseJsonResponse(res);
-}
-
-export async function updateSubject(subjectId, payload) {
-  const res = await fetch(`${API_URL}/documents/subjects/${subjectId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseJsonResponse(res);
-}
-
-export async function getTopics(subjectId) {
-  const res = await fetch(
-    `${API_URL}/documents/topics${buildQuery({ subjectId })}`,
-  );
-
-  return parseJsonResponse(res);
-}
-
-export async function createTopic(payload) {
-  const res = await fetch(`${API_URL}/documents/topics`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseJsonResponse(res);
-}
-
-export async function updateTopic(topicId, payload) {
-  const res = await fetch(`${API_URL}/documents/topics/${topicId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseJsonResponse(res);
-}
-
-export async function getDocumentTypes() {
-  const res = await fetch(`${API_URL}/documents/document-types`);
-  return parseJsonResponse(res);
-}
-
-export async function createDocumentType(payload) {
-  const res = await fetch(`${API_URL}/documents/document-types`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseJsonResponse(res);
-}
-
-export async function getDocumentLevels() {
-  const res = await fetch(`${API_URL}/documents/document-levels`);
-  return parseJsonResponse(res);
-}
-
-export async function createDocumentLevel(payload) {
-  const res = await fetch(`${API_URL}/documents/document-levels`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseJsonResponse(res);
-}
-
-export async function updateDocumentMetadata(documentId, payload) {
-  const res = await fetch(`${API_URL}/documents/${documentId}/metadata`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseJsonResponse(res);
-}
-
-export async function publishDocument(documentId, userId) {
-  const res = await fetch(`${API_URL}/documents/${documentId}/publish`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ userId }),
-  });
-
-  return parseJsonResponse(res);
-}
-
-export async function getTeacherDocuments() {
-  const res = await fetch(`${API_URL}/documents`);
-  return res.json();
-}
-
-export async function getTeacherUploadHistory(teacherId) {
-  const url = teacherId
-    ? `${API_URL}/documents/teacher-history?uploaderId=${teacherId}`
-    : `${API_URL}/documents/teacher-history`;
-
-  const res = await fetch(url);
-
-  if (!res.ok) {
-    throw new Error("Cannot load teacher upload history");
-  }
-
-  return res.json();
-}
-
-export async function getUsers() {
-  const res = await fetch(`${API_URL}/users`);
-
-  if (!res.ok) {
-    throw new Error("Cannot load users");
-  }
-
-  return res.json();
-}
-
-export async function updateUserStatus(userId, status) {
-  const res = await fetch(`${API_URL}/users/${userId}/status`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ status }),
-  });
-
-  if (!res.ok) {
-    throw new Error("Cannot update user status");
-  }
-
-  return res.json();
-}
-
-export async function updateUserRole(userId, role) {
-  const res = await fetch(`${API_URL}/users/${userId}/role`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ role }),
-  });
-
-  if (!res.ok) {
-    throw new Error("Cannot update user role");
-  }
-
-  return res.json();
-}
-
-export async function deleteUser(userId) {
-  const res = await fetch(`${API_URL}/users/${userId}`, {
-    method: "DELETE",
-  });
-
-  return res.json();
 }
 
 export async function getChatSessions(userId) {
-  const res = await fetch(`${API_URL}/chat-history/sessions/${userId}`);
-  return res.json();
+  return requestJson(`/chat-history/sessions/${userId}`);
 }
 
 export async function createChatSession(userId, documentId, title, documentIds) {
-  const res = await fetch(`${API_URL}/chat-history/sessions`, {
+  return requestJson("/chat-history/sessions", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+    body: {
       userId,
       documentId,
       documentIds,
       title,
-    }),
+    },
   });
-
-  return res.json();
 }
 
 export async function getChatMessages(sessionId) {
-  const res = await fetch(`${API_URL}/chat-history/messages/${sessionId}`);
-  return res.json();
+  return requestJson(`/chat-history/messages/${sessionId}`);
 }
 
 export async function saveChatMessage(sessionId, sender, message) {
-  const res = await fetch(`${API_URL}/chat-history/messages`, {
+  return requestJson("/chat-history/messages", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+    body: {
       sessionId,
       sender,
       message,
-    }),
+    },
   });
-
-  return res.json();
 }
 
 export async function updateChatSession(sessionId, data) {
-  const res = await fetch(`${API_URL}/chat-history/sessions/${sessionId}`, {
+  return requestJson(`/chat-history/sessions/${sessionId}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
+    body: data,
   });
-
-  return res.json();
 }
 
 export async function deleteChatSession(sessionId) {
-  const res = await fetch(`${API_URL}/chat-history/sessions/${sessionId}`, {
+  return requestJson(`/chat-history/sessions/${sessionId}`, {
     method: "DELETE",
   });
-
-  return res.json();
 }
 
-export async function getDocuments() {
-  const res = await fetch(`${API_URL}/documents`);
-  return res.json();
-}
-
-export async function getLibraryDocuments(userId, role, filters = {}) {
-  const res = await fetch(
-    `${API_URL}/documents/library${buildQuery({
-      userId,
-      role,
-      subjectId: filters.subjectId,
-      topicId: filters.topicId,
-    })}`,
-  );
-
-  return res.json();
-}
-
-export async function uploadAvatar(userId, file) {
-  const formData = new FormData();
-
-  formData.append("avatar", file);
-
-  const res = await fetch(`${API_URL}/users/${userId}/avatar`, {
-    method: "POST",
-    body: formData,
-  });
-
-  return res.json();
-}
-
-export async function getTeacherStats() {
-  const res = await fetch(`${API_URL}/documents/teacher-stats`);
-
-  if (!res.ok) {
-    throw new Error("Cannot load teacher stats");
-  }
-
-  return res.json();
-}
-
-export async function deleteDocument(documentId) {
-  const res = await fetch(`${API_URL}/documents/${documentId}`, {
-    method: "DELETE",
-  });
-
-  return res.json();
-}
-
-export async function getDashboardStats() {
-  const res = await fetch(`${API_URL}/users/stats`);
-  return res.json();
-}
-
-export async function createTeacherAccount(fullName, email) {
-  const res = await fetch(`${API_URL}/auth/admin/create-teacher`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      fullName,
-      email,
-    }),
-  });
-
-  return res.json();
-}
+/* =========================
+   FEEDBACK
+========================= */
 
 export async function getStudentSubmissions() {
-  const res = await fetch(`${API_URL}/feedback/submissions`);
-  return res.json();
+  return requestJson("/feedback/submissions");
 }
 
 export async function generateStudentFeedback(studentId, teacherId, documentId) {
-  const res = await fetch(`${API_URL}/feedback/generate`, {
+  return requestJson("/feedback/generate", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+    body: {
       studentId,
       teacherId,
       documentId,
-    }),
+    },
   });
-
-  return res.json();
 }
 
 export async function askStudentFeedback(studentId, documentId, question) {
-  const res = await fetch(`${API_URL}/feedback/ask`, {
+  return requestJson("/feedback/ask", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+    body: {
       studentId,
       documentId,
       question,
-    }),
+    },
   });
-
-  return res.json();
 }
 
+/* =========================
+   NOTIFICATIONS
+========================= */
+
 export async function getNotifications(userId) {
-  const res = await fetch(`${API_URL}/notifications/${userId}`);
-  return res.json();
+  return requestJson(`/notifications/${userId}`);
 }
 
 export async function getUnreadNotificationCount(userId) {
-  const res = await fetch(`${API_URL}/notifications/${userId}/unread-count`);
-  return res.json();
+  return requestJson(`/notifications/${userId}/unread-count`);
 }
 
 export async function markNotificationAsRead(notificationId) {
-  const res = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+  return requestJson(`/notifications/${notificationId}/read`, {
     method: "PUT",
   });
-
-  return res.json();
 }
 
 export async function markAllNotificationsAsRead(userId) {
-  const res = await fetch(`${API_URL}/notifications/user/${userId}/read-all`, {
+  return requestJson(`/notifications/user/${userId}/read-all`, {
     method: "PUT",
   });
-
-  return res.json();
-}
-
-export async function getUserProfile(userId) {
-  const res = await fetch(`${API_URL}/users/${userId}/profile`);
-  return res.json();
 }

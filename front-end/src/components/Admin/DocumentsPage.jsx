@@ -5,10 +5,22 @@ import { toast } from "react-toastify";
 
 import { getDocuments, deleteDocument, API_URL } from "../../services/api";
 
-const TYPE_BADGE = {
-  PDF: "badge-pdf",
-  DOC: "badge-docx",
-  DOCX: "badge-docx",
+const formatStorage = (bytes = 0) => {
+  const value = Number(bytes || 0);
+
+  if (value >= 1024 * 1024 * 1024) {
+    return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  }
+
+  if (value >= 1024 * 1024) {
+    return `${(value / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  if (value >= 1024) {
+    return `${(value / 1024).toFixed(2)} KB`;
+  }
+
+  return `${value} B`;
 };
 
 export default function DocumentsPage() {
@@ -45,6 +57,7 @@ export default function DocumentsPage() {
     if (
       type.includes("word") ||
       type.includes("docx") ||
+      type.includes("officedocument") ||
       name.endsWith(".docx")
     ) {
       return "DOCX";
@@ -66,24 +79,56 @@ export default function DocumentsPage() {
     return `${API_URL}${d.fileUrl}`;
   };
 
-  const canViewFile = (d) => getFileType(d.fileType, d.fileName) === "PDF";
+  const getPreviewUrl = (d) => {
+    const url = getDocumentUrl(d);
 
-  const filtered = docs.filter((d) =>
-    d.fileName?.toLowerCase().includes(search.toLowerCase())
-  );
+    if (url === "#") return "#";
+
+    const fileType = getFileType(d.fileType, d.fileName);
+
+    if (fileType === "DOC" || fileType === "DOCX") {
+      return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(
+        url,
+      )}`;
+    }
+
+    return url;
+  };
+
+  const filtered = docs.filter((d) => {
+    const term = search.toLowerCase();
+
+    return (
+      d.fileName?.toLowerCase().includes(term) ||
+      d.uploaderName?.toLowerCase().includes(term) ||
+      d.subjectCode?.toLowerCase().includes(term) ||
+      d.subjectName?.toLowerCase().includes(term) ||
+      d.topicName?.toLowerCase().includes(term)
+    );
+  });
 
   const pdfCount = docs.filter(
-    (d) => getFileType(d.fileType, d.fileName) === "PDF"
+    (d) => getFileType(d.fileType, d.fileName) === "PDF",
   ).length;
 
-  const otherCount = docs.filter(
-    (d) => getFileType(d.fileType, d.fileName) !== "PDF"
-  ).length;
+  const publicCount = docs.filter((d) => d.reviewStatus === "approved").length;
+  const privateCount = docs.filter((d) => d.reviewStatus === "private").length;
+  const totalStorageBytes = docs.reduce(
+    (sum, d) => sum + Number(d.fileSizeBytes || 0),
+    0,
+  );
+  const totalChatUse = docs.reduce(
+    (sum, d) => sum + Number(d.chatUseCount || 0),
+    0,
+  );
 
   const STATS = [
     { label: "Total Documents", val: docs.length, color: "#2563eb" },
-    { label: "PDF Files", val: pdfCount, color: "#dc2626" },
-    { label: "Other Files", val: otherCount, color: "#16a34a" },
+    { label: "Public Files", val: publicCount, color: "#16a34a" },
+    { label: "Private Files", val: privateCount, color: "#dc2626" },
+    { label: "PDF Files", val: pdfCount, color: "#ea580c" },
+    { label: "Storage Used", val: formatStorage(totalStorageBytes), color: "#7c3aed" },
+    { label: "Chat Usage", val: totalChatUse, color: "#0891b2" },
   ];
 
   const handleDelete = async (documentId) => {
@@ -119,7 +164,7 @@ export default function DocumentsPage() {
     <>
       <div className="admin-topbar">
         <h1>Documents</h1>
-        <p>Manage and organize course documents</p>
+        <p>Mỗi tài liệu hiển thị public/private, dung lượng, metadata và số lần dùng trong chat.</p>
       </div>
 
       <div className="admin-body">
@@ -128,7 +173,7 @@ export default function DocumentsPage() {
             <i className="bi bi-search search-box__icon" />
             <Form.Control
               className="search-box__input"
-              placeholder="Search"
+              placeholder="Search file, uploader, subject, topic"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -151,8 +196,11 @@ export default function DocumentsPage() {
         </Row>
 
         <div className="a-card">
-          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
             All Documents
+          </div>
+          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>
+            Summary: danh sách này cho biết tài liệu thuộc môn nào, ai upload, đang public/private và đã dùng trong bao nhiêu phiên chat.
           </div>
 
           <div className="table-responsive">
@@ -160,10 +208,12 @@ export default function DocumentsPage() {
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Type</th>
-                  <th>Uploaded</th>
+                  <th>Subject / Type</th>
                   <th>Uploader</th>
-                  <th>Status</th>
+                  <th>Visibility</th>
+                  <th>Storage</th>
+                  <th>Chat Uses</th>
+                  <th>Uploaded</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -171,7 +221,7 @@ export default function DocumentsPage() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-secondary py-4">
+                    <td colSpan={8} className="text-center text-secondary py-4">
                       No documents found
                     </td>
                   </tr>
@@ -179,51 +229,52 @@ export default function DocumentsPage() {
                   filtered.map((d) => {
                     const fileType = getFileType(d.fileType, d.fileName);
                     const fileUrl = getDocumentUrl(d);
-                    const isViewable = canViewFile(d);
+                    const previewUrl = getPreviewUrl(d);
 
                     return (
                       <tr key={d.documentId}>
                         <td>
-                          <div className="d-flex align-items-center gap-2">
-                            <i className="bi bi-file-earmark text-secondary" />
+                          <div className="d-flex align-items-start gap-2">
+                            <i className="bi bi-file-earmark text-secondary mt-1" />
 
-                            {isViewable ? (
+                            <div>
                               <a
-                                href={fileUrl}
+                                href={previewUrl}
                                 target="_blank"
                                 rel="noreferrer"
                                 style={{
                                   textDecoration: "none",
                                   color: "#2563eb",
-                                  fontWeight: 500,
+                                  fontWeight: 600,
                                 }}
                               >
                                 {d.fileName}
                               </a>
-                            ) : (
-                              <span style={{ fontWeight: 500 }}>
-                                {d.fileName}
-                              </span>
-                            )}
+
+                              <div style={{ fontSize: 12, color: "#64748b" }}>
+                                {d.summary || "No summary"}
+                              </div>
+                            </div>
                           </div>
                         </td>
 
                         <td>
-                          <span
-                            className={`role-badge ${
-                              TYPE_BADGE[fileType] || ""
-                            }`}
-                          >
-                            {fileType}
-                          </span>
+                          <div style={{ fontWeight: 600 }}>
+                            {d.subjectCode
+                              ? `${d.subjectCode} - ${d.subjectName || ""}`
+                              : "No Subject"}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#64748b" }}>
+                            {d.topicName || "Uncategorized"} ·{" "}
+                            {d.documentTypeName || fileType}
+                          </div>
                         </td>
 
                         <td style={{ color: "#64748b" }}>
-                          {formatDate(d.uploadDate)}
-                        </td>
-
-                        <td style={{ color: "#64748b" }}>
-                          {d.uploaderName || d.uploadedBy}
+                          <div>{d.uploaderName || d.uploadedBy}</div>
+                          <div style={{ fontSize: 12 }}>
+                            {d.uploaderRole || d.uploadedBy}
+                          </div>
                         </td>
 
                         <td>
@@ -234,33 +285,37 @@ export default function DocumentsPage() {
                                 : "status-blocked"
                             }
                           >
-                            {d.reviewStatus}
+                            {d.reviewStatus === "approved" ? "Public" : d.reviewStatus}
                           </span>
+                        </td>
+
+                        <td style={{ color: "#64748b" }}>
+                          {formatStorage(d.fileSizeBytes)}
+                        </td>
+
+                        <td>
+                          <b>{Number(d.chatUseCount || 0)}</b>
+                          <div style={{ fontSize: 12, color: "#64748b" }}>
+                            sessions
+                          </div>
+                        </td>
+
+                        <td style={{ color: "#64748b" }}>
+                          {formatDate(d.uploadDate)}
                         </td>
 
                         <td>
                           <div className="d-flex align-items-center gap-3">
-                            {isViewable ? (
-                              <Button
-                                variant="link"
-                                className="p-0"
-                                title="View document"
-                                onClick={() => window.open(fileUrl, "_blank")}
-                              >
-                                <i className="bi bi-eye" />
-                              </Button>
-                            ) : (
-                              <span
-                                title="This file type cannot be previewed"
-                                style={{
-                                  color: "#94a3b8",
-                                  cursor: "not-allowed",
-                                  fontSize: 16,
-                                }}
-                              >
-                                <i className="bi bi-eye-slash" />
-                              </span>
-                            )}
+                            <Button
+                              variant="link"
+                              className="p-0"
+                              title="Open document"
+                              onClick={() =>
+                                window.open(previewUrl, "_blank", "noopener,noreferrer")
+                              }
+                            >
+                              <i className="bi bi-eye" />
+                            </Button>
 
                             <a
                               href={fileUrl}

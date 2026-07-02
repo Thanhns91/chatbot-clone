@@ -24,6 +24,29 @@ const normalizeName = (name = "") => {
   return String(name || "").trim().replace(/\s+/g, " ");
 };
 
+const formatDate = (value) => {
+  if (!value) return "-";
+  return new Date(value).toISOString().split("T")[0];
+};
+
+const formatStorage = (bytes = 0) => {
+  const value = Number(bytes || 0);
+
+  if (value >= 1024 * 1024 * 1024) {
+    return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  }
+
+  if (value >= 1024 * 1024) {
+    return `${(value / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  if (value >= 1024) {
+    return `${(value / 1024).toFixed(2)} KB`;
+  }
+
+  return `${value} B`;
+};
+
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +57,18 @@ export default function UsersPage() {
 
   const activeCount = users.filter((u) => u.status === "active").length;
   const blockedCount = users.filter((u) => u.status === "blocked").length;
+  const totalDocuments = users.reduce(
+    (sum, user) => sum + Number(user.totalDocuments || 0),
+    0,
+  );
+  const totalPublic = users.reduce(
+    (sum, user) => sum + Number(user.publicDocuments || 0),
+    0,
+  );
+  const totalStorageBytes = users.reduce(
+    (sum, user) => sum + Number(user.totalStorageBytes || 0),
+    0,
+  );
 
   const fetchUsers = async () => {
     try {
@@ -41,14 +76,24 @@ export default function UsersPage() {
 
       const data = await getUsers();
 
+      const userRows = Array.isArray(data) ? data : data?.data || [];
+
       setUsers(
-        data.map((u) => ({
+        userRows.map((u) => ({
           id: u.userId,
           name: u.fullName,
           email: u.email,
           role: u.role,
-          joinDate: u.createdAt?.split("T")[0] || "-",
+          joinDate: formatDate(u.createdAt),
           status: u.status,
+
+          totalDocuments: Number(u.totalDocuments || 0),
+          uploadedDocuments: Number(u.uploadedDocuments || 0),
+          publicDocuments: Number(u.publicDocuments || 0),
+          privateDocuments: Number(u.privateDocuments || 0),
+          totalStorageBytes: Number(u.totalStorageBytes || 0),
+          totalStorageMB: Number(u.totalStorageMB || 0),
+          lastUploadAt: u.lastUploadAt,
         })),
       );
     } catch (err) {
@@ -193,13 +238,34 @@ export default function UsersPage() {
       iconBg: "#fee2e2",
       icon: "bi-person-slash",
     },
+    {
+      label: "Total Documents",
+      val: totalDocuments,
+      color: "#7c3aed",
+      iconBg: "#ede9fe",
+      icon: "bi-file-earmark-text-fill",
+    },
+    {
+      label: "Public Documents",
+      val: totalPublic,
+      color: "#0891b2",
+      iconBg: "#cffafe",
+      icon: "bi-globe",
+    },
+    {
+      label: "Storage Used",
+      val: formatStorage(totalStorageBytes),
+      color: "#ea580c",
+      iconBg: "#ffedd5",
+      icon: "bi-hdd-fill",
+    },
   ];
 
   return (
     <>
       <div className="admin-topbar">
         <h1>User Management</h1>
-        <p>Manage platform users and permissions</p>
+        <p>Mỗi dòng thể hiện tổng tài liệu, dung lượng, file public/private của từng user.</p>
       </div>
 
       <div className="admin-body">
@@ -227,11 +293,16 @@ export default function UsersPage() {
 
         <div className="a-card">
           <div className="d-flex align-items-center justify-content-between mb-3">
-            <div className="d-flex align-items-center gap-2">
-              <i className="bi bi-people" style={{ fontSize: 18 }} />
-              <span style={{ fontWeight: 600, fontSize: 15 }}>
-                User Management
-              </span>
+            <div>
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-people" style={{ fontSize: 18 }} />
+                <span style={{ fontWeight: 600, fontSize: 15 }}>
+                  User Overview
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                Summary: tổng quan mỗi user theo tài liệu, dung lượng và trạng thái public/private.
+              </div>
             </div>
 
             <button
@@ -246,13 +317,6 @@ export default function UsersPage() {
             </button>
           </div>
 
-          <div className="d-flex justify-content-between mb-2">
-            <span style={{ fontWeight: 600, fontSize: 14 }}>All Users</span>
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>
-              {users.length} accounts
-            </span>
-          </div>
-
           <div className="table-responsive">
             <Table className="admin-table mb-0">
               <thead>
@@ -260,7 +324,10 @@ export default function UsersPage() {
                   <th>Name</th>
                   <th>Email</th>
                   <th>Role</th>
-                  <th>Join Date</th>
+                  <th>Documents</th>
+                  <th>Public / Private</th>
+                  <th>Storage</th>
+                  <th>Last Upload</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -269,20 +336,25 @@ export default function UsersPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-4">
+                    <td colSpan={9} className="text-center py-4">
                       Đang tải...
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-4 text-secondary">
+                    <td colSpan={9} className="text-center py-4 text-secondary">
                       No users found
                     </td>
                   </tr>
                 ) : (
                   users.map((u) => (
                     <tr key={u.id}>
-                      <td style={{ fontWeight: 500 }}>{u.name}</td>
+                      <td style={{ fontWeight: 500 }}>
+                        {u.name}
+                        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                          Joined {u.joinDate}
+                        </div>
+                      </td>
                       <td style={{ color: "#64748b" }}>{u.email}</td>
                       <td>
                         <span
@@ -295,7 +367,24 @@ export default function UsersPage() {
                           {u.role}
                         </span>
                       </td>
-                      <td style={{ color: "#64748b" }}>{u.joinDate}</td>
+                      <td>
+                        <b>{u.totalDocuments}</b>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>
+                          uploaded {u.uploadedDocuments}
+                        </div>
+                      </td>
+                      <td>
+                        <span className="status-active">{u.publicDocuments} public</span>
+                        <div style={{ marginTop: 4 }}>
+                          <span className="status-blocked">{u.privateDocuments} private</span>
+                        </div>
+                      </td>
+                      <td style={{ color: "#64748b" }}>
+                        {formatStorage(u.totalStorageBytes)}
+                      </td>
+                      <td style={{ color: "#64748b" }}>
+                        {formatDate(u.lastUploadAt)}
+                      </td>
                       <td>
                         <span
                           className={

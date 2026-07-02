@@ -11,6 +11,7 @@ const documentSelect = `
     d.fileName,
     d.fileType,
     d.fileUrl,
+    COALESCE(d.fileSizeBytes, 0) AS fileSizeBytes,
     d.contentHash,
     d.uploaderId,
     d.uploadedBy,
@@ -34,12 +35,31 @@ const documentSelect = `
     d.uploadDate,
     d.updatedAt,
     u.fullName AS uploaderName,
+    u.email AS uploaderEmail,
     u.role AS uploaderRole,
     s.subjectCode,
     s.subjectName,
     t.topicName,
     dt.typeName AS documentTypeName,
-    dl.levelName
+    dl.levelName,
+    (
+      COALESCE((
+        SELECT COUNT(DISTINCT cs.sessionId)
+        FROM ChatSessions cs
+        WHERE cs.documentId = d.documentId
+      ), 0)
+      +
+      COALESCE((
+        SELECT COUNT(DISTINCT csd.sessionId)
+        FROM ChatSessionDocuments csd
+        WHERE csd.documentId = d.documentId
+      ), 0)
+    ) AS chatUseCount,
+    CASE
+      WHEN d.reviewStatus = 'approved' THEN 'Public'
+      WHEN d.reviewStatus = 'private' THEN 'Private'
+      ELSE d.reviewStatus
+    END AS visibilityStatus
   FROM Documents d
   LEFT JOIN Users u ON d.uploaderId = u.userId
   LEFT JOIN Subjects s ON d.subjectId = s.subjectId
@@ -608,9 +628,18 @@ router.get("/teacher-stats", async (req, res) => {
         COUNT(CASE WHEN d.uploadedBy = 'student' AND d.reviewStatus = 'approved' AND d.isDeleted = FALSE AND u.role = 'student' THEN 1 END) AS studentFiles,
         COUNT(CASE WHEN d.reviewStatus = 'approved' AND d.isDeleted = FALSE THEN 1 END) AS approved,
         COUNT(CASE WHEN d.reviewStatus = 'private' AND d.isDeleted = FALSE THEN 1 END) AS privateFiles,
-        COUNT(CASE WHEN d.reviewStatus = 'pending' AND d.isDeleted = FALSE THEN 1 END) AS pending
+        COUNT(CASE WHEN d.reviewStatus = 'pending' AND d.isDeleted = FALSE THEN 1 END) AS pending,
+        COALESCE(SUM(CASE WHEN d.isDeleted = FALSE THEN d.fileSizeBytes ELSE 0 END), 0) AS totalStorageBytes
       FROM Documents d
       LEFT JOIN Users u ON d.uploaderId = u.userId
+    `);
+
+    const [chatRows] = await pool.query(`
+      SELECT
+        COUNT(DISTINCT cs.sessionId) AS totalChatSessions,
+        COUNT(CASE WHEN cm.sender = 'user' THEN 1 END) AS totalQuestions
+      FROM ChatSessions cs
+      LEFT JOIN ChatMessages cm ON cs.sessionId = cm.sessionId
     `);
 
     const [materialChart] = await pool.query(`
@@ -653,6 +682,7 @@ router.get("/teacher-stats", async (req, res) => {
     const [topicSummary] = await pool.query(`
       SELECT
         COALESCE(s.subjectCode, 'No Subject') AS subjectCode,
+        COALESCE(s.subjectName, 'No Subject') AS subjectName,
         COALESCE(t.topicName, 'Uncategorized') AS topicName,
         COUNT(*) AS count
       FROM Documents d
@@ -660,22 +690,27 @@ router.get("/teacher-stats", async (req, res) => {
       LEFT JOIN Topics t ON d.topicId = t.topicId
       WHERE d.isDeleted = FALSE
         AND (d.uploadedBy <> 'student' OR d.reviewStatus = 'approved')
-      GROUP BY s.subjectCode, t.topicName
+      GROUP BY s.subjectCode, s.subjectName, t.topicName
       ORDER BY count DESC
       LIMIT 5
     `);
 
+    const stats = {
+      materials: Number(statsRows[0].materials || 0),
+      studentFiles: Number(statsRows[0].studentFiles || 0),
+      approved: Number(statsRows[0].approved || 0),
+      pending: Number(statsRows[0].pending || 0),
+      privateFiles: Number(statsRows[0].privateFiles || 0),
+      totalStorageBytes: Number(statsRows[0].totalStorageBytes || 0),
+      totalChatSessions: Number(chatRows[0].totalChatSessions || 0),
+      totalQuestions: Number(chatRows[0].totalQuestions || 0),
+    };
+
     res.json({
       success: true,
-      stats: {
-        materials: Number(statsRows[0].materials || 0),
-        studentFiles: Number(statsRows[0].studentFiles || 0),
-        approved: Number(statsRows[0].approved || 0),
-        pending: Number(statsRows[0].pending || 0),
-        privateFiles: Number(statsRows[0].privateFiles || 0),
-      },
+      stats,
       summary: {
-        text: `Có ${Number(statsRows[0].materials || 0)} tài liệu giáo viên, ${Number(statsRows[0].studentFiles || 0)} file sinh viên và ${Number(statsRows[0].pending || 0)} tài liệu đang chờ xử lý.`,
+        text: `Dashboard hiện có ${stats.materials} tài liệu giáo viên, ${stats.studentFiles} file học sinh public, ${stats.totalChatSessions} phiên chat và ${stats.totalQuestions} câu hỏi.`,
         topicSummary,
       },
       charts: {
@@ -689,6 +724,44 @@ router.get("/teacher-stats", async (req, res) => {
 
     res.status(500).json({
       success: false,
+      detail: error.message,
+    });
+  }
+});
+
+router.get("/:documentId/detail", async (req, res) => {
+  try {
+    const { documentId } = req.params;
+
+    const [rows] = await pool.query(
+      `
+      ${documentSelect}
+      WHERE d.documentId = ?
+        AND d.isDeleted = FALSE
+      LIMIT 1
+      `,
+      [documentId],
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found",
+      });
+    }
+
+    const doc = rows[0];
+
+    res.json({
+      success: true,
+      data: doc,
+      summary: `${doc.fileName} là tài liệu ${doc.visibilityStatus?.toLowerCase() || doc.reviewStatus} của ${doc.uploaderName || "unknown"} và đã được dùng trong ${Number(doc.chatUseCount || 0)} phiên chat.`,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Cannot load document detail",
       detail: error.message,
     });
   }

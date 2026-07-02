@@ -8,7 +8,7 @@ import Modal from "react-bootstrap/Modal";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 
-const API = import.meta.env.VITE_API_URL;;
+const API = import.meta.env.VITE_API_URL;
 
 const getStoredUser = () => {
   const raw =
@@ -32,6 +32,16 @@ const ProfileTab = ({ user , onUserUpdated}) => {
   const [formData, setFormData] = useState({
     fullName: initialUser?.fullName || initialUser?.name || "",
     email: initialUser?.email || "",
+
+    // Teacher profile
+    department: initialUser?.department || "",
+    specialization: initialUser?.specialization || "",
+    bio: initialUser?.bio || "",
+
+    // Student profile
+    studentCode: initialUser?.studentCode || "",
+    major: initialUser?.major || "",
+    className: initialUser?.className || "",
   });
 
   const [avatarUrl, setAvatarUrl] = useState(
@@ -59,6 +69,7 @@ const ProfileTab = ({ user , onUserUpdated}) => {
   const [pwSuccess, setPwSuccess] = useState(false);
 
   const userId = profileUser?.userId || initialUser?.userId;
+  const role = profileUser?.role || initialUser?.role || "student";
   const initial =
     (formData.fullName || profileUser?.name || "T").charAt(0).toUpperCase();
 
@@ -85,6 +96,14 @@ const ProfileTab = ({ user , onUserUpdated}) => {
     setFormData({
       fullName: normalized.fullName || normalized.name || "",
       email: normalized.email || "",
+
+      department: normalized.department || "",
+      specialization: normalized.specialization || "",
+      bio: normalized.bio || "",
+
+      studentCode: normalized.studentCode || "",
+      major: normalized.major || "",
+      className: normalized.className || "",
     });
     setAvatarUrl(normalized.avatarUrl || normalized.avatar_url || "");
 
@@ -213,6 +232,15 @@ const ProfileTab = ({ user , onUserUpdated}) => {
         body: JSON.stringify({
           fullName: formData.fullName,
           email: formData.email,
+
+          department: formData.department,
+          specialization: formData.specialization,
+          bio: formData.bio,
+
+          studentCode: formData.studentCode,
+          major: formData.major,
+          className: formData.className,
+
         }),
       });
 
@@ -368,6 +396,89 @@ const ProfileTab = ({ user , onUserUpdated}) => {
               />
             </Col>
           </Row>
+
+          {role === "teacher" && (
+            <>
+              <div className="fw-semibold mt-4 mb-2">Teacher Profile</div>
+
+              <Row className="g-3">
+                <Col md={6}>
+                  <Form.Label>Department</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="department"
+                    value={formData.department}
+                    onChange={handleInputChange}
+                    placeholder="Software Engineering"
+                  />
+                </Col>
+
+                <Col md={6}>
+                  <Form.Label>Specialization</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="specialization"
+                    value={formData.specialization}
+                    onChange={handleInputChange}
+                    placeholder="Software Testing / Requirements"
+                  />
+                </Col>
+
+                <Col md={12}>
+                  <Form.Label>Bio</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleInputChange}
+                    placeholder="Short teacher introduction"
+                  />
+                </Col>
+              </Row>
+            </>
+          )}
+
+          {role === "student" && (
+            <>
+              <div className="fw-semibold mt-4 mb-2">Student Profile</div>
+
+              <Row className="g-3">
+                <Col md={4}>
+                  <Form.Label>Student Code</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="studentCode"
+                    value={formData.studentCode}
+                    onChange={handleInputChange}
+                    placeholder="SE192xxx"
+                  />
+                </Col>
+
+                <Col md={4}>
+                  <Form.Label>Major</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="major"
+                    value={formData.major}
+                    onChange={handleInputChange}
+                    placeholder="Software Engineering"
+                  />
+                </Col>
+
+                <Col md={4}>
+                  <Form.Label>Class</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="className"
+                    value={formData.className}
+                    onChange={handleInputChange}
+                    placeholder="SE19xx"
+                  />
+                </Col>
+              </Row>
+            </>
+          )}
 
           <div className="d-flex justify-content-end mt-4">
             <Button
