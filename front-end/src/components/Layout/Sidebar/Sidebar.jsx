@@ -3,6 +3,8 @@ import "./Sidebar.scss";
 import SearchBox from "./SearchBox";
 import NewReflectionButton from "./NewReflectionButton";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 const Sidebar = ({
   conversations = [],
   activeId,
@@ -13,6 +15,7 @@ const Sidebar = ({
 }) => {
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [savingStarId, setSavingStarId] = useState(null);
 
   const filtered = conversations.filter((c) =>
     c.title?.toLowerCase().includes(search.toLowerCase()),
@@ -34,6 +37,38 @@ const Sidebar = ({
 
     onDelete?.(deleteTarget.id);
     setDeleteTarget(null);
+  };
+
+
+  const handleToggleStar = async (conv) => {
+    const nextStarred = !conv.starred;
+
+    try {
+      setSavingStarId(conv.id);
+
+      const response = await fetch(`${API_URL}/chat-history/sessions/${conv.id}/starred`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          isStarred: nextStarred,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.success === false) {
+        throw new Error(data.message || data.detail || "Cannot save starred status");
+      }
+
+      onToggleStar?.(conv.id, nextStarred);
+    } catch (error) {
+      console.log("Cannot save starred status:", error);
+      window.alert(error.message || "Không thể lưu trạng thái ngôi sao.");
+    } finally {
+      setSavingStarId(null);
+    }
   };
 
   const renderItem = (conv) => (
@@ -72,12 +107,21 @@ const Sidebar = ({
             conv.starred ? "sidebar__item-star--on" : ""
           }`}
           title={conv.starred ? "Unstar" : "Star"}
+          disabled={savingStarId === conv.id}
           onClick={(e) => {
             e.stopPropagation();
-            onToggleStar?.(conv.id);
+            handleToggleStar(conv);
           }}
         >
-          <i className={conv.starred ? "ti ti-star-filled" : "ti ti-star"}></i>
+          <i
+            className={
+              savingStarId === conv.id
+                ? "ti ti-loader-2"
+                : conv.starred
+                  ? "ti ti-star-filled"
+                  : "ti ti-star"
+            }
+          ></i>
         </button>
 
         <button

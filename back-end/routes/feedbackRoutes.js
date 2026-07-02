@@ -328,10 +328,10 @@ function buildFallbackFeedback(analytics) {
   const score = Math.min(85, Math.max(35, 35 + analytics.totalQuestions * 5));
 
   return {
-    summary: `Học sinh có mức độ hoạt động: ${analytics.engagementLevel}. Học sinh đã đặt ${analytics.totalQuestions} câu hỏi trong ${analytics.activeDayCount} ngày active, tập trung nhiều nhất vào nhóm "${strongestCategory}".`,
-    strengths: `Có tương tác với tài liệu và đặt câu hỏi liên quan đến nội dung học. Nhóm câu hỏi nổi bật: ${strongestCategory}.`,
-    weaknesses: `Chưa đủ bằng chứng để kết luận sâu về năng lực nếu số câu hỏi còn thấp. Cần xem thêm chất lượng câu hỏi, khả năng tự giải thích lại và mức độ vận dụng sau khi được AI hỗ trợ.`,
-    recommendations: `Giáo viên nên kiểm tra nhanh bằng 2-3 câu hỏi vận dụng theo nhóm "${strongestCategory}", yêu cầu học sinh tự giải thích lại bằng ví dụ thực tế, sau đó giao một bài tập nhỏ để kiểm tra khả năng áp dụng.`,
+    summary: `${analytics.engagementLevel}: ${analytics.totalQuestions} câu hỏi trong ${analytics.activeDayCount} ngày active, nổi bật ở nhóm "${strongestCategory}".`,
+    strengths: `- Có tương tác với tài liệu; nhóm hỏi nổi bật: ${strongestCategory}.`,
+    weaknesses: `- Dữ liệu còn ít hoặc thiếu câu hỏi vận dụng nếu tổng câu hỏi thấp.`,
+    recommendations: `- Kiểm tra nhanh 2 câu vận dụng theo nhóm "${strongestCategory}".\n- Giao 1 bài nhỏ yêu cầu học sinh tự giải thích lại bằng ví dụ.`,
     score,
   };
 }
@@ -581,23 +581,23 @@ RUBRIC SCORE:
 YÊU CẦU FORMAT CHÍNH XÁC:
 
 SUMMARY:
-Viết 3-5 câu. Nêu rõ mức độ hoạt động, tần suất hỏi, nhóm câu hỏi nổi bật, và kết luận thực tiễn về trạng thái học tập.
+Viết đúng 1 câu, tối đa 35 từ. Nêu mức độ hoạt động, số câu hỏi/ngày active và nhóm câu hỏi nổi bật.
 
 STRENGTHS:
-Liệt kê điểm mạnh dưới dạng bullet. Mỗi bullet gắn với bằng chứng từ hành vi hoặc nhóm câu hỏi.
+Tối đa 2 bullet, mỗi bullet tối đa 18 từ, gắn với bằng chứng từ hành vi hoặc nhóm câu hỏi.
 
 WEAKNESSES:
-Liệt kê điểm yếu/rủi ro dưới dạng bullet. Tập trung vào lỗ hổng nghiệp vụ, tần suất thấp, câu hỏi lệch trọng tâm, hoặc thiếu câu hỏi vận dụng.
+Tối đa 2 bullet, mỗi bullet tối đa 18 từ. Tập trung vào tần suất thấp, lệch trọng tâm hoặc thiếu vận dụng.
 
 RECOMMENDATIONS:
-Đưa ra kế hoạch hành động cụ thể cho giáo viên trong 3-5 bullet. Mỗi bullet phải là việc làm được ngay, ví dụ: hỏi lại câu nào, giao bài tập nào, kiểm tra phần nào, yêu cầu học sinh giải thích lại gì.
+Tối đa 2 bullet, mỗi bullet là một hành động làm được ngay trong lớp.
 
 SCORE:
 Chỉ ghi một số từ 0 đến 100.
 `;
 
     const aiResult = await generateAnswer(prompt, {
-      maxTokens: 950,
+      maxTokens: 430,
       temperature: 0.25,
     });
 
@@ -764,13 +764,13 @@ ${question}
 
 YÊU CẦU TRẢ LỜI:
 - Trả lời bằng tiếng Việt.
-- Ngắn gọn nhưng có ý nghĩa thực tiễn.
+- Trả lời tối đa 4 câu hoặc 3 bullet ngắn, không viết dài.
 - Nếu có thể, đưa ra: nhận định, bằng chứng, hành động giáo viên nên làm.
 - Nếu dữ liệu chưa đủ, nói rõ thiếu dữ liệu gì và nên kiểm tra thêm gì.
 `;
 
     const answer = await generateAnswer(prompt, {
-      maxTokens: 650,
+      maxTokens: 320,
       temperature: 0.25,
     });
 

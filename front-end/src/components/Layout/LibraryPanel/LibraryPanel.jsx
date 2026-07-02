@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import Button from "react-bootstrap/Button";
-import { publishDocument } from "../../../services/api";
+import { getLibraryDocuments, publishDocument } from "../../../services/api";
 import "./LibraryPanel.scss";
 
 const getFileIcon = (fileName = "") => {
@@ -51,6 +51,16 @@ const getTopicLabel = (doc) => {
   return doc.topicName || "Uncategorized";
 };
 
+const normalizeUser = (user) => {
+  if (!user) return null;
+
+  return {
+    ...user,
+    userId: user.userId || user.id,
+    role: user.role,
+  };
+};
+
 const getStoredUser = () => {
   try {
     const rawUser =
@@ -59,7 +69,7 @@ const getStoredUser = () => {
       localStorage.getItem("currentUser") ||
       sessionStorage.getItem("currentUser");
 
-    return rawUser ? JSON.parse(rawUser) : null;
+    return rawUser ? normalizeUser(JSON.parse(rawUser)) : null;
   } catch {
     return null;
   }
@@ -117,26 +127,61 @@ const LibraryPanel = ({
   const [activeTab, setActiveTab] = useState("teacher");
   const [publishingId, setPublishingId] = useState(null);
   const [statusOverrides, setStatusOverrides] = useState({});
+  const [libraryDocs, setLibraryDocs] = useState(documents);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
 
-  const currentUser = propUser || getStoredUser();
+  const currentUser = normalizeUser(propUser) || getStoredUser();
+  const currentUserRole = currentUser?.role;
+  const currentUserId = currentUser?.userId;
 
-  const visibleDocuments = useMemo(() => {
-    return documents.map((doc) => ({
-      ...doc,
-      reviewStatus: statusOverrides[doc.documentId] || doc.reviewStatus,
-    }));
-  }, [documents, statusOverrides]);
+  React.useEffect(() => {
+    setLibraryDocs(documents);
+  }, [documents]);
 
-  const teacherFiles = useMemo(() => {
-    return visibleDocuments.filter((doc) => doc.uploadedBy === "teacher");
-  }, [visibleDocuments]);
+  React.useEffect(() => {
+    const loadLibraryDocuments = async () => {
+      if (!open || !currentUserId || !currentUserRole) return;
 
-  const studentFiles = useMemo(() => {
-    return visibleDocuments.filter((doc) => doc.uploadedBy === "student");
-  }, [visibleDocuments]);
+      try {
+        setLoadingLibrary(true);
+        const data = await getLibraryDocuments(currentUserId, currentUserRole);
+
+        if (data.success) {
+          setLibraryDocs(data.data || []);
+        }
+      } catch (error) {
+        console.log("Cannot refresh library documents:", error);
+      } finally {
+        setLoadingLibrary(false);
+      }
+    };
+
+    loadLibraryDocuments();
+  }, [open, currentUserId, currentUserRole]);
+
+  const visibleDocuments = libraryDocs.map((doc) => ({
+    ...doc,
+    reviewStatus: statusOverrides[doc.documentId] || doc.reviewStatus,
+  }));
+
+  const teacherFiles = visibleDocuments.filter(
+    (doc) => doc.uploadedBy === "teacher",
+  );
+
+  const studentFiles = visibleDocuments.filter((doc) => {
+    if (doc.uploadedBy !== "student") {
+      return false;
+    }
+
+    if (currentUserRole === "student") {
+      return Number(doc.uploaderId) === Number(currentUserId);
+    }
+
+    return doc.reviewStatus === "approved";
+  });
 
   const currentFiles = activeTab === "teacher" ? teacherFiles : studentFiles;
-  const groupedFiles = useMemo(() => groupByMetadata(currentFiles), [currentFiles]);
+  const groupedFiles = groupByMetadata(currentFiles);
 
   const handleOpenFile = (doc) => {
     const rawUrl = getDocumentUrl(doc);
@@ -147,7 +192,7 @@ const LibraryPanel = ({
   };
 
   const handlePublishDocument = async (doc) => {
-    if (!currentUser?.userId) {
+    if (!currentUserId) {
       window.alert("Bạn cần đăng nhập để public file.");
       return;
     }
@@ -161,7 +206,7 @@ const LibraryPanel = ({
     try {
       setPublishingId(doc.documentId);
 
-      const result = await publishDocument(doc.documentId, currentUser.userId);
+      const result = await publishDocument(doc.documentId, currentUserId);
 
       if (!result.success) {
         throw new Error(result.message || "Public file thất bại");
@@ -171,6 +216,14 @@ const LibraryPanel = ({
         ...prev,
         [doc.documentId]: "approved",
       }));
+
+      setLibraryDocs((prev) =>
+        prev.map((item) =>
+          String(item.documentId) === String(doc.documentId)
+            ? { ...item, reviewStatus: "approved", visibilityStatus: "Public" }
+            : item,
+        ),
+      );
 
       onDocumentsChanged?.({
         ...doc,
@@ -210,8 +263,7 @@ const LibraryPanel = ({
       String(selectedDocument?.documentId) === String(doc.documentId);
 
     const isOwner =
-      currentUser?.userId &&
-      Number(doc.uploaderId) === Number(currentUser.userId);
+      currentUserId && Number(doc.uploaderId) === Number(currentUserId);
 
     const canPublish =
       activeTab === "student" && isOwner && isPrivateStudentFile(doc);
@@ -247,8 +299,8 @@ const LibraryPanel = ({
                   isPrivateStudentFile(doc)
                     ? "lesson-card__status--private"
                     : isApprovedStudentFile(doc)
-                    ? "lesson-card__status--public"
-                    : "lesson-card__status--pending"
+                      ? "lesson-card__status--public"
+                      : "lesson-card__status--pending"
                 }`}
               >
                 <i
@@ -256,15 +308,15 @@ const LibraryPanel = ({
                     isPrivateStudentFile(doc)
                       ? "bi bi-lock-fill"
                       : isApprovedStudentFile(doc)
-                      ? "bi bi-globe2"
-                      : "bi bi-hourglass-split"
+                        ? "bi bi-globe2"
+                        : "bi bi-hourglass-split"
                   }
                 ></i>
                 {isPrivateStudentFile(doc)
                   ? "Private"
                   : isApprovedStudentFile(doc)
-                  ? "Public"
-                  : doc.reviewStatus || "Pending"}
+                    ? "Public"
+                    : doc.reviewStatus || "Pending"}
               </div>
             )}
           </div>
@@ -359,7 +411,9 @@ const LibraryPanel = ({
         </div>
 
         <div className="library-panel__count">
-          {currentFiles.length} DOCUMENTS AVAILABLE
+          {loadingLibrary
+            ? "LOADING..."
+            : `${currentFiles.length} DOCUMENTS AVAILABLE`}
         </div>
 
         <div className="library-panel__list">

@@ -13,6 +13,7 @@ import {
 import { getMetadata, updateDocumentMetadata, deleteDocument } from "../../services/api";
 
 const API = import.meta.env.VITE_API_URL;
+const PAGE_SIZE = 10;
 
 function fileIcon(name = "") {
   const ext = name.split(".").pop().toLowerCase();
@@ -34,6 +35,28 @@ function typeLabel(name = "") {
   if (["mp4", "mov", "avi"].includes(ext)) return { label: "VIDEO", color: "info" };
   if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return { label: "IMAGE", color: "success" };
   return { label: "OTHER", color: "secondary" };
+}
+
+function getStatusInfo(status = "") {
+  const normalized = String(status || "private").toLowerCase();
+
+  if (normalized === "approved") {
+    return { label: "Public", color: "success" };
+  }
+
+  if (normalized === "private") {
+    return { label: "Private", color: "warning" };
+  }
+
+  if (normalized === "pending") {
+    return { label: "Pending", color: "secondary" };
+  }
+
+  if (normalized === "rejected") {
+    return { label: "Rejected", color: "danger" };
+  }
+
+  return { label: status || "Unknown", color: "secondary" };
 }
 
 function formatDate(iso) {
@@ -59,6 +82,7 @@ const emptyEditForm = {
 export default function StudentFilesTab() {
   const [files, setFiles] = useState([]);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -120,11 +144,16 @@ export default function StudentFilesTab() {
     fetchStudentFiles();
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
   const filtered = files.filter((f) => {
     const fileName = f.fileName || f.name || "";
     const uploaderName = f.uploaderName || "";
     const subject = `${f.subjectCode || ""} ${f.subjectName || ""}`;
     const topic = f.topicName || "";
+    const status = f.reviewStatus || f.visibilityStatus || "";
 
     const keyword = search.toLowerCase();
 
@@ -132,9 +161,21 @@ export default function StudentFilesTab() {
       fileName.toLowerCase().includes(keyword) ||
       uploaderName.toLowerCase().includes(keyword) ||
       subject.toLowerCase().includes(keyword) ||
-      topic.toLowerCase().includes(keyword)
+      topic.toLowerCase().includes(keyword) ||
+      status.toLowerCase().includes(keyword)
     );
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginatedFiles = filtered.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   const totalDocs = files.length;
   const pdfCount = files.filter((f) =>
@@ -327,6 +368,7 @@ export default function StudentFilesTab() {
                   <th>NAME</th>
                   <th>METADATA</th>
                   <th>TYPE</th>
+                  <th>STATUS</th>
                   <th>UPLOADED</th>
                   <th>UPLOADER</th>
                   <th>ACTIONS</th>
@@ -335,23 +377,24 @@ export default function StudentFilesTab() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="td-sfile-empty">
+                    <td colSpan={7} className="td-sfile-empty">
                       Loading...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="td-sfile-empty">
+                    <td colSpan={7} className="td-sfile-empty">
                       No documents found
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((f) => {
+                  paginatedFiles.map((f) => {
                     const fileName = f.fileName || f.name || "";
                     const uploadedAt = f.uploadDate || f.uploadedAt;
                     const uploaderName = f.uploaderName || "Student";
                     const { cls, icon } = fileIcon(fileName);
                     const { label, color } = typeLabel(fileName);
+                    const status = getStatusInfo(f.reviewStatus);
 
                     return (
                       <tr key={f.documentId || f.id}>
@@ -363,7 +406,7 @@ export default function StudentFilesTab() {
                             <div>
                               <div className="td-sfile-fname">{fileName}</div>
                               <div className="td-sfile-fsize">
-                                {f.reviewStatus || "private"}
+                                {f.documentTypeName || "Student document"}
                               </div>
                             </div>
                           </div>
@@ -381,6 +424,11 @@ export default function StudentFilesTab() {
                         <td>
                           <Badge bg={color} className="td-sfile-type-badge">
                             {label}
+                          </Badge>
+                        </td>
+                        <td>
+                          <Badge bg={status.color} className="td-sfile-type-badge">
+                            {status.label}
                           </Badge>
                         </td>
                         <td className="td-sfile-date">{formatDate(uploadedAt)}</td>
@@ -439,6 +487,38 @@ export default function StudentFilesTab() {
               </tbody>
             </Table>
           </div>
+
+          {filtered.length > PAGE_SIZE && (
+            <div className="d-flex align-items-center justify-content-between mt-3">
+              <div className="text-muted" style={{ fontSize: 13 }}>
+                Showing {(safePage - 1) * PAGE_SIZE + 1}-{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  disabled={safePage === 1}
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                >
+                  Previous
+                </Button>
+
+                <span className="text-muted" style={{ fontSize: 13 }}>
+                  Page {safePage} / {totalPages}
+                </span>
+
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  disabled={safePage === totalPages}
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </Card.Body>
       </Card>
 

@@ -26,6 +26,9 @@ const formatStorage = (bytes = 0) => {
 export default function DocumentsPage() {
   const [docs, setDocs] = useState([]);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const PAGE_SIZE = 10;
 
   const fetchDocs = async () => {
     try {
@@ -47,6 +50,10 @@ export default function DocumentsPage() {
   useEffect(() => {
     fetchDocs();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const getFileType = (fileType, fileName = "") => {
     const type = fileType?.toLowerCase() || "";
@@ -106,6 +113,11 @@ export default function DocumentsPage() {
       d.topicName?.toLowerCase().includes(term)
     );
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+  const paginatedDocs = filtered.slice(startIndex, startIndex + PAGE_SIZE);
 
   const pdfCount = docs.filter(
     (d) => getFileType(d.fileType, d.fileName) === "PDF",
@@ -221,7 +233,7 @@ export default function DocumentsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((d) => {
+                  paginatedDocs.map((d) => {
                     const fileType = getFileType(d.fileType, d.fileName);
                     const fileUrl = getDocumentUrl(d);
                     const previewUrl = getPreviewUrl(d);
@@ -333,6 +345,42 @@ export default function DocumentsPage() {
                 )}
               </tbody>
             </Table>
+
+            {filtered.length > PAGE_SIZE && (
+              <div className="d-flex align-items-center justify-content-between px-3 py-3 border-top">
+                <div className="text-secondary" style={{ fontSize: 13 }}>
+                  Showing {startIndex + 1}-
+                  {Math.min(startIndex + PAGE_SIZE, filtered.length)} of{" "}
+                  {filtered.length} documents
+                </div>
+
+                <div className="d-flex align-items-center gap-2">
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    disabled={safeCurrentPage <= 1}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  >
+                    Previous
+                  </Button>
+
+                  <span style={{ fontSize: 13, color: "#64748b" }}>
+                    Page {safeCurrentPage} / {totalPages}
+                  </span>
+
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    disabled={safeCurrentPage >= totalPages}
+                    onClick={() =>
+                      setCurrentPage((page) => Math.min(totalPages, page + 1))
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

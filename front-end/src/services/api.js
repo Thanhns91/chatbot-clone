@@ -380,6 +380,16 @@ export async function updateChatSession(sessionId, data) {
   });
 }
 
+
+export async function updateChatSessionStarred(sessionId, isStarred) {
+  return requestJson(`/chat-history/sessions/${sessionId}/starred`, {
+    method: "PUT",
+    body: {
+      isStarred,
+    },
+  });
+}
+
 export async function deleteChatSession(sessionId) {
   return requestJson(`/chat-history/sessions/${sessionId}`, {
     method: "DELETE",

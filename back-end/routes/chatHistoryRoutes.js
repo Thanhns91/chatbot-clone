@@ -17,6 +17,8 @@ router.get("/sessions/:userId", async (req, res) => {
         cs.title,
         cs.createdAt,
         cs.updatedAt,
+        COALESCE(cs.isStarred, FALSE) AS isStarred,
+        cs.starredAt,
         d.fileName,
         (
           SELECT cm.message
@@ -45,7 +47,9 @@ router.get("/sessions/:userId", async (req, res) => {
       preview: s.preview || s.fileName || "",
       messageCount: s.messageCount || 0,
       date: "Today",
-      starred: false,
+      starred: Boolean(s.isStarred),
+      isStarred: Boolean(s.isStarred),
+      starredAt: s.starredAt,
     }));
 
     res.json(formatted);
@@ -136,6 +140,54 @@ router.put("/sessions/:sessionId", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Cannot update session",
+      detail: error.message,
+    });
+  }
+});
+
+
+router.put("/sessions/:sessionId/starred", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { isStarred } = req.body;
+
+    const starredValue =
+      isStarred === true ||
+      isStarred === "true" ||
+      isStarred === 1 ||
+      isStarred === "1";
+
+    const [result] = await pool.query(
+      `
+      UPDATE ChatSessions
+      SET
+        isStarred = ?,
+        starredAt = CASE WHEN ? = TRUE THEN NOW() ELSE NULL END,
+        updatedAt = NOW()
+      WHERE sessionId = ?
+      `,
+      [starredValue, starredValue, sessionId],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Session starred status updated",
+      sessionId,
+      starred: starredValue,
+      isStarred: starredValue,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Cannot update starred status",
       detail: error.message,
     });
   }
