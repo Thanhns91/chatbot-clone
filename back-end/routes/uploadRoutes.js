@@ -777,57 +777,55 @@ router.post("/", upload.single("file"), async (req, res) => {
       } = duplicateInfo;
 
       await connection.query(
-  `
-  INSERT INTO Documents
-  (
-    documentId,
-    fileName,
-    fileType,
-    fileUrl,
-    fileSizeBytes,
-    contentHash,
-    uploaderId,
-    uploadedBy,
-    uploadStatus,
-    reviewStatus,
-    subjectId,
-    topicId,
-    documentTypeId,
-    levelId,
-    tags,
-    summary,
-    versionGroupId,
-    versionNo,
-    vectorDocumentId,
-    isDuplicate,
-    originalDocumentId
-  )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `,
-  [
-    documentId,
-    fileName,
-    fileType,
-    fileUrl,
-    fileSizeBytes,
-    contentHash,
-    uploaderId,
-    uploadedBy,
-    "success",
-    reviewStatus,
-    metadata.subjectId,
-    metadata.topicId,
-    metadata.documentTypeId,
-    metadata.levelId,
-    metadata.tags,
-    metadata.summary,
-    versionGroupId,
-    versionNo,
-    vectorDocumentId,
-    false,
-    originalDocumentId,
-  ],
-);
+        `
+        INSERT INTO Documents
+        (
+          documentId,
+          fileName,
+          fileType,
+          fileUrl,
+          fileSizeBytes,
+          contentHash,
+          uploaderId,
+          uploadedBy,
+          uploadStatus,
+          reviewStatus,
+          subjectId,
+          topicId,
+          documentTypeId,
+          levelId,
+          tags,
+          summary,
+          versionGroupId,
+          versionNo,
+          vectorDocumentId,
+          isDuplicate,
+          originalDocumentId
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)
+        `,
+        [
+          documentId,
+          fileName,
+          fileType,
+          fileUrl,
+          fileSizeBytes,
+          contentHash,
+          uploaderId,
+          uploadedBy,
+          reviewStatus,
+          metadata.subjectId,
+          metadata.topicId,
+          metadata.documentTypeId,
+          metadata.levelId,
+          metadata.tags,
+          metadata.summary,
+          versionGroupId,
+          nextVersion,
+          vectorDocumentId,
+          originalDocumentId,
+        ],
+      );
 
       await insertDocumentVersion(connection, {
         documentId,
@@ -966,7 +964,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         isDuplicate,
         originalDocumentId
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         documentId,
