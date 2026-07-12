@@ -1469,72 +1469,13 @@ $radius-btn: 10px;
   overflow-x: auto;
 }
 
-/* chỉnh cột cho đều như mẫu Student Submissions */
+/* Bảng Student Files dùng table thật 7 cột.
+   Không dùng display: grid vì sẽ làm Uploader/Actions rớt dòng. */
 .td-sfile-table {
   width: 100%;
   min-width: 1180px;
   font-size: 13px;
   margin-bottom: 0;
-
-  thead,
-  tbody {
-    display: block;
-    width: 100%;
-  }
-
-  thead tr,
-  tbody tr {
-    display: grid;
-    grid-template-columns: minmax(420px, 1fr) 140px 180px 280px 170px;
-    align-items: center;
-    width: 100%;
-  }
-
-  thead tr {
-    border-bottom: 1px solid $border;
-  }
-
-  tbody tr {
-    border-bottom: 1px solid #f1f5f9;
-  }
-
-  thead th {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: $text-muted;
-    padding: 10px 14px;
-    white-space: nowrap;
-    background: transparent;
-    vertical-align: middle;
-    border-bottom: none;
-  }
-
-  tbody td {
-    padding: 14px 14px;
-    border-bottom: none;
-    vertical-align: middle;
-    border-top: none;
-    min-width: 0;
-  }
-
-  thead th:nth-child(2),
-  tbody td:nth-child(2),
-  thead th:nth-child(3),
-  tbody td:nth-child(3),
-  thead th:nth-child(5),
-  tbody td:nth-child(5) {
-    text-align: center;
-  }
-
-  tbody tr:last-child {
-    border-bottom: none;
-  }
-
-  tbody tr:hover td {
-    background: #f8fafc;
-  }
 }
 
 // File name cell
@@ -2940,4 +2881,44 @@ html[data-theme="dark"] .tag-select-input input::placeholder {
   .td-materials-theme-btn {
     flex: 1;
   }
+}
+
+/* =========================================================
+   RECHARTS TOOLTIP — LIGHT / DARK
+========================================================= */
+
+/* Tooltip mặc định ở giao diện sáng */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12) !important;
+}
+
+.recharts-tooltip-wrapper .recharts-tooltip-label,
+.recharts-tooltip-wrapper .recharts-tooltip-item,
+.recharts-tooltip-wrapper .recharts-tooltip-item-name,
+.recharts-tooltip-wrapper .recharts-tooltip-item-value {
+  color: #0f172a !important;
+}
+
+/* Tooltip chuyển nền tối cùng toàn bộ Teacher */
+html[data-theme="dark"] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+html[data-theme="dark"] .recharts-tooltip-wrapper .recharts-tooltip-label,
+html[data-theme="dark"] .recharts-tooltip-wrapper .recharts-tooltip-item,
+html[data-theme="dark"] .recharts-tooltip-wrapper .recharts-tooltip-item-name,
+html[data-theme="dark"] .recharts-tooltip-wrapper .recharts-tooltip-item-value {
+  color: #e2e8f0 !important;
+}
+
+/* Màu vùng hover/cursor của biểu đồ trong dark mode */
+html[data-theme="dark"] .recharts-tooltip-cursor {
+  fill: rgba(96, 165, 250, 0.08) !important;
+  stroke: #475569 !important;
 }
