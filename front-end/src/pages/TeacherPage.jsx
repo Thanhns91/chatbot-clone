@@ -36,6 +36,18 @@ const PAGE_META = {
   },
 };
 
+const applyStoredTheme = () => {
+  const theme = localStorage.getItem("theme") === "dark" ? "dark" : "light";
+
+  document.documentElement.setAttribute("data-theme", theme);
+
+  if (theme === "dark") {
+    document.body.classList.add("dark", "theme-dark");
+  } else {
+    document.body.classList.remove("dark", "dark-mode", "theme-dark");
+  }
+};
+
 export default function TeacherPage() {
   const { page = "home" } = useParams();
   const navigate = useNavigate();
@@ -49,9 +61,18 @@ export default function TeacherPage() {
   );
 
   useEffect(() => {
+    applyStoredTheme();
+
+    const syncTheme = () => applyStoredTheme();
+    window.addEventListener("storage", syncTheme);
+
+    return () => window.removeEventListener("storage", syncTheme);
+  }, []);
+
+  useEffect(() => {
     if (!user?.userId) {
       navigate("/", { replace: true });
-      return;
+      return undefined;
     }
 
     const checkStatus = async () => {
@@ -75,7 +96,6 @@ export default function TeacherPage() {
     };
 
     checkStatus();
-
     const timer = setInterval(checkStatus, 5000);
 
     return () => clearInterval(timer);
@@ -108,26 +128,25 @@ export default function TeacherPage() {
     navigate("/");
   };
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
-  if (user?.role === "admin") {
+  if (user.role === "admin") {
     return <AdminPage />;
   }
 
-  if (user?.role !== "teacher") {
+  if (user.role !== "teacher") {
     navigate("/", { replace: true });
     return null;
   }
 
-  const meta = PAGE_META[page] || PAGE_META.home;
+  const activePage = PAGE_META[page] ? page : "home";
+  const meta = PAGE_META[activePage];
 
   return (
     <div className="td-root">
       <TeacherSidebar
         user={user}
-        page={page}
+        page={activePage}
         setPage={(id) => navigate(`/teacher/${id}`)}
         onLogout={handleLogout}
       />
@@ -139,11 +158,11 @@ export default function TeacherPage() {
         </header>
 
         <main className="td-content">
-          {page === "home" && <HomeTab />}
-          {page === "materials" && <MaterialsTab />}
-          {page === "summary" && <StudentSummaryTab />}
-          {page === "student-files" && <StudentFilesTab />}
-          {page === "profile" && (
+          {activePage === "home" && <HomeTab />}
+          {activePage === "materials" && <MaterialsTab />}
+          {activePage === "summary" && <StudentSummaryTab />}
+          {activePage === "student-files" && <StudentFilesTab />}
+          {activePage === "profile" && (
             <ProfileTab user={user} onUserUpdated={handleUserUpdated} />
           )}
         </main>

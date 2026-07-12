@@ -2539,3 +2539,405 @@ html[data-theme="dark"] .td-page-btn--active {
     min-width: 82px;
   }
 }
+
+/* =========================================================
+   REMAINING TEACHER COMPONENT FIXES
+========================================================= */
+
+/* Header đồng bộ với Admin */
+.td-page-header__title {
+  color: #1d4ed8;
+  font-size: clamp(24px, 2vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.td-page-header__sub {
+  margin-top: 4px;
+  color: #5b7fff;
+  font-size: 14px;
+}
+
+/* Avatar có ảnh không bị méo */
+.td-sidebar__avatar,
+.td-sidebar__user-avatar {
+  overflow: hidden;
+}
+
+.td-sidebar__avatar img,
+.td-sidebar__user-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* UploadMaterials standalone */
+.td-upload-zone.card {
+  min-height: 255px;
+  padding: 0;
+  overflow: hidden;
+  background: #ffffff;
+  border: 2px dashed #cbd5e1 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05) !important;
+}
+
+.td-upload-zone.card:hover,
+.td-upload-zone.card.td-upload-zone--active {
+  background: #eff6ff;
+  border-color: #2563eb !important;
+}
+
+.td-upload-title {
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.td-upload-sub {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* Home dashboard */
+.td-card {
+  border-radius: 18px;
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.055);
+}
+
+.td-dashboard-chart {
+  min-height: 310px;
+}
+
+.td-card-title {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.td-activity-row,
+.td-overview-admin-row {
+  min-height: 48px;
+}
+
+.td-overview-admin-bar-wrap {
+  width: min(42%, 230px);
+  height: 7px;
+  border-radius: 999px;
+}
+
+.td-overview-admin-bar {
+  border-radius: inherit;
+}
+
+/* Student Summary table: đủ 6 cột, không rớt dòng */
+.td-summary-table {
+  min-width: 900px;
+}
+
+.td-summary-table thead th,
+.td-summary-table tbody td {
+  white-space: nowrap;
+}
+
+.td-summary-table thead th:first-child,
+.td-summary-table tbody td:first-child {
+  white-space: normal;
+}
+
+.td-summary-table tbody td:nth-child(6) {
+  min-width: 150px;
+}
+
+.td-summary-error {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+/* Modal summary co giãn tốt hơn */
+.td-modal-file-strip {
+  flex-wrap: wrap;
+}
+
+.td-modal-file-info {
+  min-width: 180px;
+}
+
+/* Dark theme cho các component còn thiếu */
+html[data-theme="dark"] .td-card-title,
+html[data-theme="dark"] .td-chart-title,
+html[data-theme="dark"] .td-total__num,
+html[data-theme="dark"] .td-activity-text,
+html[data-theme="dark"] .td-overview-admin-name,
+html[data-theme="dark"] .td-overview-admin-count,
+html[data-theme="dark"] .td-summary-student-name,
+html[data-theme="dark"] .td-upload-title {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .td-empty-text,
+html[data-theme="dark"] .td-chart-sub,
+html[data-theme="dark"] .td-total__label,
+html[data-theme="dark"] .td-activity-date,
+html[data-theme="dark"] .td-summary-meta,
+html[data-theme="dark"] .td-summary-date,
+html[data-theme="dark"] .td-modal-file-sub,
+html[data-theme="dark"] .td-upload-sub {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .td-upload-zone.card {
+  background: #172033 !important;
+  border-color: #475569 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .td-upload-zone.card:hover,
+html[data-theme="dark"] .td-upload-zone.card.td-upload-zone--active {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+}
+
+html[data-theme="dark"] .td-tab {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .td-tab:hover {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .td-tab--active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .td-activity-row,
+html[data-theme="dark"] .td-overview-admin-row,
+html[data-theme="dark"] .td-summary-table thead th,
+html[data-theme="dark"] .td-summary-table tbody td {
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .td-overview-admin-bar-wrap {
+  background: #334155;
+}
+
+html[data-theme="dark"] .td-summary-table {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .td-summary-table thead th {
+  color: #94a3b8;
+  background: #172033;
+}
+
+html[data-theme="dark"] .td-summary-table tbody td {
+  color: #e2e8f0;
+  background: #172033;
+}
+
+html[data-theme="dark"] .td-summary-table tbody tr:hover td {
+  background: #1e293b;
+}
+
+html[data-theme="dark"] .td-score-badge--none {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .td-modal-file-strip {
+  background: #111827;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .modal-content {
+  background: #172033;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .modal-header,
+html[data-theme="dark"] .modal-footer {
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+html[data-theme="dark"] .td-chat-area {
+  background: #172033;
+}
+
+html[data-theme="dark"] .td-chat-text {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .td-chat-bubble--user .td-chat-text {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .td-preview-btn,
+html[data-theme="dark"] .td-sidebar__logout {
+  background: #111827;
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .td-preview-btn:hover,
+html[data-theme="dark"] .td-sidebar__logout:hover {
+  background: #1e293b;
+}
+
+@media (max-width: 991px) {
+  .td-sidebar__brand-info {
+    display: none;
+  }
+
+  .td-nav-item span {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .td-summary-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .td-summary-header .td-tabs {
+    overflow-x: auto;
+  }
+
+  .td-modal-file-strip {
+    align-items: flex-start;
+  }
+}
+
+/* =========================================================
+   MATERIALS THEME CONTROLS
+========================================================= */
+
+:root {
+  --td-input-bg: #ffffff;
+  --td-text-color: #0f172a;
+  --td-border-color: #e2e8f0;
+  --td-material-toolbar-bg: #ffffff;
+  --td-material-toolbar-sub: #64748b;
+}
+
+html[data-theme="dark"] {
+  --td-input-bg: #182235;
+  --td-text-color: #e5e7eb;
+  --td-border-color: #334155;
+  --td-material-toolbar-bg: #111827;
+  --td-material-toolbar-sub: #94a3b8;
+}
+
+.td-materials-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+  padding: 17px 20px;
+  border: 1px solid var(--td-border-color);
+  border-radius: 16px;
+  background: var(--td-material-toolbar-bg);
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+}
+
+.td-materials-toolbar__title {
+  color: var(--td-text-color);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.td-materials-toolbar__sub {
+  margin-top: 4px;
+  color: var(--td-material-toolbar-sub);
+  font-size: 13px;
+}
+
+.td-materials-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--td-border-color);
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.td-materials-theme-btn {
+  min-width: 88px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--td-material-toolbar-sub);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.td-materials-theme-btn:hover {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.09);
+}
+
+.td-materials-theme-btn--active,
+.td-materials-theme-btn--active:hover {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 5px 14px rgba(37, 99, 235, 0.22);
+}
+
+html[data-theme="dark"] .tag-select-input {
+  background: var(--td-input-bg) !important;
+  color: var(--td-text-color) !important;
+  border-color: var(--td-border-color) !important;
+}
+
+html[data-theme="dark"] .tag-select-input input {
+  color: var(--td-text-color) !important;
+}
+
+html[data-theme="dark"] .tag-select-input input::placeholder {
+  color: #64748b;
+}
+
+@media (max-width: 767px) {
+  .td-materials-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .td-materials-theme-toggle {
+    width: 100%;
+  }
+
+  .td-materials-theme-btn {
+    flex: 1;
+  }
+}

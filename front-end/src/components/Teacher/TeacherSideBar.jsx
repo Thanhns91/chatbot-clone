@@ -1,43 +1,27 @@
 import Button from "react-bootstrap/Button";
 
 const NAV = [
-  {
-    id: "home",
-    icon: "bi-house-door-fill",
-    label: "Home",
-  },
-  {
-    id: "materials",
-    icon: "bi-folder2-open",
-    label: "My Materials",
-  },
-  {
-    id: "summary",
-    icon: "bi-chat-dots-fill",
-    label: "Student Summary",
-  },
+  { id: "home", icon: "bi-house-door-fill", label: "Home" },
+  { id: "materials", icon: "bi-folder2-open", label: "My Materials" },
+  { id: "summary", icon: "bi-chat-dots-fill", label: "Student Summary" },
   {
     id: "student-files",
     icon: "bi-folder-symlink-fill",
     label: "Student Files",
   },
-  {
-    id: "profile",
-    icon: "bi-person",
-    label: "Profile",
-  },
+  { id: "profile", icon: "bi-person-fill", label: "Profile" },
 ];
 
 export default function TeacherSidebar({ user, page, setPage, onLogout }) {
   const displayName = user?.fullName || user?.name || "Teacher User";
-  const initial = displayName?.charAt(0)?.toUpperCase() || "T";
+  const initial = displayName.charAt(0).toUpperCase() || "T";
   const avatarUrl = user?.avatarUrl || user?.avatar_url || "";
 
   const renderAvatar = (className) => {
     if (avatarUrl) {
       return (
         <div className={className}>
-          <img src={avatarUrl} alt="Teacher avatar" />
+          <img src={avatarUrl} alt={`${displayName} avatar`} />
         </div>
       );
     }
@@ -50,22 +34,24 @@ export default function TeacherSidebar({ user, page, setPage, onLogout }) {
       <div className="td-sidebar__brand">
         {renderAvatar("td-sidebar__avatar")}
 
-        <div>
+        <div className="td-sidebar__brand-info">
           <div className="td-sidebar__brand-title">Teacher Dashboard</div>
           <div className="td-sidebar__brand-sub">AI Learning</div>
         </div>
       </div>
 
-      <nav className="td-sidebar__nav">
-        {NAV.map((n) => (
+      <nav className="td-sidebar__nav" aria-label="Teacher navigation">
+        {NAV.map((item) => (
           <button
-            key={n.id}
+            key={item.id}
             type="button"
-            className={`td-nav-item ${page === n.id ? "active" : ""}`}
-            onClick={() => setPage(n.id)}
+            className={`td-nav-item ${page === item.id ? "active" : ""}`}
+            onClick={() => setPage(item.id)}
+            aria-current={page === item.id ? "page" : undefined}
+            title={item.label}
           >
-            <i className={`bi ${n.icon}`} />
-            {n.label}
+            <i className={`bi ${item.icon}`} />
+            <span>{item.label}</span>
           </button>
         ))}
       </nav>
@@ -86,7 +72,7 @@ export default function TeacherSidebar({ user, page, setPage, onLogout }) {
           title="Logout"
         >
           <i className="bi bi-box-arrow-right" />
-          Logout
+          <span>Logout</span>
         </Button>
       </div>
     </aside>
