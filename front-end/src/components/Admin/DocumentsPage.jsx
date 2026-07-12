@@ -139,7 +139,11 @@ export default function DocumentsPage() {
     { label: "Public Files", val: publicCount, color: "#16a34a" },
     { label: "Private Files", val: privateCount, color: "#dc2626" },
     { label: "PDF Files", val: pdfCount, color: "#ea580c" },
-    { label: "Storage Used", val: formatStorage(totalStorageBytes), color: "#7c3aed" },
+    {
+      label: "Storage Used",
+      val: formatStorage(totalStorageBytes),
+      color: "#7c3aed",
+    },
     { label: "Chat Usage", val: totalChatUse, color: "#0891b2" },
   ];
 
@@ -175,7 +179,8 @@ export default function DocumentsPage() {
   return (
     <>
       <div className="admin-topbar">
-        <h1>Documents</h1>
+        <h1>Document Management</h1>
+        <p>AI Learning — Manage learning materials &amp; document access</p>
       </div>
 
       <div className="admin-body">
@@ -288,7 +293,9 @@ export default function DocumentsPage() {
                                 : "status-blocked"
                             }
                           >
-                            {d.reviewStatus === "approved" ? "Public" : d.reviewStatus}
+                            {d.reviewStatus === "approved"
+                              ? "Public"
+                              : d.reviewStatus}
                           </span>
                         </td>
 
@@ -314,7 +321,11 @@ export default function DocumentsPage() {
                               className="p-0"
                               title="Open document"
                               onClick={() =>
-                                window.open(previewUrl, "_blank", "noopener,noreferrer")
+                                window.open(
+                                  previewUrl,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                )
                               }
                             >
                               <i className="bi bi-eye" />
@@ -359,7 +370,9 @@ export default function DocumentsPage() {
                     variant="outline-secondary"
                     size="sm"
                     disabled={safeCurrentPage <= 1}
-                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(1, page - 1))
+                    }
                   >
                     Previous
                   </Button>

@@ -10,6 +10,23 @@ import Col from "react-bootstrap/Col";
 
 const API = import.meta.env.VITE_API_URL;
 
+const applyThemeToDOM = (theme) => {
+  const finalTheme = theme === "dark" ? "dark" : "light";
+
+  localStorage.setItem("theme", finalTheme);
+  document.documentElement.setAttribute("data-theme", finalTheme);
+
+  if (finalTheme === "dark") {
+    document.body.classList.add("dark");
+    document.body.classList.add("theme-dark");
+  } else {
+    document.body.classList.remove("dark");
+    document.body.classList.remove("dark-mode");
+    document.body.classList.remove("theme-dark");
+  }
+};
+
+
 const getStoredUser = () => {
   const raw =
     localStorage.getItem("currentUser") ||
@@ -26,7 +43,9 @@ const ProfileTab = ({ user , onUserUpdated}) => {
   const initialUser = user || getStoredUser() || {};
 
   const [profileUser, setProfileUser] = useState(initialUser);
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("theme") || "light",
+  );
   const [showModal, setShowModal] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -72,6 +91,10 @@ const ProfileTab = ({ user , onUserUpdated}) => {
   const role = profileUser?.role || initialUser?.role || "student";
   const initial =
     (formData.fullName || profileUser?.name || "T").charAt(0).toUpperCase();
+
+  useEffect(() => {
+    applyThemeToDOM(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!profileMsg && !profileError) return;
@@ -323,9 +346,39 @@ const ProfileTab = ({ user , onUserUpdated}) => {
       {/* Personal Info */}
       <Card className="mb-4 border-0 shadow-sm">
         <Card.Body className="p-4">
-          <Card.Title className="fw-bold mb-4">
-            Personal Information
-          </Card.Title>
+          <div className="td-profile-heading">
+            <Card.Title className="fw-bold mb-0">
+              Personal Information
+            </Card.Title>
+
+            <div
+              className="td-profile-theme-toggle"
+              role="group"
+              aria-label="Choose interface theme"
+            >
+              <button
+                type="button"
+                className={`td-profile-theme-btn ${
+                  theme === "light" ? "td-profile-theme-btn--active" : ""
+                }`}
+                onClick={() => setTheme("light")}
+              >
+                <i className="bi bi-sun" />
+                <span>Light</span>
+              </button>
+
+              <button
+                type="button"
+                className={`td-profile-theme-btn ${
+                  theme === "dark" ? "td-profile-theme-btn--active" : ""
+                }`}
+                onClick={() => setTheme("dark")}
+              >
+                <i className="bi bi-moon" />
+                <span>Dark</span>
+              </button>
+            </div>
+          </div>
 
           <div className="d-flex align-items-center gap-3 mb-4">
             <div className="td-profile-avatar">
@@ -518,55 +571,6 @@ const ProfileTab = ({ user , onUserUpdated}) => {
               </div>
             </div>
           )}
-        </Card.Body>
-      </Card>
-
-      {/* Appearance */}
-      <Card className="mb-4 border-0 shadow-sm">
-        <Card.Body className="p-4">
-          <Card.Title className="fw-bold text-primary d-flex align-items-center gap-2 mb-1">
-            <i className="bi bi-sun"></i> Appearance
-          </Card.Title>
-
-          <p className="text-muted mb-4 td-appearance-sub">
-            Choose your preferred interface theme.
-          </p>
-
-          <Row className="g-3">
-            {[
-              {
-                key: "light",
-                emoji: "☀️",
-                name: "Light",
-                desc: "Default theme",
-                bgClass: "td-theme-preview--light",
-              },
-              {
-                key: "dark",
-                emoji: "🌙",
-                name: "Dark",
-                desc: "Easy on the eyes",
-                bgClass: "td-theme-preview--dark",
-              },
-            ].map(({ key, emoji, name, desc, bgClass }) => (
-              <Col md={6} key={key}>
-                <Card
-                  className={`td-theme-card ${theme === key ? "td-theme-card--active" : ""
-                    }`}
-                  onClick={() => setTheme(key)}
-                >
-                  <div className={`td-theme-preview ${bgClass}`}>
-                    <span className="td-theme-emoji">{emoji}</span>
-                  </div>
-
-                  <Card.Body className="td-theme-info">
-                    <div className="td-theme-name">{name}</div>
-                    <div className="td-theme-desc">{desc}</div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
         </Card.Body>
       </Card>
 

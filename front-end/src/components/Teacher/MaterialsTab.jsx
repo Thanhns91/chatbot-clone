@@ -223,10 +223,13 @@ const defaultNewTopic = {
   description: "",
 };
 
+const PAGE_SIZE = 10;
+
 export default function MaterialsTab() {
   const fileRef = useRef(null);
 
   const [docs, setDocs] = useState([]);
+  const [page, setPage] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
@@ -253,6 +256,15 @@ export default function MaterialsTab() {
       (topic) => String(topic.subjectId) === String(uploadMeta.subjectId),
     );
   }, [topics, uploadMeta.subjectId]);
+
+  const totalPages = Math.max(1, Math.ceil(docs.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * PAGE_SIZE;
+  const paginatedDocs = docs.slice(startIndex, startIndex + PAGE_SIZE);
+
+  useEffect(() => {
+    setPage((currentPage) => Math.min(currentPage, totalPages));
+  }, [totalPages]);
 
   const fetchUploadHistory = async () => {
     try {
@@ -843,7 +855,7 @@ export default function MaterialsTab() {
             {docs.length === 0 ? (
               <div className="td-empty-text">No uploaded files yet.</div>
             ) : (
-              docs.map((file) => {
+              paginatedDocs.map((file) => {
                 const type = getFileType(file.fileName, file.fileType);
                 const { cls, icon, label } = fileIcon(type);
 
@@ -904,6 +916,59 @@ export default function MaterialsTab() {
               })
             )}
           </ListGroup>
+
+          {docs.length > PAGE_SIZE && (
+            <div className="td-pagination">
+              <div className="td-pagination__info">
+                Showing {startIndex + 1}-
+                {Math.min(startIndex + PAGE_SIZE, docs.length)} of {docs.length}{" "}
+                documents
+              </div>
+
+              <div className="td-pagination__controls">
+                <button
+                  type="button"
+                  className="td-page-btn td-page-btn--text"
+                  disabled={safePage === 1}
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                >
+                  <i className="bi bi-chevron-left" />
+                  Previous
+                </button>
+
+                <div className="td-page-numbers">
+                  {Array.from({ length: totalPages }, (_, index) => {
+                    const pageNumber = index + 1;
+
+                    return (
+                      <button
+                        type="button"
+                        key={pageNumber}
+                        className={`td-page-btn ${
+                          safePage === pageNumber ? "td-page-btn--active" : ""
+                        }`}
+                        onClick={() => setPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  className="td-page-btn td-page-btn--text"
+                  disabled={safePage === totalPages}
+                  onClick={() =>
+                    setPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                >
+                  Next
+                  <i className="bi bi-chevron-right" />
+                </button>
+              </div>
+            </div>
+          )}
         </Card.Body>
       </Card>
     </>
