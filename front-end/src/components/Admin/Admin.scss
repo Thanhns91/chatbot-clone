@@ -1,7 +1,3 @@
-/* =========================================================
-   ADMIN DASHBOARD
-========================================================= */
-
 :root {
   --admin-primary: #2563eb;
   --admin-primary-dark: #1d4ed8;
@@ -1701,8 +1697,12 @@ body,
 }
 
 .admin-action-cell .document-actions-dropdown {
-  width: 100%;
+  width: 38px !important;
+  display: inline-flex !important;
+  align-items: center;
   justify-content: center;
+  position: relative;
+  vertical-align: middle;
 }
 
 /* Users table */
@@ -1757,20 +1757,46 @@ body,
 }
 
 /* =========================================================
-   ACTION DROPDOWN ALIGNMENT FIX
+   FINAL ACTION MENU ALIGNMENT
+   Giữ nút đúng giữa cột và thu menu gọn sát nút ba chấm
 ========================================================= */
 
+.admin-table--documents .admin-col-document-name {
+  width: 26%;
+}
+
+.admin-table--documents .admin-col-document-subject {
+  width: 21%;
+}
+
+.admin-table--documents .admin-col-document-uploaded {
+  width: 8%;
+}
+
+.admin-table--documents .admin-col-document-actions {
+  width: 8%;
+}
+
+.admin-action-cell,
+.admin-table--documents th:last-child,
+.admin-table--users th:last-child,
+.admin-table--documents td:last-child,
+.admin-table--users td:last-child {
+  text-align: center !important;
+}
+
 .admin-action-cell {
-  overflow: visible !important;
-  text-align: center;
   position: relative;
+  overflow: visible !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
 }
 
 .admin-action-cell .document-actions-dropdown,
-.admin-action-cell .user-actions-dropdown,
 .admin-action-cell > .dropdown {
-  width: auto !important;
-  max-width: max-content;
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
@@ -1778,32 +1804,45 @@ body,
   vertical-align: middle;
 }
 
-.admin-action-cell .document-actions-toggle.btn,
-.admin-action-cell .user-actions-toggle.btn,
-.admin-action-cell .dropdown-toggle.btn {
-  margin: 0 auto;
+.admin-action-cell .document-actions-toggle.btn {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  margin: 0 !important;
 }
 
-.admin-action-cell .document-actions-menu.dropdown-menu,
-.admin-action-cell .user-actions-menu.dropdown-menu {
-  position: absolute !important;
-  inset: 100% 0 auto auto !important;
+/* Menu cũ bị quá rộng nên nhìn như lệch hẳn sang trái */
+.document-actions-menu.dropdown-menu {
+  width: 200px !important;
+  min-width: 200px !important;
+  max-width: 200px !important;
   margin-top: 8px !important;
-  transform: none !important;
+  margin-right: -8px !important;
+  padding: 7px !important;
 }
 
-.table-responsive,
-.a-card,
-.admin-table,
-.admin-table tbody,
-.admin-table tr,
-.admin-table td {
-  overflow: visible;
+.document-actions-menu .dropdown-item {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+  white-space: nowrap;
 }
 
-@media (max-width: 1199px) {
-  .table-responsive {
-    overflow-x: auto;
-    overflow-y: visible;
+.document-actions-menu .dropdown-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Không ép lại position/transform do Popper tự tính vị trí theo nút */
+.admin-action-cell .document-actions-menu.dropdown-menu {
+  inset: auto;
+}
+
+@media (max-width: 767px) {
+  .document-actions-menu.dropdown-menu {
+    width: 188px !important;
+    min-width: 188px !important;
+    max-width: 188px !important;
   }
 }
