@@ -9,6 +9,7 @@ import {
   Badge,
   Modal,
   Alert,
+  Dropdown,
 } from "react-bootstrap";
 import { getMetadata, updateDocumentMetadata, deleteDocument } from "../../services/api";
 
@@ -79,10 +80,44 @@ const emptyEditForm = {
   reviewStatus: "",
 };
 
+const getPaginationItems = (currentPage, totalPages) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, "ellipsis-right", totalPages];
+  }
+
+  if (currentPage >= totalPages - 3) {
+    return [
+      1,
+      "ellipsis-left",
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+
+  return [
+    1,
+    "ellipsis-left",
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    "ellipsis-right",
+    totalPages,
+  ];
+};
+
 export default function StudentFilesTab() {
   const [files, setFiles] = useState([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [jumpMenu, setJumpMenu] = useState("");
+  const [jumpPage, setJumpPage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -172,6 +207,27 @@ export default function StudentFilesTab() {
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
+
+  const paginationItems = getPaginationItems(safePage, totalPages);
+
+  const openJumpMenu = (menuKey) => {
+    setJumpMenu((current) => (current === menuKey ? "" : menuKey));
+    setJumpPage("");
+  };
+
+  const handleJumpToPage = (event) => {
+    event.preventDefault();
+
+    const requestedPage = Number(jumpPage);
+
+    if (!Number.isInteger(requestedPage)) return;
+
+    const nextPage = Math.min(Math.max(requestedPage, 1), totalPages);
+
+    setPage(nextPage);
+    setJumpMenu("");
+    setJumpPage("");
+  };
 
   useEffect(() => {
     setPage((current) => Math.min(current, totalPages));
@@ -434,51 +490,67 @@ export default function StudentFilesTab() {
                         <td className="td-sfile-date">{formatDate(uploadedAt)}</td>
                         <td className="td-sfile-uploader">{uploaderName}</td>
                         <td>
-                          <div className="td-sfile-actions">
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              className="td-sfile-action-btn"
-                              title="View"
-                              onClick={() => handleView(f)}
-                              disabled={!f.fileUrl && !f.documentId}
+                          <Dropdown
+                            align="end"
+                            className="td-sfile-actions-dropdown"
+                          >
+                            <Dropdown.Toggle
+                              variant="light"
+                              className="td-sfile-actions-toggle"
+                              id={`student-file-actions-${f.documentId || f.id}`}
+                              aria-label={`Actions for ${fileName}`}
                             >
-                              <i className="bi bi-eye" />
-                            </Button>
+                              <i className="bi bi-three-dots" />
+                            </Dropdown.Toggle>
 
-                            <Button
-                              variant="outline-secondary"
-                              size="sm"
-                              className="td-sfile-action-btn"
-                              title="Download"
-                              onClick={() => handleDownload(f)}
-                              disabled={!f.documentId}
+                            <Dropdown.Menu
+                              className="td-sfile-actions-menu"
+                              popperConfig={{ strategy: "fixed" }}
                             >
-                              <i className="bi bi-download" />
-                            </Button>
+                              <Dropdown.Item
+                                as="button"
+                                type="button"
+                                onClick={() => handleView(f)}
+                                disabled={!f.fileUrl && !f.documentId}
+                              >
+                                <i className="bi bi-eye td-sfile-menu-icon td-sfile-menu-icon--view" />
+                                <span>Open document</span>
+                              </Dropdown.Item>
 
-                            <Button
-                              variant="outline-success"
-                              size="sm"
-                              className="td-sfile-action-btn"
-                              title="Edit Metadata"
-                              onClick={() => openEditModal(f)}
-                              disabled={!f.documentId}
-                            >
-                              <i className="bi bi-pencil-square" />
-                            </Button>
+                              <Dropdown.Item
+                                as="button"
+                                type="button"
+                                onClick={() => handleDownload(f)}
+                                disabled={!f.documentId}
+                              >
+                                <i className="bi bi-download td-sfile-menu-icon td-sfile-menu-icon--download" />
+                                <span>Download</span>
+                              </Dropdown.Item>
 
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
-                              className="td-sfile-action-btn"
-                              title="Delete"
-                              onClick={() => handleDelete(f.documentId)}
-                              disabled={!f.documentId}
-                            >
-                              <i className="bi bi-trash3" />
-                            </Button>
-                          </div>
+                              <Dropdown.Item
+                                as="button"
+                                type="button"
+                                onClick={() => openEditModal(f)}
+                                disabled={!f.documentId}
+                              >
+                                <i className="bi bi-pencil-square td-sfile-menu-icon td-sfile-menu-icon--edit" />
+                                <span>Edit metadata</span>
+                              </Dropdown.Item>
+
+                              <Dropdown.Divider />
+
+                              <Dropdown.Item
+                                as="button"
+                                type="button"
+                                className="td-sfile-menu-delete"
+                                onClick={() => handleDelete(f.documentId)}
+                                disabled={!f.documentId}
+                              >
+                                <i className="bi bi-trash3 td-sfile-menu-icon" />
+                                <span>Delete document</span>
+                              </Dropdown.Item>
+                            </Dropdown.Menu>
+                          </Dropdown>
                         </td>
                       </tr>
                     );
@@ -489,38 +561,82 @@ export default function StudentFilesTab() {
           </div>
 
           {filtered.length > PAGE_SIZE && (
-            <div className="td-pagination">
-              <div className="td-pagination__info">
-                Showing {(safePage - 1) * PAGE_SIZE + 1}-
-                {Math.min(safePage * PAGE_SIZE, filtered.length)} of{" "}
-                {filtered.length} documents
-              </div>
-
+            <div className="td-pagination td-pagination--pill">
               <div className="td-pagination__controls">
                 <button
                   type="button"
                   className="td-page-btn td-page-btn--text"
                   disabled={safePage === 1}
-                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  onClick={() => {
+                    setPage((prev) => Math.max(1, prev - 1));
+                    setJumpMenu("");
+                  }}
                 >
                   <i className="bi bi-chevron-left" />
                   Previous
                 </button>
 
                 <div className="td-page-numbers">
-                  {Array.from({ length: totalPages }, (_, index) => {
-                    const pageNumber = index + 1;
+                  {paginationItems.map((item) => {
+                    if (typeof item === "string") {
+                      return (
+                        <div className="td-page-jump" key={item}>
+                          <button
+                            type="button"
+                            className={`td-page-btn td-page-btn--ellipsis ${
+                              jumpMenu === item ? "td-page-btn--open" : ""
+                            }`}
+                            aria-label="Jump to another page"
+                            aria-expanded={jumpMenu === item}
+                            onClick={() => openJumpMenu(item)}
+                          >
+                            <i className="bi bi-three-dots" />
+                          </button>
+
+                          {jumpMenu === item && (
+                            <form
+                              className="td-page-jump-popover"
+                              onSubmit={handleJumpToPage}
+                            >
+                              <label htmlFor={`jump-page-${item}`}>
+                                Go to page
+                              </label>
+
+                              <div className="td-page-jump-row">
+                                <input
+                                  id={`jump-page-${item}`}
+                                  type="number"
+                                  min="1"
+                                  max={totalPages}
+                                  value={jumpPage}
+                                  autoFocus
+                                  placeholder={`1-${totalPages}`}
+                                  onChange={(event) =>
+                                    setJumpPage(event.target.value)
+                                  }
+                                />
+
+                                <button type="submit">Go</button>
+                              </div>
+                            </form>
+                          )}
+                        </div>
+                      );
+                    }
 
                     return (
                       <button
                         type="button"
-                        key={pageNumber}
+                        key={item}
                         className={`td-page-btn ${
-                          safePage === pageNumber ? "td-page-btn--active" : ""
+                          safePage === item ? "td-page-btn--active" : ""
                         }`}
-                        onClick={() => setPage(pageNumber)}
+                        onClick={() => {
+                          setPage(item);
+                          setJumpMenu("");
+                        }}
                       >
-                        {pageNumber}
+                        {item}
                       </button>
                     );
                   })}
@@ -530,13 +646,20 @@ export default function StudentFilesTab() {
                   type="button"
                   className="td-page-btn td-page-btn--text"
                   disabled={safePage === totalPages}
-                  onClick={() =>
-                    setPage((prev) => Math.min(totalPages, prev + 1))
-                  }
+                  onClick={() => {
+                    setPage((prev) => Math.min(totalPages, prev + 1));
+                    setJumpMenu("");
+                  }}
                 >
                   Next
                   <i className="bi bi-chevron-right" />
                 </button>
+              </div>
+
+              <div className="td-pagination__info">
+                Showing {(safePage - 1) * PAGE_SIZE + 1}-
+                {Math.min(safePage * PAGE_SIZE, filtered.length)} of{" "}
+                {filtered.length} results
               </div>
             </div>
           )}

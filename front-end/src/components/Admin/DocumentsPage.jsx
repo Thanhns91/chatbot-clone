@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Col, Form, Row, Table } from "react-bootstrap";
+import { Button, Col, Dropdown, Form, Row, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 
@@ -23,10 +23,48 @@ const formatStorage = (bytes = 0) => {
   return `${value} B`;
 };
 
+
+const buildPaginationItems = (currentPage, totalPages) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const items = [1];
+  let start = Math.max(2, currentPage - 1);
+  let end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (currentPage <= 4) {
+    start = 2;
+    end = Math.min(5, totalPages - 1);
+  }
+
+  if (currentPage >= totalPages - 3) {
+    start = Math.max(2, totalPages - 4);
+    end = totalPages - 1;
+  }
+
+  if (start > 2) {
+    items.push("left-ellipsis");
+  }
+
+  for (let page = start; page <= end; page += 1) {
+    items.push(page);
+  }
+
+  if (end < totalPages - 1) {
+    items.push("right-ellipsis");
+  }
+
+  items.push(totalPages);
+
+  return items;
+};
+
 export default function DocumentsPage() {
   const [docs, setDocs] = useState([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState("");
 
   const PAGE_SIZE = 10;
 
@@ -118,6 +156,26 @@ export default function DocumentsPage() {
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * PAGE_SIZE;
   const paginatedDocs = filtered.slice(startIndex, startIndex + PAGE_SIZE);
+  const paginationItems = buildPaginationItems(
+    safeCurrentPage,
+    totalPages,
+  );
+
+  const goToPage = () => {
+    const pageNumber = Number(jumpPage);
+
+    if (
+      !Number.isInteger(pageNumber) ||
+      pageNumber < 1 ||
+      pageNumber > totalPages
+    ) {
+      toast.error(`Vui lòng nhập số trang từ 1 đến ${totalPages}.`);
+      return;
+    }
+
+    setCurrentPage(pageNumber);
+    setJumpPage("");
+  };
 
   const pdfCount = docs.filter(
     (d) => getFileType(d.fileType, d.fileName) === "PDF",
@@ -216,7 +274,18 @@ export default function DocumentsPage() {
             All Documents
           </div>
           <div className="table-responsive">
-            <Table className="admin-table mb-0">
+            <Table className="admin-table admin-table--documents mb-0">
+              <colgroup>
+                <col className="admin-col-document-name" />
+                <col className="admin-col-document-subject" />
+                <col className="admin-col-document-uploader" />
+                <col className="admin-col-document-visibility" />
+                <col className="admin-col-document-storage" />
+                <col className="admin-col-document-chat" />
+                <col className="admin-col-document-uploaded" />
+                <col className="admin-col-document-actions" />
+              </colgroup>
+
               <thead>
                 <tr>
                   <th>Name</th>
@@ -245,47 +314,59 @@ export default function DocumentsPage() {
 
                     return (
                       <tr key={d.documentId}>
-                        <td>
-                          <div className="d-flex align-items-start gap-2">
-                            <i className="bi bi-file-earmark text-secondary mt-1" />
+                        <td className="admin-document-name-cell">
+                          <div className="admin-document-name-wrap">
+                            <i className="bi bi-file-earmark admin-document-file-icon" />
 
-                            <div>
-                              <a
-                                href={previewUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{
-                                  textDecoration: "none",
-                                  color: "#2563eb",
-                                  fontWeight: 600,
-                                }}
-                              >
-                                {d.fileName}
-                              </a>
-                            </div>
+                            <a
+                              href={previewUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="admin-document-name-link"
+                              title={d.fileName}
+                            >
+                              {d.fileName}
+                            </a>
                           </div>
                         </td>
 
-                        <td>
-                          <div style={{ fontWeight: 600 }}>
+                        <td className="admin-document-subject-cell">
+                          <div
+                            className="admin-primary-line admin-ellipsis"
+                            title={
+                              d.subjectCode
+                                ? `${d.subjectCode} - ${d.subjectName || ""}`
+                                : "No Subject"
+                            }
+                          >
                             {d.subjectCode
                               ? `${d.subjectCode} - ${d.subjectName || ""}`
                               : "No Subject"}
                           </div>
-                          <div style={{ fontSize: 12, color: "#64748b" }}>
+                          <div
+                            className="admin-secondary-line admin-ellipsis"
+                            title={`${d.topicName || "Uncategorized"} · ${
+                              d.documentTypeName || fileType
+                            }`}
+                          >
                             {d.topicName || "Uncategorized"} ·{" "}
                             {d.documentTypeName || fileType}
                           </div>
                         </td>
 
-                        <td style={{ color: "#64748b" }}>
-                          <div>{d.uploaderName || d.uploadedBy}</div>
-                          <div style={{ fontSize: 12 }}>
-                            {d.uploaderRole || d.uploadedBy}
+                        <td className="admin-document-uploader-cell">
+                          <div
+                            className="admin-primary-line admin-ellipsis"
+                            title={d.uploaderName || d.uploadedBy}
+                          >
+                            {d.uploaderName || d.uploadedBy || "-"}
+                          </div>
+                          <div className="admin-secondary-line admin-no-wrap">
+                            {d.uploaderRole || d.uploadedBy || "-"}
                           </div>
                         </td>
 
-                        <td>
+                        <td className="admin-document-visibility-cell">
                           <span
                             className={
                               d.reviewStatus === "approved"
@@ -299,56 +380,76 @@ export default function DocumentsPage() {
                           </span>
                         </td>
 
-                        <td style={{ color: "#64748b" }}>
+                        <td className="admin-document-storage-cell admin-no-wrap">
                           {formatStorage(d.fileSizeBytes)}
                         </td>
 
-                        <td>
-                          <b>{Number(d.chatUseCount || 0)}</b>
-                          <div style={{ fontSize: 12, color: "#64748b" }}>
+                        <td className="admin-document-chat-cell">
+                          <div className="admin-primary-line">
+                            {Number(d.chatUseCount || 0)}
+                          </div>
+                          <div className="admin-secondary-line admin-no-wrap">
                             sessions
                           </div>
                         </td>
 
-                        <td style={{ color: "#64748b" }}>
+                        <td className="admin-document-uploaded-cell admin-no-wrap">
                           {formatDate(d.uploadDate)}
                         </td>
 
-                        <td>
-                          <div className="d-flex align-items-center gap-3">
-                            <Button
-                              variant="link"
-                              className="p-0"
-                              title="Open document"
-                              onClick={() =>
-                                window.open(
-                                  previewUrl,
-                                  "_blank",
-                                  "noopener,noreferrer",
-                                )
-                              }
+                        <td className="admin-action-cell">
+                          <Dropdown
+                            align="end"
+                            className="document-actions-dropdown"
+                          >
+                            <Dropdown.Toggle
+                              variant="light"
+                              className="document-actions-toggle"
+                              id={`document-actions-${d.documentId}`}
+                              aria-label={`Open actions for ${d.fileName}`}
                             >
-                              <i className="bi bi-eye" />
-                            </Button>
+                              <i className="bi bi-three-dots" />
+                            </Dropdown.Toggle>
 
-                            <a
-                              href={fileUrl}
-                              download={d.fileName}
-                              title="Download document"
-                              style={{ color: "#16a34a" }}
+                            <Dropdown.Menu
+                              className="document-actions-menu"
+                              popperConfig={{ strategy: "fixed" }}
                             >
-                              <i className="bi bi-download" />
-                            </a>
+                              <Dropdown.Item
+                                onClick={() =>
+                                  window.open(
+                                    previewUrl,
+                                    "_blank",
+                                    "noopener,noreferrer",
+                                  )
+                                }
+                                disabled={previewUrl === "#"}
+                              >
+                                <i className="bi bi-eye document-action-icon document-action-icon--view" />
+                                <span>Open document</span>
+                              </Dropdown.Item>
 
-                            <Button
-                              variant="link"
-                              className="btn-del p-0"
-                              title="Delete document"
-                              onClick={() => handleDelete(d.documentId)}
-                            >
-                              <i className="bi bi-trash3" />
-                            </Button>
-                          </div>
+                              <Dropdown.Item
+                                as="a"
+                                href={fileUrl}
+                                download={d.fileName}
+                                disabled={fileUrl === "#"}
+                              >
+                                <i className="bi bi-download document-action-icon document-action-icon--download" />
+                                <span>Download</span>
+                              </Dropdown.Item>
+
+                              <Dropdown.Divider />
+
+                              <Dropdown.Item
+                                className="document-action-delete"
+                                onClick={() => handleDelete(d.documentId)}
+                              >
+                                <i className="bi bi-trash3 document-action-icon" />
+                                <span>Delete document</span>
+                              </Dropdown.Item>
+                            </Dropdown.Menu>
+                          </Dropdown>
                         </td>
                       </tr>
                     );
@@ -358,39 +459,110 @@ export default function DocumentsPage() {
             </Table>
 
             {filtered.length > PAGE_SIZE && (
-              <div className="d-flex align-items-center justify-content-between px-3 py-3 border-top">
-                <div className="text-secondary" style={{ fontSize: 13 }}>
-                  Showing {startIndex + 1}-
-                  {Math.min(startIndex + PAGE_SIZE, filtered.length)} of{" "}
-                  {filtered.length} documents
-                </div>
-
-                <div className="d-flex align-items-center gap-2">
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
+              <div className="admin-pagination admin-pagination--pill">
+                <div className="admin-pagination__controls">
+                  <button
+                    type="button"
+                    className="admin-page-btn admin-page-btn--text"
                     disabled={safeCurrentPage <= 1}
                     onClick={() =>
                       setCurrentPage((page) => Math.max(1, page - 1))
                     }
                   >
+                    <i className="bi bi-chevron-left" />
                     Previous
-                  </Button>
+                  </button>
 
-                  <span style={{ fontSize: 13, color: "#64748b" }}>
-                    Page {safeCurrentPage} / {totalPages}
-                  </span>
+                  <div className="admin-page-numbers">
+                    {paginationItems.map((item) => {
+                      if (typeof item === "number") {
+                        return (
+                          <button
+                            type="button"
+                            key={item}
+                            className={`admin-page-btn ${
+                              safeCurrentPage === item
+                                ? "admin-page-btn--active"
+                                : ""
+                            }`}
+                            onClick={() => setCurrentPage(item)}
+                          >
+                            {item}
+                          </button>
+                        );
+                      }
 
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
+                      return (
+                        <Dropdown
+                          key={item}
+                          autoClose="outside"
+                          className="admin-page-jump-dropdown"
+                        >
+                          <Dropdown.Toggle
+                            variant="light"
+                            className="admin-page-btn admin-page-btn--ellipsis"
+                            id={`document-${item}`}
+                            aria-label="Go to another page"
+                          >
+                            <i className="bi bi-three-dots" />
+                          </Dropdown.Toggle>
+
+                          <Dropdown.Menu className="admin-page-jump-menu">
+                            <div className="admin-page-jump-title">
+                              Go to page
+                            </div>
+
+                            <div className="admin-page-jump-form">
+                              <Form.Control
+                                type="number"
+                                min={1}
+                                max={totalPages}
+                                value={jumpPage}
+                                placeholder={`1-${totalPages}`}
+                                onChange={(event) =>
+                                  setJumpPage(event.target.value)
+                                }
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    goToPage();
+                                  }
+                                }}
+                              />
+
+                              <button
+                                type="button"
+                                className="admin-page-jump-go"
+                                onClick={goToPage}
+                              >
+                                Go
+                              </button>
+                            </div>
+                          </Dropdown.Menu>
+                        </Dropdown>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="admin-page-btn admin-page-btn--text"
                     disabled={safeCurrentPage >= totalPages}
                     onClick={() =>
-                      setCurrentPage((page) => Math.min(totalPages, page + 1))
+                      setCurrentPage((page) =>
+                        Math.min(totalPages, page + 1),
+                      )
                     }
                   >
                     Next
-                  </Button>
+                    <i className="bi bi-chevron-right" />
+                  </button>
+                </div>
+
+                <div className="admin-pagination__info">
+                  Showing {startIndex + 1}-
+                  {Math.min(startIndex + PAGE_SIZE, filtered.length)} of{" "}
+                  {filtered.length} results
                 </div>
               </div>
             )}
