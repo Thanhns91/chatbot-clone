@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Col, Form, Modal, Row, Table } from "react-bootstrap";
+import { Button, Col, Dropdown, Form, Modal, Row, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 
@@ -12,6 +12,42 @@ import {
 
 // Chỉ thêm: mỗi trang tối đa 10 user
 const PAGE_SIZE = 10;
+
+const buildPaginationItems = (currentPage, totalPages) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const items = [1];
+  let start = Math.max(2, currentPage - 1);
+  let end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (currentPage <= 4) {
+    start = 2;
+    end = Math.min(5, totalPages - 1);
+  }
+
+  if (currentPage >= totalPages - 3) {
+    start = Math.max(2, totalPages - 4);
+    end = totalPages - 1;
+  }
+
+  if (start > 2) {
+    items.push("left-ellipsis");
+  }
+
+  for (let page = start; page <= end; page += 1) {
+    items.push(page);
+  }
+
+  if (end < totalPages - 1) {
+    items.push("right-ellipsis");
+  }
+
+  items.push(totalPages);
+
+  return items;
+};
 
 const normalizeEmail = (email = "") => {
   return String(email || "")
@@ -62,6 +98,7 @@ export default function UsersPage() {
 
   // Chỉ thêm: lưu trang đang xem
   const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState("");
 
   const activeCount = users.filter((u) => u.status === "active").length;
   const blockedCount = users.filter((u) => u.status === "blocked").length;
@@ -89,6 +126,26 @@ export default function UsersPage() {
   const startIndex = (safeCurrentPage - 1) * PAGE_SIZE;
 
   const paginatedUsers = users.slice(startIndex, startIndex + PAGE_SIZE);
+  const paginationItems = buildPaginationItems(
+    safeCurrentPage,
+    totalPages,
+  );
+
+  const goToPage = () => {
+    const pageNumber = Number(jumpPage);
+
+    if (
+      !Number.isInteger(pageNumber) ||
+      pageNumber < 1 ||
+      pageNumber > totalPages
+    ) {
+      toast.error(`Vui lòng nhập số trang từ 1 đến ${totalPages}.`);
+      return;
+    }
+
+    setCurrentPage(pageNumber);
+    setJumpPage("");
+  };
 
   const fetchUsers = async () => {
     try {
@@ -363,7 +420,19 @@ export default function UsersPage() {
           </div>
 
           <div className="table-responsive">
-            <Table className="admin-table mb-0">
+            <Table className="admin-table admin-table--users mb-0">
+              <colgroup>
+                <col className="admin-col-user-name" />
+                <col className="admin-col-user-email" />
+                <col className="admin-col-user-role" />
+                <col className="admin-col-user-documents" />
+                <col className="admin-col-user-visibility" />
+                <col className="admin-col-user-storage" />
+                <col className="admin-col-user-upload" />
+                <col className="admin-col-user-status" />
+                <col className="admin-col-user-actions" />
+              </colgroup>
+
               <thead>
                 <tr>
                   <th>Name</th>
@@ -395,22 +464,22 @@ export default function UsersPage() {
                   // Chỉ đổi users.map thành paginatedUsers.map
                   paginatedUsers.map((u) => (
                     <tr key={u.id}>
-                      <td style={{ fontWeight: 500 }}>
-                        {u.name}
-
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "#94a3b8",
-                          }}
-                        >
+                      <td className="admin-user-name-cell">
+                        <div className="admin-primary-line" title={u.name}>
+                          {u.name || "-"}
+                        </div>
+                        <div className="admin-secondary-line admin-no-wrap">
                           Joined {u.joinDate}
                         </div>
                       </td>
 
-                      <td style={{ color: "#64748b" }}>{u.email}</td>
+                      <td className="admin-user-email-cell">
+                        <span className="admin-ellipsis" title={u.email}>
+                          {u.email}
+                        </span>
+                      </td>
 
-                      <td>
+                      <td className="admin-user-role-cell">
                         <span
                           className={`role-badge ${
                             u.role === "teacher"
@@ -422,40 +491,35 @@ export default function UsersPage() {
                         </span>
                       </td>
 
-                      <td>
-                        <b>{u.totalDocuments}</b>
-
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "#64748b",
-                          }}
-                        >
+                      <td className="admin-user-documents-cell">
+                        <div className="admin-primary-line">
+                          {u.totalDocuments}
+                        </div>
+                        <div className="admin-secondary-line admin-no-wrap">
                           uploaded {u.uploadedDocuments}
                         </div>
                       </td>
 
-                      <td>
-                        <span className="status-active">
-                          {u.publicDocuments} public
-                        </span>
-
-                        <div style={{ marginTop: 4 }}>
+                      <td className="admin-user-visibility-cell">
+                        <div className="admin-visibility-pair">
+                          <span className="status-active">
+                            {u.publicDocuments} public
+                          </span>
                           <span className="status-blocked">
                             {u.privateDocuments} private
                           </span>
                         </div>
                       </td>
 
-                      <td style={{ color: "#64748b" }}>
+                      <td className="admin-user-storage-cell admin-no-wrap">
                         {formatStorage(u.totalStorageBytes)}
                       </td>
 
-                      <td style={{ color: "#64748b" }}>
+                      <td className="admin-user-upload-cell admin-no-wrap">
                         {formatDate(u.lastUploadAt)}
                       </td>
 
-                      <td>
+                      <td className="admin-user-status-cell">
                         <span
                           className={
                             u.status === "active"
@@ -467,24 +531,62 @@ export default function UsersPage() {
                         </span>
                       </td>
 
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <button
-                            className="btn-block"
-                            onClick={() => toggleBlock(u.id, u.status)}
+                      <td className="admin-action-cell">
+                        <Dropdown
+                          align="end"
+                          className="document-actions-dropdown"
+                        >
+                          <Dropdown.Toggle
+                            variant="light"
+                            className="document-actions-toggle"
+                            id={`user-actions-${u.id}`}
+                            aria-label={`Open actions for ${u.name}`}
                           >
-                            <i className="bi bi-slash-circle" />
+                            <i className="bi bi-three-dots" />
+                          </Dropdown.Toggle>
 
-                            {u.status === "active" ? "Block" : "Unblock"}
-                          </button>
-
-                          <button
-                            className="btn-del"
-                            onClick={() => handleDeleteUser(u.id)}
+                          <Dropdown.Menu
+                            className="document-actions-menu"
+                            popperConfig={{ strategy: "fixed" }}
                           >
-                            <i className="bi bi-trash3" />
-                          </button>
-                        </div>
+                            <Dropdown.Item
+                              className={
+                                u.status === "active"
+                                  ? "user-action-block"
+                                  : "user-action-unblock"
+                              }
+                              onClick={() => toggleBlock(u.id, u.status)}
+                            >
+                              <i
+                                className={`bi ${
+                                  u.status === "active"
+                                    ? "bi-slash-circle"
+                                    : "bi-check-circle"
+                                } document-action-icon ${
+                                  u.status === "active"
+                                    ? "user-action-icon--block"
+                                    : "user-action-icon--unblock"
+                                }`}
+                              />
+
+                              <span>
+                                {u.status === "active"
+                                  ? "Block user"
+                                  : "Unblock user"}
+                              </span>
+                            </Dropdown.Item>
+
+                            <Dropdown.Divider />
+
+                            <Dropdown.Item
+                              className="document-action-delete"
+                              onClick={() => handleDeleteUser(u.id)}
+                            >
+                              <i className="bi bi-trash3 document-action-icon" />
+                              <span>Delete user</span>
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        </Dropdown>
                       </td>
                     </tr>
                   ))
@@ -493,15 +595,8 @@ export default function UsersPage() {
             </Table>
           </div>
 
-          {/* Chỉ thêm: khu vực nút phân trang */}
           {users.length > PAGE_SIZE && (
-            <div className="admin-pagination">
-              <div className="admin-pagination__info">
-                Showing {startIndex + 1}-
-                {Math.min(startIndex + PAGE_SIZE, users.length)} of{" "}
-                {users.length} users
-              </div>
-
+            <div className="admin-pagination admin-pagination--pill">
               <div className="admin-pagination__controls">
                 <button
                   type="button"
@@ -516,22 +611,72 @@ export default function UsersPage() {
                 </button>
 
                 <div className="admin-page-numbers">
-                  {Array.from({ length: totalPages }, (_, index) => {
-                    const pageNumber = index + 1;
+                  {paginationItems.map((item) => {
+                    if (typeof item === "number") {
+                      return (
+                        <button
+                          type="button"
+                          key={item}
+                          className={`admin-page-btn ${
+                            safeCurrentPage === item
+                              ? "admin-page-btn--active"
+                              : ""
+                          }`}
+                          onClick={() => setCurrentPage(item)}
+                        >
+                          {item}
+                        </button>
+                      );
+                    }
 
                     return (
-                      <button
-                        type="button"
-                        key={pageNumber}
-                        className={`admin-page-btn ${
-                          safeCurrentPage === pageNumber
-                            ? "admin-page-btn--active"
-                            : ""
-                        }`}
-                        onClick={() => setCurrentPage(pageNumber)}
+                      <Dropdown
+                        key={item}
+                        autoClose="outside"
+                        className="admin-page-jump-dropdown"
                       >
-                        {pageNumber}
-                      </button>
+                        <Dropdown.Toggle
+                          variant="light"
+                          className="admin-page-btn admin-page-btn--ellipsis"
+                          id={`user-${item}`}
+                          aria-label="Go to another page"
+                        >
+                          <i className="bi bi-three-dots" />
+                        </Dropdown.Toggle>
+
+                        <Dropdown.Menu className="admin-page-jump-menu">
+                          <div className="admin-page-jump-title">
+                            Go to page
+                          </div>
+
+                          <div className="admin-page-jump-form">
+                            <Form.Control
+                              type="number"
+                              min={1}
+                              max={totalPages}
+                              value={jumpPage}
+                              placeholder={`1-${totalPages}`}
+                              onChange={(event) =>
+                                setJumpPage(event.target.value)
+                              }
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  goToPage();
+                                }
+                              }}
+                            />
+
+                            <button
+                              type="button"
+                              className="admin-page-jump-go"
+                              onClick={goToPage}
+                            >
+                              Go
+                            </button>
+                          </div>
+                        </Dropdown.Menu>
+                      </Dropdown>
                     );
                   })}
                 </div>
@@ -547,6 +692,12 @@ export default function UsersPage() {
                   Next
                   <i className="bi bi-chevron-right" />
                 </button>
+              </div>
+
+              <div className="admin-pagination__info">
+                Showing {startIndex + 1}-
+                {Math.min(startIndex + PAGE_SIZE, users.length)} of {users.length}{" "}
+                results
               </div>
             </div>
           )}
