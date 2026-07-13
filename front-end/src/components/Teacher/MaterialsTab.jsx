@@ -144,9 +144,10 @@ const TagInput = ({ value, onChange, placeholder = "Add tag..." }) => {
         gap: 8,
         minHeight: 48,
         padding: "8px 10px",
-        border: "1px solid #dee2e6",
+        border: "1px solid var(--td-border-color, #dee2e6)",
         borderRadius: 10,
-        background: "#fff",
+        background: "var(--td-input-bg, #fff)",
+        color: "var(--td-text-color, #0f172a)",
       }}
       onClick={(event) => {
         const inputEl = event.currentTarget.querySelector("input");
@@ -205,6 +206,7 @@ const TagInput = ({ value, onChange, placeholder = "Add tag..." }) => {
           outline: 0,
           fontSize: 15,
           background: "transparent",
+          color: "var(--td-text-color, #0f172a)",
         }}
       />
     </div>
@@ -223,10 +225,29 @@ const defaultNewTopic = {
   description: "",
 };
 
+const PAGE_SIZE = 10;
+
+const applyThemeToDOM = (theme) => {
+  const finalTheme = theme === "dark" ? "dark" : "light";
+
+  localStorage.setItem("theme", finalTheme);
+  document.documentElement.setAttribute("data-theme", finalTheme);
+
+  if (finalTheme === "dark") {
+    document.body.classList.add("dark", "theme-dark");
+  } else {
+    document.body.classList.remove("dark", "dark-mode", "theme-dark");
+  }
+};
+
 export default function MaterialsTab() {
   const fileRef = useRef(null);
 
   const [docs, setDocs] = useState([]);
+  const [page, setPage] = useState(1);
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("theme") || "light",
+  );
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
@@ -246,6 +267,10 @@ export default function MaterialsTab() {
 
   const currentUser = getCurrentUser();
 
+  useEffect(() => {
+    applyThemeToDOM(theme);
+  }, [theme]);
+
   const filteredTopics = useMemo(() => {
     if (!uploadMeta.subjectId) return topics;
 
@@ -253,6 +278,15 @@ export default function MaterialsTab() {
       (topic) => String(topic.subjectId) === String(uploadMeta.subjectId),
     );
   }, [topics, uploadMeta.subjectId]);
+
+  const totalPages = Math.max(1, Math.ceil(docs.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * PAGE_SIZE;
+  const paginatedDocs = docs.slice(startIndex, startIndex + PAGE_SIZE);
+
+  useEffect(() => {
+    setPage((currentPage) => Math.min(currentPage, totalPages));
+  }, [totalPages]);
 
   const fetchUploadHistory = async () => {
     try {
@@ -549,6 +583,43 @@ export default function MaterialsTab() {
 
   return (
     <>
+      <div className="td-materials-toolbar">
+        <div>
+          <div className="td-materials-toolbar__title">Material Settings</div>
+          <div className="td-materials-toolbar__sub">
+            Upload resources and choose your interface theme
+          </div>
+        </div>
+
+        <div
+          className="td-materials-theme-toggle"
+          role="group"
+          aria-label="Choose interface theme"
+        >
+          <button
+            type="button"
+            className={`td-materials-theme-btn ${
+              theme === "light" ? "td-materials-theme-btn--active" : ""
+            }`}
+            onClick={() => setTheme("light")}
+          >
+            <i className="bi bi-sun" />
+            <span>Light</span>
+          </button>
+
+          <button
+            type="button"
+            className={`td-materials-theme-btn ${
+              theme === "dark" ? "td-materials-theme-btn--active" : ""
+            }`}
+            onClick={() => setTheme("dark")}
+          >
+            <i className="bi bi-moon" />
+            <span>Dark</span>
+          </button>
+        </div>
+      </div>
+
       {error && <Alert variant="danger">{error}</Alert>}
       {success && <Alert variant="success">{success}</Alert>}
 
@@ -843,7 +914,7 @@ export default function MaterialsTab() {
             {docs.length === 0 ? (
               <div className="td-empty-text">No uploaded files yet.</div>
             ) : (
-              docs.map((file) => {
+              paginatedDocs.map((file) => {
                 const type = getFileType(file.fileName, file.fileType);
                 const { cls, icon, label } = fileIcon(type);
 
@@ -904,6 +975,59 @@ export default function MaterialsTab() {
               })
             )}
           </ListGroup>
+
+          {docs.length > PAGE_SIZE && (
+            <div className="td-pagination">
+              <div className="td-pagination__info">
+                Showing {startIndex + 1}-
+                {Math.min(startIndex + PAGE_SIZE, docs.length)} of {docs.length}{" "}
+                documents
+              </div>
+
+              <div className="td-pagination__controls">
+                <button
+                  type="button"
+                  className="td-page-btn td-page-btn--text"
+                  disabled={safePage === 1}
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                >
+                  <i className="bi bi-chevron-left" />
+                  Previous
+                </button>
+
+                <div className="td-page-numbers">
+                  {Array.from({ length: totalPages }, (_, index) => {
+                    const pageNumber = index + 1;
+
+                    return (
+                      <button
+                        type="button"
+                        key={pageNumber}
+                        className={`td-page-btn ${
+                          safePage === pageNumber ? "td-page-btn--active" : ""
+                        }`}
+                        onClick={() => setPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  className="td-page-btn td-page-btn--text"
+                  disabled={safePage === totalPages}
+                  onClick={() =>
+                    setPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                >
+                  Next
+                  <i className="bi bi-chevron-right" />
+                </button>
+              </div>
+            </div>
+          )}
         </Card.Body>
       </Card>
     </>

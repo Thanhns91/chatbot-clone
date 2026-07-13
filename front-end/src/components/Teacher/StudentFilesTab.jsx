@@ -489,33 +489,54 @@ export default function StudentFilesTab() {
           </div>
 
           {filtered.length > PAGE_SIZE && (
-            <div className="d-flex align-items-center justify-content-between mt-3">
-              <div className="text-muted" style={{ fontSize: 13 }}>
-                Showing {(safePage - 1) * PAGE_SIZE + 1}-{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
+            <div className="td-pagination">
+              <div className="td-pagination__info">
+                Showing {(safePage - 1) * PAGE_SIZE + 1}-
+                {Math.min(safePage * PAGE_SIZE, filtered.length)} of{" "}
+                {filtered.length} documents
               </div>
 
-              <div className="d-flex align-items-center gap-2">
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
+              <div className="td-pagination__controls">
+                <button
+                  type="button"
+                  className="td-page-btn td-page-btn--text"
                   disabled={safePage === 1}
                   onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                 >
+                  <i className="bi bi-chevron-left" />
                   Previous
-                </Button>
+                </button>
 
-                <span className="text-muted" style={{ fontSize: 13 }}>
-                  Page {safePage} / {totalPages}
-                </span>
+                <div className="td-page-numbers">
+                  {Array.from({ length: totalPages }, (_, index) => {
+                    const pageNumber = index + 1;
 
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
+                    return (
+                      <button
+                        type="button"
+                        key={pageNumber}
+                        className={`td-page-btn ${
+                          safePage === pageNumber ? "td-page-btn--active" : ""
+                        }`}
+                        onClick={() => setPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  className="td-page-btn td-page-btn--text"
                   disabled={safePage === totalPages}
-                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  onClick={() =>
+                    setPage((prev) => Math.min(totalPages, prev + 1))
+                  }
                 >
                   Next
-                </Button>
+                  <i className="bi bi-chevron-right" />
+                </button>
               </div>
             </div>
           )}

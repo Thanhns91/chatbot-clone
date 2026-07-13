@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import Table from "react-bootstrap/Table";
@@ -9,6 +9,8 @@ import {
   generateStudentFeedback,
   askStudentFeedback,
 } from "../../services/api";
+
+const PAGE_SIZE = 10;
 
 const getCurrentUser = () => {
   const raw =
@@ -109,6 +111,7 @@ export default function StudentSummaryTab() {
   const [loading, setLoading] = useState(false);
   const [loadingTable, setLoadingTable] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState("");
 
   const fetchSubmissions = async () => {
@@ -135,7 +138,30 @@ export default function StudentSummaryTab() {
     fetchSubmissions();
   }, []);
 
-  const openModal = async (submission) => {
+  const filtered = useMemo(() => {
+    if (filterStatus === "all") return submissions;
+    return submissions.filter((submission) => submission.status === filterStatus);
+  }, [submissions, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+  const paginatedSubmissions = filtered.slice(
+    startIndex,
+    startIndex + PAGE_SIZE,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const openModal = (submission) => {
     setSelected(submission);
     setShowModal(true);
     setChatInput("");
@@ -172,7 +198,7 @@ export default function StudentSummaryTab() {
       const result = await generateStudentFeedback(
         selected.studentId,
         currentUser?.userId,
-        selected.documentId
+        selected.documentId,
       );
 
       if (!result.success) {
@@ -207,8 +233,8 @@ export default function StudentSummaryTab() {
           item.documentId === updatedSubmission.documentId &&
           String(item.studentId) === String(updatedSubmission.studentId)
             ? updatedSubmission
-            : item
-        )
+            : item,
+        ),
       );
 
       setChatHistory([
@@ -245,7 +271,7 @@ export default function StudentSummaryTab() {
       const result = await askStudentFeedback(
         selected.studentId,
         selected.documentId,
-        userMsg
+        userMsg,
       );
 
       setChatHistory((prev) => [
@@ -282,13 +308,8 @@ export default function StudentSummaryTab() {
     window.open(selected.fileUrl, "_blank", "noopener,noreferrer");
   };
 
-  const filtered =
-    filterStatus === "all"
-      ? submissions
-      : submissions.filter((s) => s.status === filterStatus);
-
   const reviewedCount = submissions.filter(
-    (s) => s.status === "reviewed"
+    (submission) => submission.status === "reviewed",
   ).length;
 
   return (
@@ -305,15 +326,18 @@ export default function StudentSummaryTab() {
           </div>
 
           <div className="td-tabs">
-            {["all", "reviewed", "pending"].map((f) => (
+            {["all", "reviewed", "pending"].map((filter) => (
               <button
-                key={f}
+                key={filter}
+                type="button"
                 className={`td-tab ${
-                  filterStatus === f ? "td-tab--active" : ""
+                  filterStatus === filter ? "td-tab--active" : ""
                 }`}
-                onClick={() => setFilterStatus(f)}
+                onClick={() => setFilterStatus(filter)}
               >
-                {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                {filter === "all"
+                  ? "All"
+                  : filter.charAt(0).toUpperCase() + filter.slice(1)}
               </button>
             ))}
           </div>
@@ -330,50 +354,61 @@ export default function StudentSummaryTab() {
                 <th>Submitted</th>
                 <th>Score</th>
                 <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
 
             <tbody>
-              {filtered.length === 0 ? (
+              {loadingTable ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-4">
+                    Loading submissions...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-4">
                     No student submissions found.
                   </td>
                 </tr>
               ) : (
-                filtered.map((sub) => {
-                  const { icon, cls } = fileTypeIcon(sub.fileName);
+                paginatedSubmissions.map((submission) => {
+                  const { icon, cls } = fileTypeIcon(submission.fileName);
 
                   return (
-                    <tr key={`${sub.documentId}-${sub.studentId}`}>
+                    <tr
+                      key={`${submission.documentId}-${submission.studentId}`}
+                    >
                       <td>
                         <div className="td-summary-file-cell">
                           <div className={`td-file-icon td-file-icon--sm ${cls}`}>
                             <i className={`bi ${icon}`} />
                           </div>
-                          <span className="td-file-name">{sub.fileName}</span>
+                          <span className="td-file-name">
+                            {submission.fileName}
+                          </span>
                         </div>
                       </td>
 
                       <td>
                         <div className="td-summary-student-name">
-                          {sub.student || "Unknown student"}
+                          {submission.student || "Unknown student"}
                         </div>
                       </td>
 
                       <td className="td-summary-date">
-                        {sub.submittedAt || "-"}
+                        {submission.submittedAt || "-"}
                       </td>
 
                       <td>
-                        <ScoreBadge score={sub.score} />
+                        <ScoreBadge score={submission.score} />
                       </td>
 
                       <td>
                         <span
-                          className={`td-status-badge td-status-badge--${sub.status}`}
+                          className={`td-status-badge td-status-badge--${submission.status}`}
                         >
-                          {sub.status === "reviewed"
+                          {submission.status === "reviewed"
                             ? "✓ Reviewed"
                             : "⏳ Pending"}
                         </span>
@@ -384,7 +419,7 @@ export default function StudentSummaryTab() {
                           variant="outline-primary"
                           size="sm"
                           className="td-summary-btn"
-                          onClick={() => openModal(sub)}
+                          onClick={() => openModal(submission)}
                         >
                           <i className="bi bi-chat-dots" />
                           Check Summary
@@ -397,6 +432,63 @@ export default function StudentSummaryTab() {
             </tbody>
           </Table>
         </div>
+
+        {filtered.length > PAGE_SIZE && (
+          <div className="td-pagination">
+            <div className="td-pagination__info">
+              Showing {startIndex + 1}-
+              {Math.min(startIndex + PAGE_SIZE, filtered.length)} of{" "}
+              {filtered.length} submissions
+            </div>
+
+            <div className="td-pagination__controls">
+              <button
+                type="button"
+                className="td-page-btn td-page-btn--text"
+                disabled={safeCurrentPage === 1}
+                onClick={() =>
+                  setCurrentPage((page) => Math.max(1, page - 1))
+                }
+              >
+                <i className="bi bi-chevron-left" />
+                Previous
+              </button>
+
+              <div className="td-page-numbers">
+                {Array.from({ length: totalPages }, (_, index) => {
+                  const pageNumber = index + 1;
+
+                  return (
+                    <button
+                      type="button"
+                      key={pageNumber}
+                      className={`td-page-btn ${
+                        safeCurrentPage === pageNumber
+                          ? "td-page-btn--active"
+                          : ""
+                      }`}
+                      onClick={() => setCurrentPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                className="td-page-btn td-page-btn--text"
+                disabled={safeCurrentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((page) => Math.min(totalPages, page + 1))
+                }
+              >
+                Next
+                <i className="bi bi-chevron-right" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Modal show={showModal} onHide={closeModal} centered size="lg">
@@ -451,8 +543,8 @@ export default function StudentSummaryTab() {
           )}
 
           <div className="td-chat-area">
-            {chatHistory.map((msg, i) => (
-              <ChatBubble key={i} msg={msg} />
+            {chatHistory.map((message, index) => (
+              <ChatBubble key={`${message.role}-${index}`} msg={message} />
             ))}
 
             {loading && (
@@ -476,10 +568,10 @@ export default function StudentSummaryTab() {
               className="td-chat-input"
               placeholder="Ask AI about this student's chat history..."
               value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
+              onChange={(event) => setChatInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
                   sendMessage();
                 }
               }}

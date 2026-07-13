@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Row, Col } from 'react-bootstrap'
+import { useEffect, useState } from "react";
+import { Row, Col } from "react-bootstrap";
 import {
   AreaChart,
   Area,
@@ -7,117 +7,135 @@ import {
   YAxis,
   ResponsiveContainer,
   Tooltip,
-} from 'recharts'
-import { getTeacherStats } from '../../services/api'
+} from "recharts";
+import { getTeacherStats } from "../../services/api";
 
 const ACTIVITY_COLORS = {
-  materials: '#2563eb',
-  studentFiles: '#16a34a',
-  approved: '#7c3aed',
-  pending: '#d97706',
-}
+  materials: "#2563eb",
+  studentFiles: "#16a34a",
+  approved: "#7c3aed",
+  pending: "#d97706",
+};
+
+const formatDate = (dateValue) => {
+  if (!dateValue) return "-";
+  return String(dateValue).split("T")[0];
+};
 
 export default function HomeTab() {
-  const [tab, setTab] = useState('materials')
+  const [tab, setTab] = useState("materials");
 
   const [stats, setStats] = useState({
     materials: 0,
     studentFiles: 0,
     approved: 0,
     pending: 0,
-  })
+  });
 
   const [charts, setCharts] = useState({
     materialChart: [],
     studentChart: [],
-  })
+  });
 
-  const [recentStudentFiles, setRecentStudentFiles] = useState([])
+  const [recentStudentFiles, setRecentStudentFiles] = useState([]);
 
   useEffect(() => {
     const rawUser =
-      localStorage.getItem('currentUser') ||
-      sessionStorage.getItem('currentUser')
+      localStorage.getItem("currentUser") ||
+      sessionStorage.getItem("currentUser");
 
-    const user = rawUser ? JSON.parse(rawUser) : null
+    const user = rawUser ? JSON.parse(rawUser) : null;
 
     getTeacherStats(user?.userId)
       .then((data) => {
         if (data.success) {
-          setStats(data.stats)
-          setCharts(data.charts)
-          setRecentStudentFiles(data.recentStudentFiles || [])
+          setStats(data.stats || {});
+          setCharts(data.charts || {});
+          setRecentStudentFiles(data.recentStudentFiles || []);
         }
       })
-      .catch(console.error)
-  }, [])
+      .catch(console.error);
+  }, []);
 
-  const buildChartData = (rawData) => {
-    const map = {}
+  const buildChartData = (rawData = []) => {
+    const map = {};
 
-    rawData.forEach((d) => {
-      const key = d.date?.split('T')[0] || d.date
-      map[key] = Number(d.count || 0)
-    })
+    rawData.forEach((item) => {
+      const key = item.date?.split("T")[0] || item.date;
+      map[key] = Number(item.count || 0);
+    });
 
-    return Array.from({ length: 30 }, (_, i) => {
-      const date = new Date()
-      date.setDate(date.getDate() - (29 - i))
+    return Array.from({ length: 30 }, (_, index) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (29 - index));
 
-      const key = date.toISOString().split('T')[0]
+      const key = date.toISOString().split("T")[0];
 
       return {
         date: key,
         v: map[key] || 0,
-      }
-    })
-  }
+      };
+    });
+  };
 
   const chartDataMap = {
     materials: buildChartData(charts.materialChart || []),
     studentFiles: buildChartData(charts.studentChart || []),
-  }
+  };
 
   const TAB_META = {
     materials: {
-      total: stats.materials,
-      label: 'Total Materials',
+      total: Number(stats.materials || 0),
+      label: "Total Materials",
     },
     studentFiles: {
-      total: stats.studentFiles,
-      label: 'Total Student Files',
+      total: Number(stats.studentFiles || 0),
+      label: "Total Student Files",
     },
-  }
+  };
 
   const OVERVIEW = [
     {
-      label: 'Materials',
-      count: stats.materials,
+      label: "Materials",
+      count: Number(stats.materials || 0),
       color: ACTIVITY_COLORS.materials,
     },
     {
-      label: 'Student Files',
-      count: stats.studentFiles,
+      label: "Student Files",
+      count: Number(stats.studentFiles || 0),
       color: ACTIVITY_COLORS.studentFiles,
     },
-  ]
+    {
+      label: "Approved",
+      count: Number(stats.approved || 0),
+      color: ACTIVITY_COLORS.approved,
+    },
+    {
+      label: "Pending",
+      count: Number(stats.pending || 0),
+      color: ACTIVITY_COLORS.pending,
+    },
+  ];
 
-  const chartData = chartDataMap[tab]
-  const meta = TAB_META[tab]
-  const maxOverview = Math.max(...OVERVIEW.map((o) => o.count), 1)
+  const chartData = chartDataMap[tab];
+  const meta = TAB_META[tab];
+  const maxOverview = Math.max(...OVERVIEW.map((item) => item.count), 1);
 
   return (
     <>
       <div className="td-card td-dashboard-chart">
         <div className="td-tabs-row">
           <div className="td-tabs">
-            {Object.keys(TAB_META).map((t) => (
+            {Object.keys(TAB_META).map((tabKey) => (
               <button
-                key={t}
-                className={`td-tab ${tab === t ? 'td-tab--active' : ''}`}
-                onClick={() => setTab(t)}
+                key={tabKey}
+                type="button"
+                className={`td-tab ${
+                  tab === tabKey ? "td-tab--active" : ""
+                }`}
+                onClick={() => setTab(tabKey)}
               >
-                {t === 'materials' ? 'Materials' : 'Student Files'}
+                {tabKey === "materials" ? "Materials" : "Student Files"}
               </button>
             ))}
           </div>
@@ -167,10 +185,10 @@ export default function HomeTab() {
                 contentStyle={{
                   fontSize: 12,
                   borderRadius: 8,
-                  border: '1px solid #e2e8f0',
+                  border: "1px solid #e2e8f0",
                 }}
-                formatter={(v) => [v, 'Count']}
-                labelFormatter={(l) => l}
+                formatter={(value) => [value, "Count"]}
+                labelFormatter={(label) => label}
               />
 
               <Area
@@ -180,10 +198,7 @@ export default function HomeTab() {
                 strokeWidth={1.5}
                 fill="url(#teacherChartGradient)"
                 dot={false}
-                activeDot={{
-                  r: 4,
-                  fill: '#7c3aed',
-                }}
+                activeDot={{ r: 4, fill: "#7c3aed" }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -199,22 +214,23 @@ export default function HomeTab() {
               <p className="td-empty-text">No student files yet</p>
             ) : (
               recentStudentFiles.map((file, index) => (
-                <div key={index} className="td-activity-row">
+                <div
+                  key={file.documentId || `${file.fileName}-${index}`}
+                  className="td-activity-row"
+                >
                   <span
                     className="td-act-dot"
-                    style={{
-                      background: ACTIVITY_COLORS.studentFiles,
-                    }}
+                    style={{ background: ACTIVITY_COLORS.studentFiles }}
                   />
 
                   <span className="td-activity-text">
-                    <strong>{file.uploaderName || 'Student'}</strong>
-                    {' — '}
+                    <strong>{file.uploaderName || "Student"}</strong>
+                    {" — "}
                     {file.fileName}
                   </span>
 
                   <span className="td-activity-date">
-                    {file.uploadDate?.split('T')[0]}
+                    {formatDate(file.uploadDate)}
                   </span>
                 </div>
               ))
@@ -228,9 +244,7 @@ export default function HomeTab() {
 
             {OVERVIEW.map((item) => (
               <div key={item.label} className="td-overview-admin-row">
-                <span className="td-overview-admin-name">
-                  {item.label}
-                </span>
+                <span className="td-overview-admin-name">{item.label}</span>
 
                 <div className="td-overview-admin-bar-wrap">
                   <div
@@ -238,7 +252,7 @@ export default function HomeTab() {
                     style={{
                       width: `${Math.min(
                         (item.count / maxOverview) * 100,
-                        100
+                        100,
                       )}%`,
                       background: item.color,
                     }}
@@ -256,5 +270,5 @@ export default function HomeTab() {
         </Col>
       </Row>
     </>
-  )
+  );
 }
