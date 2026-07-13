@@ -115,9 +115,7 @@ export default function HomePage() {
               <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>
                 {meta.total}
               </div>
-              <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                {meta.label}
-              </div>
+              <div style={{ fontSize: 12, color: "#94a3b8" }}>{meta.label}</div>
             </div>
           </div>
 
@@ -226,7 +224,7 @@ export default function HomePage() {
                       style={{
                         width: `${Math.min(
                           (item.count / maxOverview) * 100,
-                          100
+                          100,
                         )}%`,
                         background: item.color,
                       }}

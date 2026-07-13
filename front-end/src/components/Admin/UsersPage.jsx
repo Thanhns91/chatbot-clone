@@ -10,18 +10,23 @@ import {
   createTeacherAccount,
 } from "../../services/api";
 
+// Chỉ thêm: mỗi trang tối đa 10 user
+const PAGE_SIZE = 10;
+
 const normalizeEmail = (email = "") => {
-  return String(email || "").trim().toLowerCase();
+  return String(email || "")
+    .trim()
+    .toLowerCase();
 };
 
 const isValidEmail = (email = "") => {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(
-    String(email || "").trim(),
-  );
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(String(email || "").trim());
 };
 
 const normalizeName = (name = "") => {
-  return String(name || "").trim().replace(/\s+/g, " ");
+  return String(name || "")
+    .trim()
+    .replace(/\s+/g, " ");
 };
 
 const formatDate = (value) => {
@@ -55,20 +60,35 @@ export default function UsersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Chỉ thêm: lưu trang đang xem
+  const [currentPage, setCurrentPage] = useState(1);
+
   const activeCount = users.filter((u) => u.status === "active").length;
   const blockedCount = users.filter((u) => u.status === "blocked").length;
+
   const totalDocuments = users.reduce(
     (sum, user) => sum + Number(user.totalDocuments || 0),
     0,
   );
+
   const totalPublic = users.reduce(
     (sum, user) => sum + Number(user.publicDocuments || 0),
     0,
   );
+
   const totalStorageBytes = users.reduce(
     (sum, user) => sum + Number(user.totalStorageBytes || 0),
     0,
   );
+
+  // Chỉ thêm: xử lý dữ liệu phân trang
+  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const startIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+
+  const paginatedUsers = users.slice(startIndex, startIndex + PAGE_SIZE);
 
   const fetchUsers = async () => {
     try {
@@ -108,6 +128,13 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
+  // Chỉ thêm: nếu xóa hết user ở trang cuối thì quay về trang hợp lệ
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const handleDeleteUser = async (id) => {
     const result = await Swal.fire({
       title: "Xóa người dùng?",
@@ -144,7 +171,14 @@ export default function UsersPage() {
       await updateUserStatus(id, newStatus);
 
       setUsers((prev) =>
-        prev.map((u) => (u.id === id ? { ...u, status: newStatus } : u)),
+        prev.map((u) =>
+          u.id === id
+            ? {
+                ...u,
+                status: newStatus,
+              }
+            : u,
+        ),
       );
 
       toast.success(
@@ -184,6 +218,9 @@ export default function UsersPage() {
       }
 
       await fetchUsers();
+
+      // Chỉ thêm: sau khi tạo teacher thì về trang đầu
+      setCurrentPage(1);
 
       setForm({ name: "", email: "" });
       setModal(false);
@@ -265,6 +302,7 @@ export default function UsersPage() {
     <>
       <div className="admin-topbar">
         <h1>User Management</h1>
+        <p>AI Learning — Manage users, roles &amp; teacher accounts</p>
       </div>
 
       <div className="admin-body">
@@ -274,6 +312,7 @@ export default function UsersPage() {
               <div className="stat-card">
                 <div>
                   <div className="stat-label">{s.label}</div>
+
                   <div className="stat-val" style={{ color: s.color }}>
                     {s.val}
                   </div>
@@ -281,7 +320,10 @@ export default function UsersPage() {
 
                 <div
                   className="stat-icon"
-                  style={{ background: s.iconBg, color: s.color }}
+                  style={{
+                    background: s.iconBg,
+                    color: s.color,
+                  }}
                 >
                   <i className={`bi ${s.icon}`} />
                 </div>
@@ -295,7 +337,13 @@ export default function UsersPage() {
             <div>
               <div className="d-flex align-items-center gap-2">
                 <i className="bi bi-people" style={{ fontSize: 18 }} />
-                <span style={{ fontWeight: 600, fontSize: 15 }}>
+
+                <span
+                  style={{
+                    fontWeight: 600,
+                    fontSize: 15,
+                  }}
+                >
                   User Overview
                 </span>
               </div>
@@ -309,7 +357,8 @@ export default function UsersPage() {
                 setModal(true);
               }}
             >
-              <i className="bi bi-person-plus-fill" /> Create Teacher Account
+              <i className="bi bi-person-plus-fill" />
+              Create Teacher Account
             </button>
           </div>
 
@@ -343,15 +392,24 @@ export default function UsersPage() {
                     </td>
                   </tr>
                 ) : (
-                  users.map((u) => (
+                  // Chỉ đổi users.map thành paginatedUsers.map
+                  paginatedUsers.map((u) => (
                     <tr key={u.id}>
                       <td style={{ fontWeight: 500 }}>
                         {u.name}
-                        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#94a3b8",
+                          }}
+                        >
                           Joined {u.joinDate}
                         </div>
                       </td>
+
                       <td style={{ color: "#64748b" }}>{u.email}</td>
+
                       <td>
                         <span
                           className={`role-badge ${
@@ -363,24 +421,40 @@ export default function UsersPage() {
                           {u.role}
                         </span>
                       </td>
+
                       <td>
                         <b>{u.totalDocuments}</b>
-                        <div style={{ fontSize: 12, color: "#64748b" }}>
+
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#64748b",
+                          }}
+                        >
                           uploaded {u.uploadedDocuments}
                         </div>
                       </td>
+
                       <td>
-                        <span className="status-active">{u.publicDocuments} public</span>
+                        <span className="status-active">
+                          {u.publicDocuments} public
+                        </span>
+
                         <div style={{ marginTop: 4 }}>
-                          <span className="status-blocked">{u.privateDocuments} private</span>
+                          <span className="status-blocked">
+                            {u.privateDocuments} private
+                          </span>
                         </div>
                       </td>
+
                       <td style={{ color: "#64748b" }}>
                         {formatStorage(u.totalStorageBytes)}
                       </td>
+
                       <td style={{ color: "#64748b" }}>
                         {formatDate(u.lastUploadAt)}
                       </td>
+
                       <td>
                         <span
                           className={
@@ -392,6 +466,7 @@ export default function UsersPage() {
                           {u.status}
                         </span>
                       </td>
+
                       <td>
                         <div className="d-flex align-items-center gap-2">
                           <button
@@ -399,6 +474,7 @@ export default function UsersPage() {
                             onClick={() => toggleBlock(u.id, u.status)}
                           >
                             <i className="bi bi-slash-circle" />
+
                             {u.status === "active" ? "Block" : "Unblock"}
                           </button>
 
@@ -416,12 +492,75 @@ export default function UsersPage() {
               </tbody>
             </Table>
           </div>
+
+          {/* Chỉ thêm: khu vực nút phân trang */}
+          {users.length > PAGE_SIZE && (
+            <div className="admin-pagination">
+              <div className="admin-pagination__info">
+                Showing {startIndex + 1}-
+                {Math.min(startIndex + PAGE_SIZE, users.length)} of{" "}
+                {users.length} users
+              </div>
+
+              <div className="admin-pagination__controls">
+                <button
+                  type="button"
+                  className="admin-page-btn admin-page-btn--text"
+                  disabled={safeCurrentPage === 1}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.max(1, page - 1))
+                  }
+                >
+                  <i className="bi bi-chevron-left" />
+                  Previous
+                </button>
+
+                <div className="admin-page-numbers">
+                  {Array.from({ length: totalPages }, (_, index) => {
+                    const pageNumber = index + 1;
+
+                    return (
+                      <button
+                        type="button"
+                        key={pageNumber}
+                        className={`admin-page-btn ${
+                          safeCurrentPage === pageNumber
+                            ? "admin-page-btn--active"
+                            : ""
+                        }`}
+                        onClick={() => setCurrentPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  className="admin-page-btn admin-page-btn--text"
+                  disabled={safeCurrentPage === totalPages}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.min(totalPages, page + 1))
+                  }
+                >
+                  Next
+                  <i className="bi bi-chevron-right" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <Modal show={showModal} onHide={() => setModal(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title style={{ fontWeight: 700, fontSize: 18 }}>
+          <Modal.Title
+            style={{
+              fontWeight: 700,
+              fontSize: 18,
+            }}
+          >
             Create Teacher Account
           </Modal.Title>
         </Modal.Header>
@@ -431,18 +570,28 @@ export default function UsersPage() {
             <Form.Label className="fw-semibold" style={{ fontSize: 13 }}>
               Full Name
             </Form.Label>
+
             <Form.Control
               placeholder="Enter teacher name"
               value={form.name}
               onChange={(e) => {
                 setError("");
-                setForm((p) => ({ ...p, name: e.target.value }));
+
+                setForm((p) => ({
+                  ...p,
+                  name: e.target.value,
+                }));
               }}
               onBlur={() =>
-                setForm((p) => ({ ...p, name: normalizeName(p.name) }))
+                setForm((p) => ({
+                  ...p,
+                  name: normalizeName(p.name),
+                }))
               }
               onKeyDown={(e) => {
-                if (e.key === "Enter") createTeacher();
+                if (e.key === "Enter") {
+                  createTeacher();
+                }
               }}
             />
           </Form.Group>
@@ -451,29 +600,48 @@ export default function UsersPage() {
             <Form.Label className="fw-semibold" style={{ fontSize: 13 }}>
               Email Address
             </Form.Label>
+
             <Form.Control
               type="email"
               placeholder="teacher@example.com"
               value={form.email}
-              isInvalid={Boolean(form.email.trim()) && !isValidEmail(form.email)}
+              isInvalid={
+                Boolean(form.email.trim()) && !isValidEmail(form.email)
+              }
               onChange={(e) => {
                 setError("");
-                setForm((p) => ({ ...p, email: e.target.value }));
+
+                setForm((p) => ({
+                  ...p,
+                  email: e.target.value,
+                }));
               }}
               onBlur={() =>
-                setForm((p) => ({ ...p, email: normalizeEmail(p.email) }))
+                setForm((p) => ({
+                  ...p,
+                  email: normalizeEmail(p.email),
+                }))
               }
               onKeyDown={(e) => {
-                if (e.key === "Enter") createTeacher();
+                if (e.key === "Enter") {
+                  createTeacher();
+                }
               }}
             />
+
             <Form.Control.Feedback type="invalid">
               Email không hợp lệ. Ví dụ đúng: teacher@gmail.com
             </Form.Control.Feedback>
           </Form.Group>
 
           {error && (
-            <div style={{ color: "#b91c1c", fontSize: 13, marginBottom: 12 }}>
+            <div
+              style={{
+                color: "#b91c1c",
+                fontSize: 13,
+                marginBottom: 12,
+              }}
+            >
               {error}
             </div>
           )}
