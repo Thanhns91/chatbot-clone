@@ -1755,3 +1755,55 @@ body,
     min-width: 1220px;
   }
 }
+
+/* =========================================================
+   ACTION DROPDOWN ALIGNMENT FIX
+========================================================= */
+
+.admin-action-cell {
+  overflow: visible !important;
+  text-align: center;
+  position: relative;
+}
+
+.admin-action-cell .document-actions-dropdown,
+.admin-action-cell .user-actions-dropdown,
+.admin-action-cell > .dropdown {
+  width: auto !important;
+  max-width: max-content;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  vertical-align: middle;
+}
+
+.admin-action-cell .document-actions-toggle.btn,
+.admin-action-cell .user-actions-toggle.btn,
+.admin-action-cell .dropdown-toggle.btn {
+  margin: 0 auto;
+}
+
+.admin-action-cell .document-actions-menu.dropdown-menu,
+.admin-action-cell .user-actions-menu.dropdown-menu {
+  position: absolute !important;
+  inset: 100% 0 auto auto !important;
+  margin-top: 8px !important;
+  transform: none !important;
+}
+
+.table-responsive,
+.a-card,
+.admin-table,
+.admin-table tbody,
+.admin-table tr,
+.admin-table td {
+  overflow: visible;
+}
+
+@media (max-width: 1199px) {
+  .table-responsive {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+}
