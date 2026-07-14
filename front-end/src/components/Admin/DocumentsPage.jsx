@@ -60,6 +60,19 @@ const buildPaginationItems = (currentPage, totalPages) => {
   return items;
 };
 
+
+const getDocumentVisibility = (document) => {
+  const status = String(
+    document?.visibilityStatus ||
+      document?.reviewStatus ||
+      "private",
+  ).toLowerCase();
+
+  return ["public", "approved"].includes(status)
+    ? "public"
+    : "private";
+};
+
 export default function DocumentsPage() {
   const [docs, setDocs] = useState([]);
   const [search, setSearch] = useState("");
@@ -181,8 +194,13 @@ export default function DocumentsPage() {
     (d) => getFileType(d.fileType, d.fileName) === "PDF",
   ).length;
 
-  const publicCount = docs.filter((d) => d.reviewStatus === "approved").length;
-  const privateCount = docs.filter((d) => d.reviewStatus === "private").length;
+  const publicCount = docs.filter(
+    (d) => getDocumentVisibility(d) === "public",
+  ).length;
+
+  const privateCount = docs.filter(
+    (d) => getDocumentVisibility(d) === "private",
+  ).length;
   const totalStorageBytes = docs.reduce(
     (sum, d) => sum + Number(d.fileSizeBytes || 0),
     0,
@@ -291,7 +309,7 @@ export default function DocumentsPage() {
                   <th>Name</th>
                   <th>Subject / Type</th>
                   <th>Uploader</th>
-                  <th>Status</th>
+                  <th>Public / Private</th>
                   <th>Storage</th>
                   <th>Chat Uses</th>
                   <th>Uploaded</th>
@@ -310,13 +328,10 @@ export default function DocumentsPage() {
                   paginatedDocs.map((d) => {
                     const fileType = getFileType(d.fileType, d.fileName);
                     const fileUrl = getDocumentUrl(d);
-                    const previewUrl = getPreviewUrl(d);
-                    const normalizedVisibility = String(
-                      d.reviewStatus || d.visibilityStatus || "private",
-                    ).toLowerCase();
-                    const isPublic = ["approved", "public"].includes(
-                      normalizedVisibility,
-                    );
+                    const visibility = getDocumentVisibility(d);
+                    const isPublic = visibility === "public";
+                    const previewUrl = isPublic ? getPreviewUrl(d) : "#";
+                    const canView = isPublic && previewUrl !== "#";
 
                     return (
                       <tr key={d.documentId}>
@@ -324,15 +339,24 @@ export default function DocumentsPage() {
                           <div className="admin-document-name-wrap">
                             <i className="bi bi-file-earmark admin-document-file-icon" />
 
-                            <a
-                              href={previewUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="admin-document-name-link"
-                              title={d.fileName}
-                            >
-                              {d.fileName}
-                            </a>
+                            {canView ? (
+                              <a
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="admin-document-name-link"
+                                title={d.fileName}
+                              >
+                                {d.fileName}
+                              </a>
+                            ) : (
+                              <span
+                                className="admin-primary-line admin-ellipsis"
+                                title={`${d.fileName} — Private document cannot be opened`}
+                              >
+                                {d.fileName}
+                              </span>
+                            )}
                           </div>
                         </td>
 
@@ -425,7 +449,7 @@ export default function DocumentsPage() {
                                     "noopener,noreferrer",
                                   )
                                 }
-                                disabled={previewUrl === "#"}
+                                disabled={!canView}
                               >
                                 <i className="bi bi-eye document-action-icon document-action-icon--view" />
                                 <span>Open document</span>
