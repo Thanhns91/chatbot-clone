@@ -83,7 +83,7 @@ export default function DocumentsPage() {
 
   const fetchDocs = async () => {
     try {
-      const data = await getDocuments();
+      const data = await getDocuments({ role: "admin" });
 
       if (data.success) {
         setDocs(data.data || []);

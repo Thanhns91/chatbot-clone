@@ -919,15 +919,31 @@ router.put("/:documentId/publish", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const [docs] = await pool.query(`
+    const { role } = req.query;
+
+    let sql = `
       ${documentSelect}
       WHERE d.isDeleted = FALSE
-        AND (d.uploadedBy <> 'student' OR d.reviewStatus = 'approved')
-      ORDER BY d.uploadDate DESC
-    `);
+    `;
+
+    const params = [];
+
+    if (role !== "admin") {
+      sql += `
+        AND (
+          d.uploadedBy <> 'student'
+          OR d.reviewStatus = 'approved'
+        )
+      `;
+    }
+
+    sql += ` ORDER BY d.uploadDate DESC`;
+
+    const [docs] = await pool.query(sql, params);
 
     res.json({ success: true, data: docs });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ success: false, detail: error.message });
   }
 });
