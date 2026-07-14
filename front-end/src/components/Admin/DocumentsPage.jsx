@@ -291,7 +291,7 @@ export default function DocumentsPage() {
                   <th>Name</th>
                   <th>Subject / Type</th>
                   <th>Uploader</th>
-                  <th>Public / Private</th>
+                  <th>Status</th>
                   <th>Storage</th>
                   <th>Chat Uses</th>
                   <th>Uploaded</th>

@@ -482,9 +482,6 @@ export default function UsersPage() {
                         <div className="admin-primary-line">
                           {u.totalDocuments}
                         </div>
-                        <div className="admin-secondary-line admin-no-wrap">
-                          uploaded {u.uploadedDocuments}
-                        </div>
                       </td>
 
                       <td className="admin-user-storage-cell admin-no-wrap">
