@@ -309,7 +309,7 @@ export default function DocumentsPage() {
                   <th>Name</th>
                   <th>Subject / Type</th>
                   <th>Uploader</th>
-                  <th>Public / Private</th>
+                  <th>Status</th>
                   <th>Storage</th>
                   <th>Chat Uses</th>
                   <th>Uploaded</th>
@@ -332,6 +332,7 @@ export default function DocumentsPage() {
                     const isPublic = visibility === "public";
                     const previewUrl = isPublic ? getPreviewUrl(d) : "#";
                     const canView = isPublic && previewUrl !== "#";
+                    const canDownload = isPublic && fileUrl !== "#";
 
                     return (
                       <tr key={d.documentId}>
@@ -455,15 +456,26 @@ export default function DocumentsPage() {
                                 <span>Open document</span>
                               </Dropdown.Item>
 
-                              <Dropdown.Item
-                                as="a"
-                                href={fileUrl}
-                                download={d.fileName}
-                                disabled={fileUrl === "#"}
-                              >
-                                <i className="bi bi-download document-action-icon document-action-icon--download" />
-                                <span>Download</span>
-                              </Dropdown.Item>
+                              {canDownload ? (
+                                <Dropdown.Item
+                                  as="a"
+                                  href={fileUrl}
+                                  download={d.fileName}
+                                >
+                                  <i className="bi bi-download document-action-icon document-action-icon--download" />
+                                  <span>Download</span>
+                                </Dropdown.Item>
+                              ) : (
+                                <Dropdown.Item
+                                  as="button"
+                                  type="button"
+                                  disabled
+                                  title="Private documents cannot be downloaded"
+                                >
+                                  <i className="bi bi-download document-action-icon document-action-icon--download" />
+                                  <span>Download</span>
+                                </Dropdown.Item>
+                              )}
 
                               <Dropdown.Divider />
 
