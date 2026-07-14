@@ -108,10 +108,6 @@ export default function UsersPage() {
     0,
   );
 
-  const totalPublic = users.reduce(
-    (sum, user) => sum + Number(user.publicDocuments || 0),
-    0,
-  );
 
   const totalStorageBytes = users.reduce(
     (sum, user) => sum + Number(user.totalStorageBytes || 0),
@@ -340,13 +336,6 @@ export default function UsersPage() {
       icon: "bi-file-earmark-text-fill",
     },
     {
-      label: "Public Documents",
-      val: totalPublic,
-      color: "#0891b2",
-      iconBg: "#cffafe",
-      icon: "bi-globe",
-    },
-    {
       label: "Storage Used",
       val: formatStorage(totalStorageBytes),
       color: "#ea580c",
@@ -426,7 +415,6 @@ export default function UsersPage() {
                 <col className="admin-col-user-email" />
                 <col className="admin-col-user-role" />
                 <col className="admin-col-user-documents" />
-                <col className="admin-col-user-visibility" />
                 <col className="admin-col-user-storage" />
                 <col className="admin-col-user-upload" />
                 <col className="admin-col-user-status" />
@@ -439,7 +427,6 @@ export default function UsersPage() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Documents</th>
-                  <th>Public / Private</th>
                   <th>Storage</th>
                   <th>Last Upload</th>
                   <th>Status</th>
@@ -450,13 +437,13 @@ export default function UsersPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-4">
+                    <td colSpan={8} className="text-center py-4">
                       Đang tải...
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-4 text-secondary">
+                    <td colSpan={8} className="text-center py-4 text-secondary">
                       No users found
                     </td>
                   </tr>
@@ -497,17 +484,6 @@ export default function UsersPage() {
                         </div>
                         <div className="admin-secondary-line admin-no-wrap">
                           uploaded {u.uploadedDocuments}
-                        </div>
-                      </td>
-
-                      <td className="admin-user-visibility-cell">
-                        <div className="admin-visibility-pair">
-                          <span className="status-active">
-                            {u.publicDocuments} public
-                          </span>
-                          <span className="status-blocked">
-                            {u.privateDocuments} private
-                          </span>
                         </div>
                       </td>
 

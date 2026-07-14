@@ -291,7 +291,7 @@ export default function DocumentsPage() {
                   <th>Name</th>
                   <th>Subject / Type</th>
                   <th>Uploader</th>
-                  <th>Visibility</th>
+                  <th>Public / Private</th>
                   <th>Storage</th>
                   <th>Chat Uses</th>
                   <th>Uploaded</th>
@@ -311,6 +311,12 @@ export default function DocumentsPage() {
                     const fileType = getFileType(d.fileType, d.fileName);
                     const fileUrl = getDocumentUrl(d);
                     const previewUrl = getPreviewUrl(d);
+                    const normalizedVisibility = String(
+                      d.reviewStatus || d.visibilityStatus || "private",
+                    ).toLowerCase();
+                    const isPublic = ["approved", "public"].includes(
+                      normalizedVisibility,
+                    );
 
                     return (
                       <tr key={d.documentId}>
@@ -369,14 +375,10 @@ export default function DocumentsPage() {
                         <td className="admin-document-visibility-cell">
                           <span
                             className={
-                              d.reviewStatus === "approved"
-                                ? "status-active"
-                                : "status-blocked"
+                              isPublic ? "status-active" : "status-blocked"
                             }
                           >
-                            {d.reviewStatus === "approved"
-                              ? "Public"
-                              : d.reviewStatus}
+                            {isPublic ? "Public" : "Private"}
                           </span>
                         </td>
 

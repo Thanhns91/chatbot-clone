@@ -1,3 +1,7 @@
+/* =========================================================
+   ADMIN DASHBOARD
+========================================================= */
+
 :root {
   --admin-primary: #2563eb;
   --admin-primary-dark: #1d4ed8;
@@ -1510,7 +1514,7 @@ body,
 }
 
 .admin-table--users {
-  min-width: 1260px;
+  min-width: 1100px;
 }
 
 /* Documents column widths */
@@ -1546,41 +1550,37 @@ body,
   width: 5%;
 }
 
-/* Users column widths */
+/* Users column widths — không còn cột Public / Private */
 .admin-table--users .admin-col-user-name {
-  width: 16%;
+  width: 18%;
 }
 
 .admin-table--users .admin-col-user-email {
-  width: 21%;
+  width: 25%;
 }
 
 .admin-table--users .admin-col-user-role {
-  width: 9%;
-}
-
-.admin-table--users .admin-col-user-documents {
-  width: 9%;
-}
-
-.admin-table--users .admin-col-user-visibility {
-  width: 14%;
-}
-
-.admin-table--users .admin-col-user-storage {
-  width: 9%;
-}
-
-.admin-table--users .admin-col-user-upload {
   width: 10%;
 }
 
+.admin-table--users .admin-col-user-documents {
+  width: 10%;
+}
+
+.admin-table--users .admin-col-user-storage {
+  width: 10%;
+}
+
+.admin-table--users .admin-col-user-upload {
+  width: 12%;
+}
+
 .admin-table--users .admin-col-user-status {
-  width: 7%;
+  width: 9%;
 }
 
 .admin-table--users .admin-col-user-actions {
-  width: 5%;
+  width: 6%;
 }
 
 .admin-table--documents th,
@@ -1697,12 +1697,8 @@ body,
 }
 
 .admin-action-cell .document-actions-dropdown {
-  width: 38px !important;
-  display: inline-flex !important;
-  align-items: center;
+  width: 100%;
   justify-content: center;
-  position: relative;
-  vertical-align: middle;
 }
 
 /* Users table */
@@ -1714,13 +1710,6 @@ body,
   font-weight: 700;
 }
 
-.admin-visibility-pair {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
 
 .admin-table--users .role-badge,
 .admin-table--users .status-active,
@@ -1734,15 +1723,15 @@ body,
 .admin-table--documents th:nth-child(8),
 .admin-table--users th:nth-child(3),
 .admin-table--users th:nth-child(4),
-.admin-table--users th:nth-child(8),
-.admin-table--users th:nth-child(9) {
+.admin-table--users th:nth-child(7),
+.admin-table--users th:nth-child(8) {
   text-align: center;
 }
 
 .admin-table--documents th:nth-child(5),
 .admin-table--documents th:nth-child(7),
-.admin-table--users th:nth-child(6),
-.admin-table--users th:nth-child(7) {
+.admin-table--users th:nth-child(5),
+.admin-table--users th:nth-child(6) {
   white-space: nowrap;
 }
 
@@ -1752,130 +1741,31 @@ body,
   }
 
   .admin-table--users {
-    min-width: 1220px;
+    min-width: 1060px;
   }
 }
 
 /* =========================================================
-   FINAL ACTION MENU ALIGNMENT
-   Giữ nút đúng giữa cột và thu menu gọn sát nút ba chấm
+   FIX DOCUMENT ACTION MENU ALIGNMENT
 ========================================================= */
-
-.admin-table--documents .admin-col-document-name {
-  width: 26%;
-}
-
-.admin-table--documents .admin-col-document-subject {
-  width: 21%;
-}
-
-.admin-table--documents .admin-col-document-uploaded {
-  width: 8%;
-}
-
-.admin-table--documents .admin-col-document-actions {
-  width: 8%;
-}
-
-.admin-action-cell,
-.admin-table--documents th:last-child,
-.admin-table--users th:last-child,
-.admin-table--documents td:last-child,
-.admin-table--users td:last-child {
-  text-align: center !important;
-}
-
-.admin-action-cell {
-  position: relative;
-  overflow: visible !important;
-  padding-left: 4px !important;
-  padding-right: 4px !important;
-}
-
-.admin-action-cell .document-actions-dropdown,
-.admin-action-cell > .dropdown {
-  width: 38px !important;
-  min-width: 38px !important;
-  max-width: 38px !important;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  vertical-align: middle;
-}
-
-.admin-action-cell .document-actions-toggle.btn {
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  margin: 0 !important;
-}
-
-.document-actions-menu .dropdown-item {
-  width: 100%;
-  min-width: 0;
-  justify-content: flex-start;
-  white-space: nowrap;
-}
-
-.document-actions-menu .dropdown-item span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (max-width: 767px) {
-  .document-actions-menu.dropdown-menu {
-    width: 188px !important;
-    min-width: 188px !important;
-    max-width: 188px !important;
-  }
-}
-
-/* =========================================================
-   FINAL DOCUMENT ACTION MENU FIX
-========================================================= */
-
-.admin-action-cell {
-  position: relative;
-  overflow: visible !important;
-  text-align: center !important;
-}
 
 .admin-action-cell .document-actions-dropdown {
-  width: 38px !important;
-  min-width: 38px !important;
-  max-width: 38px !important;
-
+  width: auto !important;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-
-  vertical-align: middle;
-}
-
-.admin-action-cell .document-actions-toggle.btn {
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  margin: 0 !important;
 }
 
 .document-actions-menu.dropdown-menu {
-  width: 210px !important;
-  min-width: 210px !important;
-  max-width: 210px !important;
-
-  padding: 7px !important;
-  margin-top: 8px !important;
+  width: 210px;
+  min-width: 210px;
 }
 
 .document-actions-menu .dropdown-item,
 .document-actions-menu a.dropdown-item[download],
 .document-actions-menu button.dropdown-item {
   width: 100% !important;
-  min-width: 0 !important;
-  min-height: 42px !important;
+  min-height: 42px;
 
   display: flex !important;
   align-items: center !important;
@@ -1885,7 +1775,6 @@ body,
   padding: 9px 11px !important;
 
   text-align: left !important;
-  white-space: nowrap;
 }
 
 .document-actions-menu .dropdown-item i {
@@ -1899,9 +1788,6 @@ body,
 .document-actions-menu .dropdown-item span {
   flex: 1;
 
-  overflow: hidden;
-
   text-align: left;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
