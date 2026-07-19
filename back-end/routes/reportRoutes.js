@@ -115,6 +115,8 @@ router.post("/message", async (req, res) => {
         cm.sessionId,
         cm.sender,
         cm.message,
+        cm.sourceExcerpt,
+        cm.sourceDocumentName,
         cm.createdAt,
         cs.userId,
         cs.documentId AS sessionDocumentId
@@ -225,11 +227,13 @@ router.post("/message", async (req, res) => {
         teacherId,
         questionText,
         answerText,
+        sourceExcerpt,
+        sourceDocumentName,
         reason,
         description,
         status
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `,
       [
         messageId,
@@ -239,6 +243,8 @@ router.post("/message", async (req, res) => {
         teacherId,
         questionText,
         aiMessage.message,
+        aiMessage.sourceExcerpt || null,
+        aiMessage.sourceDocumentName || document?.fileName || null,
         normalizeReason(reason),
         description || null,
       ],
@@ -284,6 +290,8 @@ router.get("/teacher/:teacherId", async (req, res) => {
         mr.teacherId,
         mr.questionText,
         mr.answerText,
+        mr.sourceExcerpt,
+        mr.sourceDocumentName,
         mr.reason,
         mr.description,
         mr.status,

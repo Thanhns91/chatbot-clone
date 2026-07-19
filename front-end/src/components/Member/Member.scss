@@ -1227,3 +1227,83 @@ body.theme-dark #root {
     }
   }
 }
+
+/* Source excerpt shown under AI answers */
+.member-chat__source {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 13px;
+
+  summary {
+    cursor: pointer;
+    font-weight: 800;
+    color: #1d4ed8;
+  }
+
+  pre {
+    margin: 10px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    color: #1e293b;
+    line-height: 1.55;
+  }
+}
+
+.member-report-source {
+  padding: 12px 14px;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  background: #fff7ed;
+
+  &__title {
+    margin-bottom: 8px;
+    color: #9a3412;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    color: #431407;
+    line-height: 1.55;
+    max-height: 220px;
+    overflow: auto;
+  }
+}
+
+html[data-theme="dark"] {
+  .member-chat__source {
+    background: #172554;
+    border-color: #1d4ed8;
+    color: #dbeafe;
+
+    summary {
+      color: #93c5fd;
+    }
+
+    pre {
+      color: #e0f2fe;
+    }
+  }
+
+  .member-report-source {
+    background: #431407;
+    border-color: #9a3412;
+
+    &__title {
+      color: #fed7aa;
+    }
+
+    pre {
+      color: #ffedd5;
+    }
+  }
+}

@@ -4338,3 +4338,45 @@ html[data-theme="dark"] .td-materials-actions-menu .td-materials-menu-delete:foc
     min-width: 190px;
   }
 }
+
+/* Source excerpt displayed inside teacher report review modal */
+.message-report-modal__source {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.message-report-modal__source-file {
+  margin-bottom: 8px;
+  color: #9a3412;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.message-report-modal__source pre {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #431407;
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: inherit;
+}
+
+html[data-theme="dark"] {
+  .message-report-modal__source {
+    background: #431407;
+    border-color: #9a3412;
+  }
+
+  .message-report-modal__source-file {
+    color: #fed7aa;
+  }
+
+  .message-report-modal__source pre {
+    color: #ffedd5;
+  }
+}

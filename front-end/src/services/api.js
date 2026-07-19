@@ -366,13 +366,20 @@ export async function getChatMessages(sessionId) {
   return requestJson(`/chat-history/messages/${sessionId}`);
 }
 
-export async function saveChatMessage(sessionId, sender, message) {
+export async function saveChatMessage(
+  sessionId,
+  sender,
+  message,
+  options = {},
+) {
   return requestJson("/chat-history/messages", {
     method: "POST",
     body: {
       sessionId,
       sender,
       message,
+      sourceExcerpt: options.sourceExcerpt || null,
+      sourceDocumentName: options.sourceDocumentName || null,
     },
   });
 }

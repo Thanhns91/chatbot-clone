@@ -253,6 +253,44 @@ ${chunkText}`;
   return parts.join("\n\n---\n\n");
 }
 
+
+function buildSourceExcerpt(finalChunks, docNameMap) {
+  const parts = [];
+  const usedFiles = new Set();
+
+  for (let index = 0; index < finalChunks.length && parts.length < 3; index++) {
+    const item = finalChunks[index];
+
+    const sourceDocumentId =
+      item.payload?.vectorDocumentId ||
+      item.payload?.documentId ||
+      item.sourceDocumentId;
+
+    const sourceFile =
+      docNameMap.get(sourceDocumentId) ||
+      item.payload?.fileName ||
+      "Unknown file";
+
+    const rawText = String(item.payload?.text || "").trim();
+
+    if (!rawText) continue;
+
+    usedFiles.add(sourceFile);
+
+    parts.push(
+      `[Source ${parts.length + 1} - ${sourceFile}]\n${limitText(
+        rawText,
+        1400,
+      )}`,
+    );
+  }
+
+  return {
+    sourceExcerpt: parts.join("\n\n---\n\n").slice(0, 5000),
+    sourceDocumentName: Array.from(usedFiles).join(", "),
+  };
+}
+
 function extractRequestedPages(message) {
   const text = String(message || "").toLowerCase();
   const pages = [];
@@ -772,6 +810,11 @@ router.post("/", async (req, res) => {
       }));
     }
 
+    const { sourceExcerpt, sourceDocumentName } = buildSourceExcerpt(
+      finalChunks,
+      docNameMap,
+    );
+
     if (quoteMode) {
       const quoteKeywords =
         quoteSearchKeywords.length > 0
@@ -791,6 +834,8 @@ router.post("/", async (req, res) => {
           documentId: uniqueTargetDocumentIds[0],
           documentIds: uniqueTargetDocumentIds,
           responseLanguage,
+          sourceExcerpt,
+          sourceDocumentName,
           evidence: finalChunks.map((item) => ({
             fileName:
               docNameMap.get(
@@ -908,6 +953,8 @@ ANSWER:
       documentId: uniqueTargetDocumentIds[0],
       documentIds: uniqueTargetDocumentIds,
       responseLanguage,
+      sourceExcerpt,
+      sourceDocumentName,
       evidence: finalChunks.map((item) => ({
         fileName:
           docNameMap.get(

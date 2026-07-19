@@ -272,6 +272,8 @@ const ChatArea = ({
                   id: item.messageId,
                   role: item.sender,
                   content: item.message,
+                  sourceExcerpt: item.sourceExcerpt || "",
+                  sourceDocumentName: item.sourceDocumentName || "",
                   approved: Boolean(item.isApproved),
                   question: "",
                 };
@@ -579,13 +581,26 @@ const ChatArea = ({
       );
 
       const aiAnswer = result.answer || "Không có phản hồi.";
+      const sourceExcerpt = result.sourceExcerpt || "";
+      const sourceDocumentName =
+        result.sourceDocumentName || selectedDocument?.fileName || "";
 
-      const savedAiMessage = await saveChatMessage(conversationId, "ai", aiAnswer);
+      const savedAiMessage = await saveChatMessage(
+        conversationId,
+        "ai",
+        aiAnswer,
+        {
+          sourceExcerpt,
+          sourceDocumentName,
+        },
+      );
 
       const aiMessage = {
         id: savedAiMessage?.messageId || makeId(),
         role: "ai",
         content: aiAnswer,
+        sourceExcerpt,
+        sourceDocumentName,
         question: userText,
         approved: false,
         outOfScope: result.outOfScope || false,
@@ -968,6 +983,18 @@ const ChatArea = ({
               {reportTarget?.content}
             </div>
           </div>
+
+          {reportTarget?.sourceExcerpt && (
+            <div className="member-report-source mt-3">
+              <div className="member-report-source__title">
+                Source excerpt used by AI
+                {reportTarget.sourceDocumentName
+                  ? `: ${reportTarget.sourceDocumentName}`
+                  : ""}
+              </div>
+              <pre>{reportTarget.sourceExcerpt}</pre>
+            </div>
+          )}
         </Modal.Body>
 
         <Modal.Footer>
@@ -1048,6 +1075,19 @@ const ChatArea = ({
                   className={`member-chat__bubble member-chat__bubble--${msg.role}`}
                 >
                   {msg.content}
+
+                  {msg.role === "ai" && msg.sourceExcerpt && (
+                    <details className="member-chat__source">
+                      <summary>
+                        <i className="bi bi-file-text me-1"></i>
+                        Source from document
+                        {msg.sourceDocumentName
+                          ? `: ${msg.sourceDocumentName}`
+                          : ""}
+                      </summary>
+                      <pre>{msg.sourceExcerpt}</pre>
+                    </details>
+                  )}
 
                   {msg.role === "ai" && (
                     <div className="member-chat__message-actions">

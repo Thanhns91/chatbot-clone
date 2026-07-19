@@ -230,6 +230,8 @@ router.get("/messages/:sessionId", async (req, res) => {
         sessionId,
         sender,
         message,
+        sourceExcerpt,
+        sourceDocumentName,
         COALESCE(isApproved, FALSE) AS isApproved,
         approvedAt,
         createdAt
@@ -253,7 +255,13 @@ router.get("/messages/:sessionId", async (req, res) => {
 
 router.post("/messages", async (req, res) => {
   try {
-    const { sessionId, sender, message } = req.body;
+    const {
+      sessionId,
+      sender,
+      message,
+      sourceExcerpt = null,
+      sourceDocumentName = null,
+    } = req.body;
 
     if (!sessionId || !sender || !message) {
       return res.status(400).json({
@@ -264,10 +272,23 @@ router.post("/messages", async (req, res) => {
 
     const [result] = await pool.query(
       `
-      INSERT INTO ChatMessages (sessionId, sender, message)
-      VALUES (?, ?, ?)
+      INSERT INTO ChatMessages
+      (
+        sessionId,
+        sender,
+        message,
+        sourceExcerpt,
+        sourceDocumentName
+      )
+      VALUES (?, ?, ?, ?, ?)
       `,
-      [sessionId, sender, message],
+      [
+        sessionId,
+        sender,
+        message,
+        sourceExcerpt,
+        sourceDocumentName,
+      ],
     );
 
     await pool.query(

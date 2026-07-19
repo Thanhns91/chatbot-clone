@@ -387,6 +387,20 @@ export default function MessageReportsPage({ user: propUser }) {
             </div>
           </div>
 
+          {selectedReport?.sourceExcerpt && (
+            <div className="mb-3">
+              <div className="fw-bold">Source excerpt used by AI</div>
+              <div className="message-report-modal__source">
+                <div className="message-report-modal__source-file">
+                  {selectedReport.sourceDocumentName ||
+                    selectedReport.fileName ||
+                    "Source document"}
+                </div>
+                <pre>{selectedReport.sourceExcerpt}</pre>
+              </div>
+            </div>
+          )}
+
           <div className="mb-3">
             <div className="fw-bold">Student report</div>
             <div className="p-3 rounded bg-light" style={{ whiteSpace: "pre-wrap" }}>
