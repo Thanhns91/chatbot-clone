@@ -1140,14 +1140,6 @@ const ChatArea = ({
           <i className="ti ti-paperclip" />
         </button>
 
-        <button
-          className="member-chat__tool-btn member-chat__tool-btn--mic"
-          title="Voice input"
-          type="button"
-        >
-          <i className="ti ti-microphone" />
-        </button>
-
         <Form.Control
           className="member-chat__input"
           type="text"
