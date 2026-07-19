@@ -95,6 +95,20 @@ export async function uploadTeacherFile(file, uploaderId, options = {}) {
   });
 }
 
+export async function replaceReportedDocument(report, file, teacherId, options = {}) {
+  return uploadTeacherFile(file, teacherId, {
+    duplicateAction: "replace_old",
+    replaceDocumentId: report.documentId,
+    subjectId: report.subjectId,
+    topicId: report.topicId,
+    documentTypeId: report.documentTypeId,
+    levelId: report.levelId,
+    tags: report.tags,
+    summary: report.summary,
+    ...options,
+  });
+}
+
 /* =========================
    AUTH / ADMIN
 ========================= */
@@ -185,9 +199,8 @@ export async function getUserDocuments(userId) {
    DOCUMENTS
 ========================= */
 
-export async function getDocuments(params = {}) {
-  const query = buildQuery(params);
-  return requestJson(`/documents${query}`);
+export async function getDocuments() {
+  return requestJson("/documents");
 }
 
 export async function getDocumentDetail(documentId) {
@@ -448,5 +461,31 @@ export async function markNotificationAsRead(notificationId) {
 export async function markAllNotificationsAsRead(userId) {
   return requestJson(`/notifications/user/${userId}/read-all`, {
     method: "PUT",
+  });
+}
+/* =========================
+   MESSAGE REPORTS
+========================= */
+
+export async function reportMessage(payload) {
+  return requestJson("/reports/message", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function getTeacherMessageReports(teacherId, filters = {}) {
+  return requestJson(
+    `/reports/teacher/${teacherId}${buildQuery({
+      status: filters.status,
+      role: filters.role,
+    })}`,
+  );
+}
+
+export async function updateMessageReportStatus(reportId, payload) {
+  return requestJson(`/reports/${reportId}/status`, {
+    method: "PUT",
+    body: payload,
   });
 }

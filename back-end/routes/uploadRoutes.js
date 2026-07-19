@@ -209,6 +209,72 @@ async function getDuplicateInfo(contentHash) {
   };
 }
 
+async function getReplaceTargetInfo(replaceDocumentId) {
+  if (!replaceDocumentId) return null;
+
+  const [rows] = await pool.query(
+    `
+    SELECT
+      documentId,
+      fileName,
+      fileType,
+      fileUrl,
+      fileSizeBytes,
+      contentHash,
+      versionGroupId,
+      versionNo,
+      vectorDocumentId,
+      originalDocumentId,
+      uploaderId,
+      uploadedBy,
+      reviewStatus,
+      subjectId,
+      topicId,
+      documentTypeId,
+      levelId,
+      tags,
+      summary,
+      isDeleted
+    FROM Documents
+    WHERE documentId = ?
+      AND isDeleted = FALSE
+    LIMIT 1
+    `,
+    [replaceDocumentId],
+  );
+
+  if (rows.length === 0) {
+    throw new Error("Replace target document not found");
+  }
+
+  const originalDoc = rows[0];
+  const versionGroupId =
+    originalDoc.versionGroupId || originalDoc.originalDocumentId || originalDoc.documentId;
+  const originalDocumentId = originalDoc.originalDocumentId || originalDoc.documentId;
+
+  const [versionRows] = await pool.query(
+    `
+    SELECT COALESCE(MAX(versionNo), 0) + 1 AS nextVersion
+    FROM Documents
+    WHERE versionGroupId = ?
+       OR documentId = ?
+       OR originalDocumentId = ?
+    `,
+    [versionGroupId, originalDocumentId, originalDocumentId],
+  );
+
+  return {
+    originalDoc,
+    versionGroupId,
+    vectorDocumentId: originalDoc.vectorDocumentId || originalDoc.documentId,
+    originalDocumentId,
+    nextVersion: Math.max(
+      Number(versionRows[0]?.nextVersion || 2),
+      Number(originalDoc.versionNo || 1) + 1,
+    ),
+  };
+}
+
 
 function normalizeForMeta(value = "") {
   return String(value || "")
@@ -710,6 +776,42 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     const replaceDocumentId = req.body.replaceDocumentId || null;
 
+    const explicitReplaceInfo =
+      duplicateAction === "replace_old" && replaceDocumentId
+        ? await getReplaceTargetInfo(replaceDocumentId)
+        : null;
+
+    if (explicitReplaceInfo) {
+      const oldDoc = explicitReplaceInfo.originalDoc;
+
+      if (oldDoc.uploadedBy !== "teacher") {
+        cleanupFile(req.file.path);
+
+        return res.status(400).json({
+          success: false,
+          error: "Only teacher materials can be replaced with this action",
+        });
+      }
+
+      if (Number(oldDoc.uploaderId) !== Number(uploaderId)) {
+        cleanupFile(req.file.path);
+
+        return res.status(403).json({
+          success: false,
+          error: "You can only replace your own uploaded document",
+        });
+      }
+
+      metadata = {
+        subjectId: metadata.subjectId || oldDoc.subjectId || null,
+        topicId: metadata.topicId || oldDoc.topicId || null,
+        documentTypeId: metadata.documentTypeId || oldDoc.documentTypeId || null,
+        levelId: metadata.levelId || oldDoc.levelId || null,
+        tags: metadata.tags || oldDoc.tags || null,
+        summary: metadata.summary || oldDoc.summary || null,
+      };
+    }
+
     const documentId = uuidv4();
 
     const text = await extractText(req.file.path, fileName);
@@ -728,6 +830,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     const contentHash = createContentHash(text);
     const duplicateInfo = await getDuplicateInfo(contentHash);
+    const replaceInfo = explicitReplaceInfo || duplicateInfo;
 
     if (duplicateInfo && !duplicateAction) {
       cleanupFile(req.file.path);
@@ -886,18 +989,18 @@ router.post("/", upload.single("file"), async (req, res) => {
     }
 
     const replaceTargetDocumentId =
-      replaceDocumentId || duplicateInfo?.originalDoc?.documentId || null;
+      replaceDocumentId || replaceInfo?.originalDoc?.documentId || null;
 
     const shouldReplaceOld = duplicateAction === "replace_old" && replaceTargetDocumentId;
 
     const versionGroupId = shouldReplaceOld
-      ? duplicateInfo?.versionGroupId || replaceTargetDocumentId
+      ? replaceInfo?.versionGroupId || replaceTargetDocumentId
       : documentId;
 
-    const versionNo = shouldReplaceOld ? duplicateInfo?.nextVersion || 2 : 1;
+    const versionNo = shouldReplaceOld ? replaceInfo?.nextVersion || 2 : 1;
     const vectorDocumentId = documentId;
     const originalDocumentId = shouldReplaceOld
-      ? duplicateInfo?.originalDocumentId || replaceTargetDocumentId
+      ? replaceInfo?.originalDocumentId || replaceTargetDocumentId
       : null;
 
     const chunks = semanticChunk(text);
@@ -1001,6 +1104,54 @@ router.post("/", upload.single("file"), async (req, res) => {
       createdBy: uploaderId,
     });
 
+    if (shouldReplaceOld) {
+      await connection.query(
+        `
+        UPDATE ChatSessions
+        SET documentId = ?
+        WHERE documentId = ?
+        `,
+        [documentId, replaceTargetDocumentId],
+      );
+
+      await connection.query(
+        `
+        UPDATE ChatSessionDocuments
+        SET documentId = ?
+        WHERE documentId = ?
+        `,
+        [documentId, replaceTargetDocumentId],
+      );
+
+      try {
+        await connection.query(
+          `
+          UPDATE MessageReports
+          SET
+            status = CASE
+              WHEN status IN ('pending', 'reviewing') THEN 'resolved'
+              ELSE status
+            END,
+            resolvedDocumentId = ?,
+            teacherNote = COALESCE(
+              teacherNote,
+              'Source document was replaced with a corrected version.'
+            ),
+            reviewedAt = CASE
+              WHEN status IN ('pending', 'reviewing') THEN NOW()
+              ELSE reviewedAt
+            END
+          WHERE documentId = ?
+          `,
+          [documentId, replaceTargetDocumentId],
+        );
+      } catch (reportUpdateError) {
+        console.log(
+          "Update message reports after replace failed:",
+          reportUpdateError.message,
+        );
+      }
+    }
 
     if (uploadedBy === "student") {
       await insertStudentActivity(connection, {
@@ -1073,6 +1224,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       needConfirm: false,
       versionCreated: shouldReplaceOld || false,
       replacedOld: shouldReplaceOld,
+      replacedDocumentId: shouldReplaceOld ? replaceTargetDocumentId : null,
       duplicateType: duplicateInfo ? "content" : null,
       message: shouldReplaceOld
         ? `Replaced old file with "${fileName}" successfully.`

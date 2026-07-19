@@ -11,6 +11,7 @@ import {
   updateChatSession,
   getMetadata,
   updateChatMessageApproved,
+  reportMessage,
 } from "../../services/api";
 import "./Member.scss";
 
@@ -27,6 +28,16 @@ const defaultUploadMeta = {
   tags: "",
   summary: "",
 };
+
+const REPORT_REASONS = [
+  { value: "incorrect_answer", label: "AI answer is incorrect" },
+  { value: "wrong_document_content", label: "Document content is wrong" },
+  { value: "misleading_content", label: "Answer is misleading" },
+  { value: "unsafe_content", label: "Unsafe or inappropriate content" },
+  { value: "outdated_content", label: "Outdated content" },
+  { value: "other", label: "Other" },
+];
+
 
 const splitTags = (value = "") => {
   return String(value || "")
@@ -177,6 +188,11 @@ const ChatArea = ({
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [toast, setToast] = useState(null);
+
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportReason, setReportReason] = useState("wrong_document_content");
+  const [reportDescription, setReportDescription] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   const [pendingUploadFile, setPendingUploadFile] = useState(null);
   const [showUploadMetaModal, setShowUploadMetaModal] = useState(false);
@@ -669,6 +685,63 @@ const ChatArea = ({
     }
   };
 
+  const openReportModal = (aiMessage) => {
+    if (!aiMessage?.id || String(aiMessage.id).startsWith("temp-")) {
+      showToast("error", "Cannot report this message", "Please wait until the AI answer is saved.");
+      return;
+    }
+
+    setReportTarget(aiMessage);
+    setReportReason("wrong_document_content");
+    setReportDescription("");
+  };
+
+  const closeReportModal = () => {
+    if (submittingReport) return;
+
+    setReportTarget(null);
+    setReportReason("wrong_document_content");
+    setReportDescription("");
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportTarget?.id || !conversationId || !user?.userId) {
+      showToast("error", "Cannot submit report", "Missing message or user information.");
+      return;
+    }
+
+    try {
+      setSubmittingReport(true);
+
+      await reportMessage({
+        messageId: reportTarget.id,
+        sessionId: conversationId,
+        documentId: selectedDocument?.documentId || activeConversation?.documentId || null,
+        studentId: user.userId,
+        reason: reportReason,
+        description: reportDescription,
+      });
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === reportTarget.id ? { ...msg, reported: true } : msg,
+        ),
+      );
+
+      showToast(
+        "success",
+        "Report submitted",
+        "Teacher will review the answer and related document.",
+      );
+
+      closeReportModal();
+    } catch (error) {
+      showToast("error", "Report failed", error.message);
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
   return (
     <>
       <input
@@ -853,6 +926,60 @@ const ChatArea = ({
         </Modal.Footer>
       </Modal>
 
+      <Modal show={Boolean(reportTarget)} onHide={closeReportModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Report AI answer</Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body>
+          <p className="text-muted">
+            Use this when the AI answer may be wrong because the source document
+            contains incorrect, outdated, or misleading content.
+          </p>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Reason</Form.Label>
+            <Form.Select
+              value={reportReason}
+              onChange={(event) => setReportReason(event.target.value)}
+            >
+              {REPORT_REASONS.map((reason) => (
+                <option key={reason.value} value={reason.value}>
+                  {reason.label}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Description</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={4}
+              value={reportDescription}
+              placeholder="Example: The document says AI can be used in the final exam, but the real exam rule does not allow AI."
+              onChange={(event) => setReportDescription(event.target.value)}
+            />
+          </Form.Group>
+
+          <div className="p-3 rounded bg-light">
+            <div className="fw-bold mb-2">Reported answer</div>
+            <div style={{ maxHeight: 160, overflow: "auto", whiteSpace: "pre-wrap" }}>
+              {reportTarget?.content}
+            </div>
+          </div>
+        </Modal.Body>
+
+        <Modal.Footer>
+          <Button variant="secondary" disabled={submittingReport} onClick={closeReportModal}>
+            Cancel
+          </Button>
+          <Button variant="danger" disabled={submittingReport} onClick={handleSubmitReport}>
+            {submittingReport ? "Submitting..." : "Submit report"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       {toast && (
         <div className={`member-toast member-toast--${toast.type}`}>
           <div className="member-toast__main">
@@ -923,15 +1050,29 @@ const ChatArea = ({
                   {msg.content}
 
                   {msg.role === "ai" && (
-                    <button
-                      className={`member-chat__approve-btn ${
-                        msg.approved ? "member-chat__approve-btn--active" : ""
-                      }`}
-                      title="Đánh dấu câu trả lời này phù hợp"
-                      onClick={() => handleToggleApproved(msg)}
-                    >
-                      <i className="ti ti-check" />
-                    </button>
+                    <div className="member-chat__message-actions">
+                      <button
+                        className={`member-chat__approve-btn ${
+                          msg.approved ? "member-chat__approve-btn--active" : ""
+                        }`}
+                        title="Đánh dấu câu trả lời này phù hợp"
+                        onClick={() => handleToggleApproved(msg)}
+                      >
+                        <i className="ti ti-check" />
+                      </button>
+
+                      <button
+                        className={`member-chat__report-btn ${
+                          msg.reported ? "member-chat__report-btn--active" : ""
+                        }`}
+                        title="Report this AI answer"
+                        onClick={() => openReportModal(msg)}
+                        disabled={Boolean(msg.reported)}
+                      >
+                        <i className={msg.reported ? "ti ti-flag-filled" : "ti ti-flag"} />
+                        {msg.reported ? "Reported" : "Report"}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -957,6 +1098,14 @@ const ChatArea = ({
           disabled={uploading || loading}
         >
           <i className="ti ti-paperclip" />
+        </button>
+
+        <button
+          className="member-chat__tool-btn member-chat__tool-btn--mic"
+          title="Voice input"
+          type="button"
+        >
+          <i className="ti ti-microphone" />
         </button>
 
         <Form.Control
