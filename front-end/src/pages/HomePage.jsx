@@ -98,12 +98,6 @@ const HomePage = () => {
         >
           <i className="ti ti-paperclip" />
         </button>
-        <button
-          className="homepage__tool-btn homepage__tool-btn--mic"
-          title="Voice input"
-        >
-          <i className="ti ti-microphone" />
-        </button>
         <Form.Control
           className="homepage__input"
           type="text"
