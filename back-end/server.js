@@ -14,7 +14,7 @@ import chatHistoryRoutes from "./routes/chatHistoryRoutes.js";
 import swaggerSpec from "./swagger.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
-
+import reportRoutes from "./routes/reportRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -59,7 +59,7 @@ app.use("/users", userRoutes);
 app.use("/chat-history", chatHistoryRoutes);
 app.use("/feedback", feedbackRoutes);
 app.use("/notifications", notificationRoutes);
-
+app.use("/reports", reportRoutes);
 try {
   const connection = await pool.getConnection();
   console.log("MySQL Connected");
