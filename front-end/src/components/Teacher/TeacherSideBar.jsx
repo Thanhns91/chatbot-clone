@@ -9,6 +9,11 @@ const NAV = [
     icon: "bi-folder-symlink-fill",
     label: "Student Files",
   },
+  {
+    id: "reports",
+    icon: "bi-flag-fill",
+    label: "Reports",
+  },
   { id: "profile", icon: "bi-person-fill", label: "Profile" },
 ];
 

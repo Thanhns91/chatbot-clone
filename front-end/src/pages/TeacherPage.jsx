@@ -10,6 +10,7 @@ import MaterialsTab from "../components/Teacher/MaterialsTab";
 import ProfileTab from "../components/Teacher/ProfileTab";
 import StudentFilesTab from "../components/Teacher/StudentFilesTab";
 import StudentSummaryTab from "../components/Teacher/StudentSummaryTab";
+import MessageReportsPage from "../components/Teacher/MessageReportsPage";
 
 import "../components/Teacher/Teacher.scss";
 
@@ -29,6 +30,10 @@ const PAGE_META = {
   "student-files": {
     title: "Student Files",
     sub: "AI Learning — Browse and manage files submitted by students",
+  },
+  reports: {
+    title: "Message Reports",
+    sub: "AI Learning — Review reported AI answers and document issues",
   },
   profile: {
     title: "Profile",
@@ -162,6 +167,7 @@ export default function TeacherPage() {
           {activePage === "materials" && <MaterialsTab />}
           {activePage === "summary" && <StudentSummaryTab />}
           {activePage === "student-files" && <StudentFilesTab />}
+          {activePage === "reports" && <MessageReportsPage user={user} />}
           {activePage === "profile" && (
             <ProfileTab user={user} onUserUpdated={handleUserUpdated} />
           )}
