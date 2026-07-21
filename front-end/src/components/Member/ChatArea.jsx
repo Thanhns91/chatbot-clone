@@ -229,6 +229,11 @@ const ChatArea = ({
     );
   }, [topics, uploadMeta.subjectId]);
 
+  const isTeacherDocument =
+    selectedDocument?.uploadedBy === "teacher" ||
+    activeConversation?.uploadedBy === "teacher";
+
+
   const loadMetadata = async () => {
     try {
       setMetadataLoading(true);
@@ -296,6 +301,7 @@ const ChatArea = ({
           setSelectedDocument?.({
             documentId: activeConversation.documentId,
             fileName: activeConversation.fileName || "Uploaded document",
+            uploadedBy: activeConversation.uploadedBy,
           });
         }
 
@@ -320,6 +326,7 @@ const ChatArea = ({
     conversationId,
     activeConversation?.documentId,
     activeConversation?.fileName,
+    activeConversation?.uploadedBy,
     setSelectedDocument,
   ]);
 
@@ -493,6 +500,7 @@ const ChatArea = ({
         id: conversationId,
         documentId: result.documentId,
         fileName: result.fileName,
+        uploadedBy,
         preview: result.duplicate
           ? `Saved as Version ${result.versionNo || 2}: ${result.fileName}`
           : result.fileName,
@@ -701,6 +709,15 @@ const ChatArea = ({
   };
 
   const openReportModal = (aiMessage) => {
+    if (!isTeacherDocument) {
+      showToast(
+        "warning",
+        "Cannot report this answer",
+        "Only AI answers based on teacher-uploaded documents can be reported.",
+      );
+      return;
+    }
+
     if (!aiMessage?.id || String(aiMessage.id).startsWith("temp-")) {
       showToast("error", "Cannot report this message", "Please wait until the AI answer is saved.");
       return;
@@ -722,6 +739,15 @@ const ChatArea = ({
   const handleSubmitReport = async () => {
     if (!reportTarget?.id || !conversationId || !user?.userId) {
       showToast("error", "Cannot submit report", "Missing message or user information.");
+      return;
+    }
+
+    if (!isTeacherDocument) {
+      showToast(
+        "warning",
+        "Cannot report this answer",
+        "Only AI answers based on teacher-uploaded documents can be reported.",
+      );
       return;
     }
 
@@ -1101,17 +1127,19 @@ const ChatArea = ({
                         <i className="ti ti-check" />
                       </button>
 
-                      <button
-                        className={`member-chat__report-btn ${
-                          msg.reported ? "member-chat__report-btn--active" : ""
-                        }`}
-                        title="Report this AI answer"
-                        onClick={() => openReportModal(msg)}
-                        disabled={Boolean(msg.reported)}
-                      >
-                        <i className={msg.reported ? "ti ti-flag-filled" : "ti ti-flag"} />
-                        {msg.reported ? "Reported" : "Report"}
-                      </button>
+                      {isTeacherDocument && (
+                        <button
+                          className={`member-chat__report-btn ${
+                            msg.reported ? "member-chat__report-btn--active" : ""
+                          }`}
+                          title="Report this AI answer"
+                          onClick={() => openReportModal(msg)}
+                          disabled={Boolean(msg.reported)}
+                        >
+                          <i className={msg.reported ? "ti ti-flag-filled" : "ti ti-flag"} />
+                          {msg.reported ? "Reported" : "Report"}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

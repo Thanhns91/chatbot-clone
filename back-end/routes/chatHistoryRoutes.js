@@ -20,6 +20,7 @@ router.get("/sessions/:userId", async (req, res) => {
         COALESCE(cs.isStarred, FALSE) AS isStarred,
         cs.starredAt,
         d.fileName,
+        d.uploadedBy,
         (
           SELECT cm.message
           FROM ChatMessages cm
@@ -50,6 +51,7 @@ router.get("/sessions/:userId", async (req, res) => {
       starred: Boolean(s.isStarred),
       isStarred: Boolean(s.isStarred),
       starredAt: s.starredAt,
+      uploadedBy: s.uploadedBy,
     }));
 
     res.json(formatted);

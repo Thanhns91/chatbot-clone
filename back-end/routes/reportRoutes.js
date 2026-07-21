@@ -156,39 +156,56 @@ router.post("/message", async (req, res) => {
     let document = null;
     let teacherId = null;
 
-    if (targetDocumentId) {
-      const [docRows] = await pool.query(
-        `
-        SELECT
-          d.documentId,
-          d.fileName,
-          d.fileUrl,
-          d.uploaderId,
-          d.uploadedBy,
-          d.reviewStatus,
-          d.subjectId,
-          d.topicId,
-          d.documentTypeId,
-          d.levelId,
-          d.tags,
-          d.summary,
-          u.fullName AS uploaderName,
-          u.role AS uploaderRole
-        FROM Documents d
-        LEFT JOIN Users u ON d.uploaderId = u.userId
-        WHERE d.documentId = ?
-          AND d.isDeleted = FALSE
-        LIMIT 1
-        `,
-        [targetDocumentId],
-      );
-
-      document = docRows[0] || null;
-
-      if (document && document.uploadedBy === "teacher") {
-        teacherId = document.uploaderId;
-      }
+    if (!targetDocumentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Report requires a teacher-uploaded source document",
+      });
     }
+
+    const [docRows] = await pool.query(
+      `
+      SELECT
+        d.documentId,
+        d.fileName,
+        d.fileUrl,
+        d.uploaderId,
+        d.uploadedBy,
+        d.reviewStatus,
+        d.subjectId,
+        d.topicId,
+        d.documentTypeId,
+        d.levelId,
+        d.tags,
+        d.summary,
+        u.fullName AS uploaderName,
+        u.role AS uploaderRole
+      FROM Documents d
+      LEFT JOIN Users u ON d.uploaderId = u.userId
+      WHERE d.documentId = ?
+        AND d.isDeleted = FALSE
+      LIMIT 1
+      `,
+      [targetDocumentId],
+    );
+
+    document = docRows[0] || null;
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: "Related document not found",
+      });
+    }
+
+    if (document.uploadedBy !== "teacher") {
+      return res.status(400).json({
+        success: false,
+        message: "Only teacher-uploaded documents can be reported",
+      });
+    }
+
+    teacherId = document.uploaderId;
 
     const questionText = await getPreviousUserQuestion(
       sessionId,
@@ -333,7 +350,7 @@ router.get("/teacher/:teacherId", async (req, res) => {
     const params = [];
 
     if (role !== "admin") {
-      sql += ` AND (mr.teacherId = ? OR mr.teacherId IS NULL)`;
+      sql += ` AND mr.teacherId = ?`;
       params.push(teacherId);
     }
 
