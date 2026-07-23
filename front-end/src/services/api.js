@@ -1,5 +1,6 @@
-export const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:3000";
+const normalizeApiUrl = (url) => String(url || "http://localhost:3000").replace(/\/+$/, "");
+
+export const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL);
 
 const buildQuery = (params = {}) => {
   const searchParams = new URLSearchParams();

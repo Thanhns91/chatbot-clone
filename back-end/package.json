@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node --watch server.js",
+    "local": "node --watch server.js"
   },
   "keywords": [],
   "author": "",
@@ -25,7 +26,7 @@
     "mammoth": "^1.12.0",
     "multer": "^2.1.1",
     "mysql2": "^3.22.4",
-    "nodemailer": "^8.0.11",
+    "nodemailer": "^9.0.3",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pdf-parse": "^2.4.5",
