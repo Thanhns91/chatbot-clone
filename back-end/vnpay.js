@@ -49,7 +49,22 @@ export function getVnpayConfig() {
   const paymentUrl = String(
     process.env.VNPAY_PAYMENT_URL || DEFAULT_PAYMENT_URL,
   ).trim();
-  const returnUrl = String(process.env.VNPAY_RETURN_URL || "").trim();
+
+  // Luôn ưu tiên dựng Return URL từ public backend URL để tránh cấu hình nhầm
+  // VNPAY quay thẳng về frontend (khi đó backend không thể finalize payment).
+  const publicApiUrl = String(
+    process.env.PUBLIC_API_URL || process.env.SERVER_URL || "",
+  )
+    .trim()
+    .replace(/\/+$/, "");
+
+  const configuredReturnUrl = String(
+    process.env.VNPAY_RETURN_URL || "",
+  ).trim();
+
+  const returnUrl = publicApiUrl
+    ? `${publicApiUrl}/subscriptions/vnpay/return`
+    : configuredReturnUrl;
 
   if (!tmnCode) {
     throw new Error("Missing VNPAY_TMN_CODE");

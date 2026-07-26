@@ -54,6 +54,31 @@ const redirectPaymentResult = (res, { status, txnRef = "", responseCode = "" }) 
 };
 
 /**
+ * GET /subscriptions/vnpay/config-check
+ *
+ * Chỉ trả URL public để kiểm tra cấu hình. Không bao giờ trả HashSecret.
+ */
+router.get("/vnpay/config-check", (req, res) => {
+  try {
+    const config = getVnpayConfig();
+
+    return res.json({
+      success: true,
+      data: {
+        paymentUrl: config.paymentUrl,
+        returnUrl: config.returnUrl,
+        frontendReturnUrl: getFrontendReturnUrl(),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Invalid VNPAY configuration",
+    });
+  }
+});
+
+/**
  * GET /subscriptions/plans
  */
 router.get("/plans", async (req, res) => {
@@ -434,8 +459,11 @@ router.get("/vnpay/ipn", async (req, res) => {
 /**
  * GET /subscriptions/vnpay/return
  *
- * Return URL chỉ dùng để đưa browser về frontend. Không kích hoạt gói ở đây;
- * việc cập nhật database do IPN xử lý.
+ * IPN vẫn là luồng xác nhận chính. Tuy nhiên với Sandbox/demo, nếu IPN về chậm
+ * hoặc chưa được VNPAY gọi tới, Return URL sẽ xác thực chữ ký + số tiền rồi
+ * finalize luôn để user không bị treo ở trạng thái pending sau khi đã trả tiền.
+ * finalizeVnpayPayment() có transaction + row lock nên gọi lặp từ IPN/Return
+ * vẫn an toàn: giao dịch đã xác nhận sẽ trả already_confirmed.
  */
 router.get("/vnpay/return", async (req, res) => {
   try {
@@ -444,6 +472,15 @@ router.get("/vnpay/return", async (req, res) => {
     );
     const responseCode = String(
       getSingleQueryValue(req.query.vnp_ResponseCode) || "",
+    );
+    const transactionStatus = String(
+      getSingleQueryValue(req.query.vnp_TransactionStatus) || "",
+    );
+    const gatewayTransactionNo = String(
+      getSingleQueryValue(req.query.vnp_TransactionNo) || "",
+    );
+    const amountRaw = Number(
+      getSingleQueryValue(req.query.vnp_Amount) || 0,
     );
 
     if (!verifyVnpaySignature(req.query)) {
@@ -454,20 +491,7 @@ router.get("/vnpay/return", async (req, res) => {
       });
     }
 
-    const payment = await getPaymentByTransactionCode(transactionCode);
-
-    if (!payment) {
-      return redirectPaymentResult(res, {
-        status: "not-found",
-        txnRef: transactionCode,
-        responseCode,
-      });
-    }
-
-    const returnedAmount =
-      Number(getSingleQueryValue(req.query.vnp_Amount) || 0) / 100;
-
-    if (Math.round(returnedAmount) !== Math.round(payment.finalAmount)) {
+    if (!transactionCode || !Number.isFinite(amountRaw) || amountRaw <= 0) {
       return redirectPaymentResult(res, {
         status: "invalid",
         txnRef: transactionCode,
@@ -475,14 +499,26 @@ router.get("/vnpay/return", async (req, res) => {
       });
     }
 
-    const gatewaySuccess =
-      responseCode === "00" &&
-      String(getSingleQueryValue(req.query.vnp_TransactionStatus) || "") === "00";
+    const result = await finalizeVnpayPayment({
+      transactionCode,
+      gatewayAmountVnd: amountRaw / 100,
+      responseCode,
+      transactionStatus,
+      gatewayTransactionNo: gatewayTransactionNo || null,
+    });
 
-    let status = "failed";
+    let status = "error";
 
-    if (gatewaySuccess) {
-      status = payment.status === "paid" ? "success" : "pending";
+    if (result.result === "confirmed_paid") {
+      status = "success";
+    } else if (result.result === "confirmed_failed") {
+      status = "failed";
+    } else if (result.result === "not_found") {
+      status = "not-found";
+    } else if (result.result === "invalid_amount") {
+      status = "invalid";
+    } else if (result.result === "already_confirmed") {
+      status = result.paymentStatus === "paid" ? "success" : "failed";
     }
 
     return redirectPaymentResult(res, {
