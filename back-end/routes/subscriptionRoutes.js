@@ -5,6 +5,8 @@ import {
   getActiveSubscription,
   getUserStorageInfo,
   calculateUpgradePreview,
+  scheduleSubscriptionCancellation,
+  resumeSubscription,
   createPendingVnpayPayment,
   finalizeVnpayPayment,
   getPaymentByTransactionCode,
@@ -169,6 +171,73 @@ router.get("/storage/:userId", async (req, res) => {
       success: false,
       message: "Cannot load storage information",
       detail: error.message,
+    });
+  }
+});
+
+/**
+ * POST /subscriptions/cancel
+ *
+ * Đặt hủy ở cuối chu kỳ. Gói vẫn còn hiệu lực tới endDate.
+ */
+router.post("/cancel", async (req, res) => {
+  try {
+    const userId = Number(req.body.userId);
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid userId",
+      });
+    }
+
+    const result = await scheduleSubscriptionCancellation(userId);
+
+    return res.json({
+      success: true,
+      message:
+        "Gói đã được đặt hủy. Bạn vẫn sử dụng gói hiện tại đến ngày hết hạn.",
+      data: result,
+    });
+  } catch (error) {
+    console.log("Cancel subscription failed:", error);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Cannot cancel subscription",
+    });
+  }
+});
+
+/**
+ * POST /subscriptions/resume
+ *
+ * Hủy yêu cầu cancel-at-period-end nếu user đổi ý trước ngày hết hạn.
+ */
+router.post("/resume", async (req, res) => {
+  try {
+    const userId = Number(req.body.userId);
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid userId",
+      });
+    }
+
+    const result = await resumeSubscription(userId);
+
+    return res.json({
+      success: true,
+      message: "Đã tiếp tục gói hiện tại.",
+      data: result,
+    });
+  } catch (error) {
+    console.log("Resume subscription failed:", error);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Cannot resume subscription",
     });
   }
 });

@@ -530,6 +530,20 @@ export async function getUpgradePreview(userId, targetPlanId) {
   });
 }
 
+export async function cancelSubscription(userId) {
+  return requestJson("/subscriptions/cancel", {
+    method: "POST",
+    body: { userId },
+  });
+}
+
+export async function resumeSubscription(userId) {
+  return requestJson("/subscriptions/resume", {
+    method: "POST",
+    body: { userId },
+  });
+}
+
 export async function createVnpayPayment(
   userId,
   targetPlanId,

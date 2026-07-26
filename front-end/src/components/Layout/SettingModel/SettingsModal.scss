@@ -713,6 +713,93 @@ html[data-theme="dark"] .sm-close.btn {
   font-size: 12px;
 }
 
+.sm-subscription-info {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.sm-subscription-info__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+  font-size: 12.5px;
+
+  span {
+    color: #64748b;
+  }
+
+  strong {
+    color: #0f172a;
+    text-align: right;
+  }
+}
+
+.sm-cancel-button,
+.sm-resume-button {
+  &.btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+}
+
+.sm-cancel-button {
+  &.btn {
+    border: 1px solid #fecaca;
+    background: #fff;
+    color: #b91c1c;
+
+    &:hover {
+      border-color: #fca5a5;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+  }
+}
+
+.sm-cancel-scheduled {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  background: #fffbeb;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  strong {
+    color: #92400e;
+    font-size: 12.5px;
+  }
+
+  span {
+    color: #a16207;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+}
+
+.sm-resume-button {
+  &.btn {
+    border: none;
+    background: #d97706;
+    color: #fff;
+
+    &:hover {
+      background: #b45309;
+      color: #fff;
+    }
+  }
+}
+
 .sm-plan-heading {
   h3 {
     margin: 0;
@@ -1035,6 +1122,44 @@ html[data-theme="dark"] {
     color: #cbd5e1;
   }
 
+  .sm-subscription-info {
+    border-top-color: #334155;
+  }
+
+  .sm-subscription-info__row span {
+    color: #cbd5e1;
+  }
+
+  .sm-subscription-info__row strong {
+    color: #f8fafc;
+  }
+
+  .sm-cancel-button {
+    &.btn {
+      border-color: #7f1d1d;
+      background: #1e293b;
+      color: #fecaca;
+
+      &:hover {
+        background: #450a0a;
+        color: #fecaca;
+      }
+    }
+  }
+
+  .sm-cancel-scheduled {
+    border-color: #92400e;
+    background: #451a03;
+
+    strong {
+      color: #fde68a;
+    }
+
+    span {
+      color: #fcd34d;
+    }
+  }
+
   .sm-payment-notice {
     background: #172554;
     color: #bfdbfe;
@@ -1048,3 +1173,110 @@ html[data-theme="dark"] {
   }
 }
 
+
+/* =========================
+   RENEW EXPIRED SUBSCRIPTION
+========================= */
+
+.sm-renewal-card {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #fde68a;
+  border-radius: 14px;
+  background: #fffbeb;
+}
+
+.sm-renewal-card__icon {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 18px;
+}
+
+.sm-renewal-card__content {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  > strong {
+    color: #92400e;
+    font-size: 14px;
+  }
+
+  > span {
+    color: #78350f;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+}
+
+.sm-renewal-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.sm-renew-button.btn {
+  border: none;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+
+  &:hover,
+  &:focus {
+    background: #4338ca;
+    color: #fff;
+  }
+}
+
+.sm-renew-decline-button.btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #475569;
+  font-size: 12.5px;
+  font-weight: 600;
+
+  &:hover,
+  &:focus {
+    border-color: #94a3b8;
+    background: #f8fafc;
+    color: #334155;
+  }
+}
+
+html[data-theme="dark"] {
+  .sm-renewal-card {
+    border-color: #92400e;
+    background: #451a03;
+  }
+
+  .sm-renewal-card__icon {
+    background: #78350f;
+    color: #fde68a;
+  }
+
+  .sm-renewal-card__content > strong {
+    color: #fde68a;
+  }
+
+  .sm-renewal-card__content > span {
+    color: #fef3c7;
+  }
+
+  .sm-renew-decline-button.btn {
+    border-color: #475569;
+    background: #1e293b;
+    color: #cbd5e1;
+  }
+}

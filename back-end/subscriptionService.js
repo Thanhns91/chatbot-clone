@@ -15,6 +15,23 @@ function normalizePlan(plan) {
   };
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function calculateDaysBetween(startValue, endValue) {
+  const start = new Date(startValue).getTime();
+  const end = new Date(endValue).getTime();
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return 0;
+  }
+
+  return Math.max(Math.ceil((end - start) / DAY_MS), 0);
+}
+
+function calculateRemainingDays(endValue) {
+  return calculateDaysBetween(Date.now(), endValue);
+}
+
 function calculatePreviewFromRows(currentSubscription, targetPlan) {
   const normalizedTarget = normalizePlan(targetPlan);
 
@@ -43,6 +60,8 @@ function calculatePreviewFromRows(currentSubscription, targetPlan) {
       originalAmount: normalizedTarget.price,
       discountAmount: 0,
       finalAmount: normalizedTarget.price,
+      totalDays: normalizedTarget.durationDays,
+      remainingDays: normalizedTarget.durationDays,
       remainingRatio: 1,
       startDate: null,
       endDate: null,
@@ -55,20 +74,32 @@ function calculatePreviewFromRows(currentSubscription, targetPlan) {
     throw new Error("Target plan must have a higher price than current plan");
   }
 
-  const start = new Date(currentSubscription.startDate).getTime();
-  const end = new Date(currentSubscription.endDate).getTime();
-  const now = Date.now();
+  // Dùng durationDays của plan làm chu kỳ tính giá, không dùng khoảng
+  // startDate -> endDate. Điều này quan trọng khi user upgrade nhiều lần:
+  // subscription mới bắt đầu giữa chu kỳ nhưng giá/ngày vẫn phải dựa trên
+  // giá niêm yết của plan / durationDays (ví dụ 30 ngày).
+  const currentPlanDays = Math.max(
+    Number(currentSubscription.durationDays || 30),
+    1,
+  );
+  const targetPlanDays = Math.max(Number(normalizedTarget.durationDays || 30), 1);
+  const remainingDays = Math.min(
+    calculateRemainingDays(currentSubscription.endDate),
+    currentPlanDays,
+  );
 
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-    throw new Error("Current subscription period is invalid");
+  if (remainingDays <= 0) {
+    throw new Error("Current subscription period is invalid or expired");
   }
 
-  const totalTime = end - start;
-  const remainingTime = Math.max(end - now, 0);
-  const remainingRatio = remainingTime / totalTime;
-
-  const oldPlanCredit = currentPrice * remainingRatio;
-  const targetRemainingCost = normalizedTarget.price * remainingRatio;
+  // Ví dụ Basic 50k/30 -> Pro 100k/30, còn 20 ngày:
+  // credit Basic = 50k / 30 * 20
+  // chi phí Pro = 100k / 30 * 20
+  // user chỉ trả phần chênh lệch.
+  const remainingRatio = remainingDays / currentPlanDays;
+  const oldPlanCredit = (currentPrice / currentPlanDays) * remainingDays;
+  const targetRemainingCost =
+    (normalizedTarget.price / targetPlanDays) * remainingDays;
   const finalAmount = Math.max(targetRemainingCost - oldPlanCredit, 0);
 
   return {
@@ -83,13 +114,30 @@ function calculatePreviewFromRows(currentSubscription, targetPlan) {
     originalAmount: Math.round(targetRemainingCost),
     discountAmount: Math.round(oldPlanCredit),
     finalAmount: Math.round(finalAmount),
+    totalDays: currentPlanDays,
+    targetDurationDays: targetPlanDays,
+    remainingDays,
     remainingRatio: Number(remainingRatio.toFixed(6)),
     startDate: currentSubscription.startDate,
     endDate: currentSubscription.endDate,
   };
 }
 
-export async function getActiveSubscription(userId) {
+
+async function expireEndedSubscriptions(userId) {
+  await pool.query(
+    `
+    UPDATE UserSubscriptions
+    SET status = 'expired'
+    WHERE userId = ?
+      AND status = 'active'
+      AND endDate <= NOW()
+    `,
+    [userId],
+  );
+}
+
+async function getLatestExpiredSubscription(userId) {
   const [rows] = await pool.query(
     `
     SELECT
@@ -100,6 +148,46 @@ export async function getActiveSubscription(userId) {
       us.endDate,
       us.amountPaid,
       us.status AS subscriptionStatus,
+      us.cancelAtPeriodEnd,
+      us.cancelledAt,
+      us.previousSubscriptionId,
+      sp.planName,
+      sp.description,
+      sp.storageLimitBytes,
+      sp.price,
+      sp.durationDays,
+      sp.status AS planStatus
+    FROM UserSubscriptions us
+    INNER JOIN SubscriptionPlans sp
+      ON sp.planId = us.planId
+    WHERE us.userId = ?
+      AND us.status = 'expired'
+      AND sp.status = 'active'
+      AND sp.price > 0
+    ORDER BY us.endDate DESC, us.subscriptionId DESC
+    LIMIT 1
+    `,
+    [userId],
+  );
+
+  return rows[0] || null;
+}
+
+export async function getActiveSubscription(userId) {
+  await expireEndedSubscriptions(userId);
+
+  const [rows] = await pool.query(
+    `
+    SELECT
+      us.subscriptionId,
+      us.userId,
+      us.planId,
+      us.startDate,
+      us.endDate,
+      us.amountPaid,
+      us.status AS subscriptionStatus,
+      us.cancelAtPeriodEnd,
+      us.cancelledAt,
       us.previousSubscriptionId,
 
       sp.planName,
@@ -156,6 +244,9 @@ export async function getUsedStorage(userId) {
 
 export async function getUserStorageInfo(userId) {
   const subscription = await getActiveSubscription(userId);
+  const renewalOffer = subscription
+    ? null
+    : await getLatestExpiredSubscription(userId);
   const usage = await getUsedStorage(userId);
 
   const limitBytes = subscription
@@ -196,6 +287,20 @@ export async function getUserStorageInfo(userId) {
           endDate: subscription.endDate,
           amountPaid: Number(subscription.amountPaid || 0),
           status: subscription.subscriptionStatus,
+          cancelAtPeriodEnd: Boolean(subscription.cancelAtPeriodEnd),
+          cancelledAt: subscription.cancelledAt || null,
+          remainingDays: calculateRemainingDays(subscription.endDate),
+        }
+      : null,
+    renewalOffer: renewalOffer
+      ? {
+          subscriptionId: renewalOffer.subscriptionId,
+          planId: renewalOffer.planId,
+          planName: renewalOffer.planName,
+          price: Number(renewalOffer.price || 0),
+          storageLimitBytes: Number(renewalOffer.storageLimitBytes || 0),
+          durationDays: Number(renewalOffer.durationDays || 30),
+          expiredAt: renewalOffer.endDate,
         }
       : null,
   };
@@ -291,6 +396,8 @@ async function getLockedActiveSubscription(connection, userId) {
       us.endDate,
       us.amountPaid,
       us.status AS subscriptionStatus,
+      us.cancelAtPeriodEnd,
+      us.cancelledAt,
       us.previousSubscriptionId,
       sp.planName,
       sp.description,
@@ -314,6 +421,108 @@ async function getLockedActiveSubscription(connection, userId) {
   );
 
   return rows[0] || null;
+}
+
+export async function scheduleSubscriptionCancellation(userId) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const subscription = await getLockedActiveSubscription(connection, userId);
+
+    if (!subscription) {
+      throw new Error("No active paid subscription found");
+    }
+
+    if (subscription.cancelAtPeriodEnd) {
+      await connection.commit();
+      return {
+        changed: false,
+        subscriptionId: subscription.subscriptionId,
+        endDate: subscription.endDate,
+        remainingDays: calculateRemainingDays(subscription.endDate),
+        cancelAtPeriodEnd: true,
+      };
+    }
+
+    await connection.query(
+      `
+      UPDATE UserSubscriptions
+      SET
+        cancelAtPeriodEnd = TRUE,
+        cancelledAt = NOW()
+      WHERE subscriptionId = ?
+      `,
+      [subscription.subscriptionId],
+    );
+
+    await connection.commit();
+
+    return {
+      changed: true,
+      subscriptionId: subscription.subscriptionId,
+      endDate: subscription.endDate,
+      remainingDays: calculateRemainingDays(subscription.endDate),
+      cancelAtPeriodEnd: true,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function resumeSubscription(userId) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const subscription = await getLockedActiveSubscription(connection, userId);
+
+    if (!subscription) {
+      throw new Error("No active paid subscription found");
+    }
+
+    if (!subscription.cancelAtPeriodEnd) {
+      await connection.commit();
+      return {
+        changed: false,
+        subscriptionId: subscription.subscriptionId,
+        endDate: subscription.endDate,
+        remainingDays: calculateRemainingDays(subscription.endDate),
+        cancelAtPeriodEnd: false,
+      };
+    }
+
+    await connection.query(
+      `
+      UPDATE UserSubscriptions
+      SET
+        cancelAtPeriodEnd = FALSE,
+        cancelledAt = NULL
+      WHERE subscriptionId = ?
+      `,
+      [subscription.subscriptionId],
+    );
+
+    await connection.commit();
+
+    return {
+      changed: true,
+      subscriptionId: subscription.subscriptionId,
+      endDate: subscription.endDate,
+      remainingDays: calculateRemainingDays(subscription.endDate),
+      cancelAtPeriodEnd: false,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function createPendingVnpayPayment(userId, targetPlanId) {
@@ -366,6 +575,18 @@ export async function createPendingVnpayPayment(userId, targetPlanId) {
     );
 
     const targetPlan = normalizePlan(planRows[0] || null);
+
+    await connection.query(
+      `
+      UPDATE UserSubscriptions
+      SET status = 'expired'
+      WHERE userId = ?
+        AND status = 'active'
+        AND endDate <= NOW()
+      `,
+      [userId],
+    );
+
     const currentSubscription = await getLockedActiveSubscription(
       connection,
       userId,

@@ -6,6 +6,8 @@ import {
   getSubscriptionPlans,
   getUserStorage,
   getUpgradePreview,
+  cancelSubscription,
+  resumeSubscription,
   createVnpayPayment,
   getPaymentHistory,
   getPaymentStatus,
@@ -95,9 +97,11 @@ export default function SettingsModal({ user, onClose, onSave }) {
   const [upgradePreview, setUpgradePreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [subscriptionActionLoading, setSubscriptionActionLoading] = useState(false);
   const [paymentNotice, setPaymentNotice] = useState("");
   const [returnTxnRef, setReturnTxnRef] = useState("");
   const [planReloadToken, setPlanReloadToken] = useState(0);
+  const [renewalDismissed, setRenewalDismissed] = useState(false);
 
   useEffect(() => {
     applyThemeToDOM(theme);
@@ -429,6 +433,100 @@ export default function SettingsModal({ user, onClose, onSave }) {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    if (!user?.userId || !storage?.subscription) return;
+
+    const endDate = storage.subscription.endDate
+      ? new Date(storage.subscription.endDate).toLocaleDateString("vi-VN")
+      : "ngày hết hạn";
+
+    const confirmed = window.confirm(
+      `Bạn muốn hủy gói ${storage.plan?.planName || "hiện tại"}?\n\n` +
+        `Bạn vẫn được sử dụng gói đến ${endDate}. Khi hết hạn, hệ thống sẽ hỏi bạn có muốn gia hạn; nếu không, tài khoản dùng Free 150 MB.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setSubscriptionActionLoading(true);
+      setPlanError("");
+      setPaymentNotice("");
+
+      const result = await cancelSubscription(user.userId);
+
+      setPaymentNotice(
+        result.message ||
+          "Đã đặt hủy gói. Gói hiện tại vẫn dùng được đến ngày hết hạn.",
+      );
+      setSelectedPlan(null);
+      setUpgradePreview(null);
+      setPlanReloadToken((value) => value + 1);
+    } catch (error) {
+      console.error(error);
+      setPlanError(error.message || "Không thể hủy gói.");
+    } finally {
+      setSubscriptionActionLoading(false);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    if (!user?.userId || !storage?.subscription) return;
+
+    try {
+      setSubscriptionActionLoading(true);
+      setPlanError("");
+      setPaymentNotice("");
+
+      const result = await resumeSubscription(user.userId);
+
+      setPaymentNotice(result.message || "Đã tiếp tục gói hiện tại.");
+      setPlanReloadToken((value) => value + 1);
+    } catch (error) {
+      console.error(error);
+      setPlanError(error.message || "Không thể tiếp tục gói.");
+    } finally {
+      setSubscriptionActionLoading(false);
+    }
+  };
+
+  const handleRenewExpiredPlan = async () => {
+    const offer = storage?.renewalOffer;
+
+    if (!user?.userId || !offer?.planId) return;
+
+    const confirmed = window.confirm(
+      `Gói ${offer.planName} đã hết hạn.\n\n` +
+        `Gia hạn thêm ${offer.durationDays || 30} ngày với ${formatMoney(
+          offer.price,
+        )}?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setPaymentLoading(true);
+      setPlanError("");
+      setPaymentNotice("Đang tạo giao dịch gia hạn VNPAY Sandbox...");
+
+      const result = await createVnpayPayment(user.userId, offer.planId, {
+        locale: chatLanguage === "en" ? "en" : "vn",
+      });
+
+      const paymentUrl = result.data?.paymentUrl;
+
+      if (!paymentUrl) {
+        throw new Error("Backend không trả về VNPAY payment URL.");
+      }
+
+      window.location.assign(paymentUrl);
+    } catch (error) {
+      console.error(error);
+      setPlanError(error.message || "Không thể tạo giao dịch gia hạn VNPAY.");
+      setPaymentNotice("");
+      setPaymentLoading(false);
+    }
+  };
+
   return (
     <div
       className="sm-overlay"
@@ -614,6 +712,104 @@ export default function SettingsModal({ user, onClose, onSave }) {
                       <div className="sm-storage-docs">
                         {storage.documentCount || 0} tài liệu
                       </div>
+
+                      {storage.subscription && (
+                        <div className="sm-subscription-info">
+                          <div className="sm-subscription-info__row">
+                            <span>Thời gian còn lại</span>
+                            <strong>
+                              {storage.subscription.remainingDays || 0} ngày
+                            </strong>
+                          </div>
+
+                          <div className="sm-subscription-info__row">
+                            <span>Ngày hết hạn</span>
+                            <strong>
+                              {new Date(
+                                storage.subscription.endDate,
+                              ).toLocaleDateString("vi-VN")}
+                            </strong>
+                          </div>
+
+                          {storage.subscription.cancelAtPeriodEnd ? (
+                            <div className="sm-cancel-scheduled">
+                              <div>
+                                <strong>Đã đặt hủy gói</strong>
+                                <span>
+                                  Bạn vẫn dùng {storage.plan?.planName} đến ngày hết
+                                  hạn. Khi hết hạn, hệ thống sẽ hỏi bạn có muốn gia hạn.
+                                </span>
+                              </div>
+
+                              <Button
+                                type="button"
+                                className="sm-resume-button"
+                                disabled={subscriptionActionLoading}
+                                onClick={handleResumeSubscription}
+                              >
+                                {subscriptionActionLoading
+                                  ? "Đang xử lý..."
+                                  : "Tiếp tục gói"}
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              type="button"
+                              className="sm-cancel-button"
+                              disabled={subscriptionActionLoading}
+                              onClick={handleCancelSubscription}
+                            >
+                              {subscriptionActionLoading
+                                ? "Đang xử lý..."
+                                : "Hủy gói khi hết chu kỳ"}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {storage?.renewalOffer && !renewalDismissed && (
+                    <div className="sm-renewal-card">
+                      <div className="sm-renewal-card__icon">
+                        <i className="bi bi-arrow-clockwise"></i>
+                      </div>
+
+                      <div className="sm-renewal-card__content">
+                        <strong>
+                          Gói {storage.renewalOffer.planName} đã hết hạn
+                        </strong>
+
+                        <span>
+                          Hết hạn ngày {new Date(
+                            storage.renewalOffer.expiredAt,
+                          ).toLocaleDateString("vi-VN")}. Bạn có muốn gia hạn
+                          thêm {storage.renewalOffer.durationDays || 30} ngày với{" "}
+                          {formatMoney(storage.renewalOffer.price)} không?
+                        </span>
+
+                        <div className="sm-renewal-card__actions">
+                          <Button
+                            type="button"
+                            className="sm-renew-button"
+                            disabled={paymentLoading}
+                            onClick={handleRenewExpiredPlan}
+                          >
+                            {paymentLoading
+                              ? "Đang chuyển VNPAY..."
+                              : "Gia hạn qua VNPAY"}
+                          </Button>
+
+                          <Button
+                            type="button"
+                            className="sm-renew-decline-button"
+                            disabled={paymentLoading}
+                            onClick={() => setRenewalDismissed(true)}
+                          >
+                            Không, tiếp tục Free
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -707,6 +903,13 @@ export default function SettingsModal({ user, onClose, onSave }) {
 
                       {upgradePreview.type === "upgrade" && (
                         <>
+                          <div className="sm-plan-preview__row">
+                            <span>Số ngày còn lại của gói cũ</span>
+                            <strong>
+                              {upgradePreview.remainingDays || 0} / {upgradePreview.totalDays || 0} ngày
+                            </strong>
+                          </div>
+
                           <div className="sm-plan-preview__row">
                             <span>Giá gói mới cho thời gian còn lại</span>
                             <strong>
