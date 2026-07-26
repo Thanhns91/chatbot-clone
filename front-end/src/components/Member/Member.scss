@@ -767,6 +767,124 @@ body.theme-dark #root {
     }
   }
 }
+  // ══════════════════════════════════════════════
+  // AI TYPING BUBBLE
+  // ══════════════════════════════════════════════
+
+  &__typing-bubble {
+    width: fit-content;
+    min-width: 68px;
+    min-height: 46px;
+
+    padding: 14px 17px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  &__typing-dot {
+    width: 7px;
+    height: 7px;
+
+    border-radius: 50%;
+
+    background: #64748b;
+
+    animation: memberTypingDot 1.2s infinite ease-in-out;
+
+    &:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    @include dark-mode {
+      background: #cbd5e1;
+    }
+  }
+
+  // ══════════════════════════════════════════════
+  // SCROLL TO BOTTOM
+  // ══════════════════════════════════════════════
+
+  &__scroll-bottom {
+    position: fixed;
+
+    right: 32px;
+    bottom: 92px;
+
+    z-index: 200;
+
+    width: 44px;
+    height: 44px;
+
+    padding: 0;
+
+    border: 1px solid #dbe2ea;
+    border-radius: 50%;
+
+    background: #ffffff;
+    color: #334155;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 21px;
+
+    cursor: pointer;
+
+    box-shadow: 0 6px 22px rgba(15, 23, 42, 0.18);
+
+    transition:
+      transform 0.15s ease,
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+
+    .ti {
+      font-size: 21px;
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+
+      background: #f8fafc;
+
+      box-shadow: 0 9px 28px rgba(15, 23, 42, 0.22);
+    }
+
+    &:active {
+      transform: scale(0.94);
+    }
+
+    @include dark-mode {
+      background: $dark-surface-2;
+      border-color: $dark-border;
+      color: #f8fafc;
+
+      &:hover {
+        background: $dark-border;
+      }
+    }
+  }
+
+@keyframes memberTypingDot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+
+  30% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
 
 @keyframes memberFadeUp {
   from {
@@ -1333,8 +1451,16 @@ body.theme-dark #root {
       height: 48px;
       font-size: 14px;
     }
-  }
 
+        &__scroll-bottom {
+      right: 18px;
+      bottom: 82px;
+
+      width: 42px;
+      height: 42px;
+    }
+  }
+  
   .member-toast {
     top: 78px;
     right: 16px;

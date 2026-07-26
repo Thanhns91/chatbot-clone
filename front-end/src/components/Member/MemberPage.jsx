@@ -274,6 +274,7 @@ const MemberPage = () => {
   uploadedBy: doc.uploadedBy || null,
   preview: `Đang hỏi theo file: ${doc.fileName}`,
 });
+  };
 
   const handleUserUpdated = (updatedUser) => {
     setUser(updatedUser);

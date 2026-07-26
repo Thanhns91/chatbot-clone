@@ -38,7 +38,6 @@ const REPORT_REASONS = [
   { value: "other", label: "Other" },
 ];
 
-
 const splitTags = (value = "") => {
   return String(value || "")
     .split(/[\n,]+/)
@@ -181,6 +180,11 @@ const ChatArea = ({
 }) => {
   const fileInputRef = useRef(null);
 
+  // Scroll chat
+  const chatBodyRef = useRef(null);
+  const isNearBottomRef = useRef(true);
+
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [approvedAnswers, setApprovedAnswers] = useState([]);
@@ -232,7 +236,6 @@ const ChatArea = ({
   const isTeacherDocument =
     selectedDocument?.uploadedBy === "teacher" ||
     activeConversation?.uploadedBy === "teacher";
-
 
   const loadMetadata = async () => {
     try {
@@ -389,7 +392,7 @@ const ChatArea = ({
       documentTypeId,
     );
     const level = findById(documentLevels, "levelId", levelId);
-    
+
     return {
       documentId: result.documentId,
       fileName: result.fileName,
@@ -647,9 +650,7 @@ const ChatArea = ({
 
     setMessages((prev) =>
       prev.map((msg) =>
-        msg.id === aiMessage.id
-          ? { ...msg, approved: nextApproved }
-          : msg,
+        msg.id === aiMessage.id ? { ...msg, approved: nextApproved } : msg,
       ),
     );
 
@@ -719,7 +720,11 @@ const ChatArea = ({
     }
 
     if (!aiMessage?.id || String(aiMessage.id).startsWith("temp-")) {
-      showToast("error", "Cannot report this message", "Please wait until the AI answer is saved.");
+      showToast(
+        "error",
+        "Cannot report this message",
+        "Please wait until the AI answer is saved.",
+      );
       return;
     }
 
@@ -738,7 +743,11 @@ const ChatArea = ({
 
   const handleSubmitReport = async () => {
     if (!reportTarget?.id || !conversationId || !user?.userId) {
-      showToast("error", "Cannot submit report", "Missing message or user information.");
+      showToast(
+        "error",
+        "Cannot submit report",
+        "Missing message or user information.",
+      );
       return;
     }
 
@@ -757,7 +766,10 @@ const ChatArea = ({
       await reportMessage({
         messageId: reportTarget.id,
         sessionId: conversationId,
-        documentId: selectedDocument?.documentId || activeConversation?.documentId || null,
+        documentId:
+          selectedDocument?.documentId ||
+          activeConversation?.documentId ||
+          null,
         studentId: user.userId,
         reason: reportReason,
         description: reportDescription,
@@ -782,6 +794,74 @@ const ChatArea = ({
       setSubmittingReport(false);
     }
   };
+
+  const handleChatScroll = () => {
+    const element = chatBodyRef.current;
+
+    if (!element) return;
+
+    const distanceFromBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
+
+    const isNearBottom = distanceFromBottom <= 120;
+
+    isNearBottomRef.current = isNearBottom;
+
+    setShowScrollToBottom(!isNearBottom);
+  };
+
+  const scrollToBottom = (behavior = "smooth") => {
+    const element = chatBodyRef.current;
+
+    if (!element) return;
+
+    element.scrollTo({
+      top: element.scrollHeight,
+      behavior,
+    });
+
+    isNearBottomRef.current = true;
+    setShowScrollToBottom(false);
+  };
+
+  // Khi mở lại hoặc F5 conversation
+  // tự chạy xuống tin nhắn cuối.
+  useEffect(() => {
+    if (!conversationId || loadingMessages) return;
+
+    const timer = setTimeout(() => {
+      scrollToBottom("auto");
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [conversationId, loadingMessages]);
+
+  // Khi user gửi câu hỏi và AI bắt đầu xử lý,
+  // nếu user đang đứng cuối chat thì giữ màn hình ở cuối.
+  useEffect(() => {
+    if (!loading) return;
+
+    if (isNearBottomRef.current) {
+      requestAnimationFrame(() => {
+        scrollToBottom("smooth");
+      });
+    }
+  }, [loading]);
+
+  // Khi có tin nhắn mới:
+  // - đang ở cuối: tự scroll xuống
+  // - đang kéo lên đọc: không giật xuống, chỉ hiện nút mũi tên
+  useEffect(() => {
+    if (loadingMessages) return;
+
+    if (isNearBottomRef.current) {
+      requestAnimationFrame(() => {
+        scrollToBottom("smooth");
+      });
+    } else {
+      setShowScrollToBottom(true);
+    }
+  }, [messages.length, loadingMessages]);
 
   return (
     <>
@@ -927,7 +1007,8 @@ const ChatArea = ({
               }
             />
             <Form.Text className="text-muted">
-              Example: rag, week 1, assignment. Tags will be saved as comma-separated text.
+              Example: rag, week 1, assignment. Tags will be saved as
+              comma-separated text.
             </Form.Text>
           </Form.Group>
 
@@ -1005,7 +1086,13 @@ const ChatArea = ({
 
           <div className="p-3 rounded bg-light">
             <div className="fw-bold mb-2">Reported answer</div>
-            <div style={{ maxHeight: 160, overflow: "auto", whiteSpace: "pre-wrap" }}>
+            <div
+              style={{
+                maxHeight: 160,
+                overflow: "auto",
+                whiteSpace: "pre-wrap",
+              }}
+            >
               {reportTarget?.content}
             </div>
           </div>
@@ -1024,10 +1111,18 @@ const ChatArea = ({
         </Modal.Body>
 
         <Modal.Footer>
-          <Button variant="secondary" disabled={submittingReport} onClick={closeReportModal}>
+          <Button
+            variant="secondary"
+            disabled={submittingReport}
+            onClick={closeReportModal}
+          >
             Cancel
           </Button>
-          <Button variant="danger" disabled={submittingReport} onClick={handleSubmitReport}>
+          <Button
+            variant="danger"
+            disabled={submittingReport}
+            onClick={handleSubmitReport}
+          >
             {submittingReport ? "Submitting..." : "Submit report"}
           </Button>
         </Modal.Footer>
@@ -1063,7 +1158,11 @@ const ChatArea = ({
         </div>
       )}
 
-      <div className="member-chat__body">
+      <div
+        className="member-chat__body"
+        ref={chatBodyRef}
+        onScroll={handleChatScroll}
+      >
         {loadingMessages ? (
           <p>Đang tải tin nhắn...</p>
         ) : messages.length === 0 ? (
@@ -1130,13 +1229,19 @@ const ChatArea = ({
                       {isTeacherDocument && (
                         <button
                           className={`member-chat__report-btn ${
-                            msg.reported ? "member-chat__report-btn--active" : ""
+                            msg.reported
+                              ? "member-chat__report-btn--active"
+                              : ""
                           }`}
                           title="Report this AI answer"
                           onClick={() => openReportModal(msg)}
                           disabled={Boolean(msg.reported)}
                         >
-                          <i className={msg.reported ? "ti ti-flag-filled" : "ti ti-flag"} />
+                          <i
+                            className={
+                              msg.reported ? "ti ti-flag-filled" : "ti ti-flag"
+                            }
+                          />
                           {msg.reported ? "Reported" : "Report"}
                         </button>
                       )}
@@ -1149,15 +1254,35 @@ const ChatArea = ({
             {loading && (
               <div className="member-chat__message-row member-chat__message-row--ai">
                 <div className="member-chat__sender">AI Learning</div>
-                <div className="member-chat__bubble member-chat__bubble--ai">
-                  Đang đọc tài liệu...
+
+                <div
+                  className="
+        member-chat__bubble
+        member-chat__bubble--ai
+        member-chat__typing-bubble
+      "
+                  aria-label="AI đang trả lời"
+                >
+                  <span className="member-chat__typing-dot" />
+                  <span className="member-chat__typing-dot" />
+                  <span className="member-chat__typing-dot" />
                 </div>
               </div>
             )}
           </div>
         )}
       </div>
-
+        {showScrollToBottom && (
+        <button
+          type="button"
+          className="member-chat__scroll-bottom"
+          onClick={() => scrollToBottom("smooth")}
+          title="Đi tới tin nhắn mới nhất"
+          aria-label="Đi tới tin nhắn mới nhất"
+        >
+          <i className="ti ti-arrow-down" />
+        </button>
+      )}
       <div className="member-chat__input-bar">
         <button
           className="member-chat__tool-btn member-chat__tool-btn--attach"
