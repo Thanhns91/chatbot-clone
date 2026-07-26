@@ -10,9 +10,9 @@ $dark-text: #e5e7eb;
 $dark-muted: #94a3b8;
 
 @mixin dark-mode {
-  html[data-theme="dark"] &, 
-  body.dark &, 
-  body.dark-mode &, 
+  html[data-theme="dark"] &,
+  body.dark &,
+  body.dark-mode &,
   body.theme-dark & {
     @content;
   }
@@ -245,7 +245,10 @@ body.theme-dark #root {
     color: #0f172a;
     text-align: left;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      transform 0.15s;
 
     &:hover {
       background: #eef2ff;
@@ -321,7 +324,10 @@ body.theme-dark #root {
       justify-content: flex-start;
       gap: 8px;
       box-shadow: none !important;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      transition:
+        background 0.15s,
+        border-color 0.15s,
+        color 0.15s;
 
       &:last-child {
         margin-bottom: 0 !important;
@@ -639,7 +645,11 @@ body.theme-dark #root {
     color: #64748b;
     flex-shrink: 0;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    transition:
+      background 0.2s,
+      color 0.2s,
+      border-color 0.2s,
+      box-shadow 0.2s;
 
     .ti {
       font-size: 20px;
@@ -686,7 +696,10 @@ body.theme-dark #root {
       color: #1a2a3a;
       background: #ffffff;
       box-shadow: none;
-      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      transition:
+        border-color 0.2s,
+        background 0.2s,
+        box-shadow 0.2s;
 
       &::placeholder {
         color: #9ca3af;
@@ -729,7 +742,11 @@ body.theme-dark #root {
     flex-shrink: 0;
     cursor: pointer;
     box-shadow: 0 2px 10px rgba(30, 176, 144, 0.35);
-    transition: background 0.2s, transform 0.15s, box-shadow 0.2s, color 0.2s;
+    transition:
+      background 0.2s,
+      transform 0.15s,
+      box-shadow 0.2s,
+      color 0.2s;
 
     .ti {
       font-size: 20px;
@@ -766,16 +783,14 @@ body.theme-dark #root {
       }
     }
   }
-}
+
   // ══════════════════════════════════════════════
   // AI TYPING BUBBLE
   // ══════════════════════════════════════════════
-
   &__typing-bubble {
     width: fit-content;
     min-width: 68px;
     min-height: 46px;
-
     padding: 14px 17px;
 
     display: flex;
@@ -787,11 +802,8 @@ body.theme-dark #root {
   &__typing-dot {
     width: 7px;
     height: 7px;
-
     border-radius: 50%;
-
     background: #64748b;
-
     animation: memberTypingDot 1.2s infinite ease-in-out;
 
     &:nth-child(2) {
@@ -810,18 +822,14 @@ body.theme-dark #root {
   // ══════════════════════════════════════════════
   // SCROLL TO BOTTOM
   // ══════════════════════════════════════════════
-
   &__scroll-bottom {
     position: fixed;
-
     right: 32px;
     bottom: 92px;
-
     z-index: 200;
 
     width: 44px;
     height: 44px;
-
     padding: 0;
 
     border: 1px solid #dbe2ea;
@@ -835,7 +843,6 @@ body.theme-dark #root {
     justify-content: center;
 
     font-size: 21px;
-
     cursor: pointer;
 
     box-shadow: 0 6px 22px rgba(15, 23, 42, 0.18);
@@ -851,9 +858,7 @@ body.theme-dark #root {
 
     &:hover {
       transform: translateY(-2px);
-
       background: #f8fafc;
-
       box-shadow: 0 9px 28px rgba(15, 23, 42, 0.22);
     }
 
@@ -871,6 +876,7 @@ body.theme-dark #root {
       }
     }
   }
+}
 
 @keyframes memberTypingDot {
   0%,
@@ -1452,15 +1458,14 @@ body.theme-dark #root {
       font-size: 14px;
     }
 
-        &__scroll-bottom {
+    &__scroll-bottom {
       right: 18px;
       bottom: 82px;
-
       width: 42px;
       height: 42px;
     }
   }
-  
+
   .member-toast {
     top: 78px;
     right: 16px;
