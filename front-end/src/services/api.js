@@ -19,9 +19,15 @@ async function parseJsonResponse(res) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(
+    const error = new Error(
       data.message || data.error || data.detail || "Request failed",
     );
+
+    error.status = res.status;
+    error.code = data.code || null;
+    error.data = data;
+
+    throw error;
   }
 
   return data;
@@ -497,3 +503,46 @@ export async function updateMessageReportStatus(reportId, payload) {
     body: payload,
   });
 }
+
+/* =========================
+   SUBSCRIPTIONS / PAYMENT
+========================= */
+
+export async function getSubscriptionPlans() {
+  return requestJson("/subscriptions/plans");
+}
+
+export async function getUserSubscription(userId) {
+  return requestJson(`/subscriptions/user/${userId}`);
+}
+
+export async function getUserStorage(userId) {
+  return requestJson(`/subscriptions/storage/${userId}`);
+}
+
+export async function getUpgradePreview(userId, targetPlanId) {
+  return requestJson("/subscriptions/upgrade-preview", {
+    method: "POST",
+    body: {
+      userId,
+      targetPlanId,
+    },
+  });
+}
+
+// Thanh toán mô phỏng cho project học tập.
+// Không kết nối cổng ngân hàng thật.
+export async function purchaseSubscriptionDemo(userId, targetPlanId) {
+  return requestJson("/subscriptions/purchase-demo", {
+    method: "POST",
+    body: {
+      userId,
+      targetPlanId,
+    },
+  });
+}
+
+export async function getPaymentHistory(userId) {
+  return requestJson(`/subscriptions/payments/${userId}`);
+}
+

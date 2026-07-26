@@ -12,6 +12,7 @@ import cloudinary from "../cloudinary.js";
 import { qdrant, COLLECTION_NAME } from "../qdrant.js";
 import { semanticChunk } from "../chunking.js";
 import { embedText } from "../huggingface.js";
+import { checkUploadQuota } from "../subscriptionService.js";
 
 const router = express.Router();
 
@@ -861,6 +862,62 @@ router.post("/", upload.single("file"), async (req, res) => {
         originalDocumentId: duplicateInfo.originalDocumentId,
       });
     }
+
+    // ========================================
+// CHECK USER STORAGE QUOTA
+// ========================================
+
+// Chỉ replace_old mới được trừ dung lượng file cũ.
+//
+// new_version KHÔNG được trừ vì project hiện tại
+// vẫn giữ document version cũ trong Documents.
+const quotaReplaceDocumentId =
+  duplicateAction === "replace_old"
+    ? replaceDocumentId ||
+      duplicateInfo?.originalDoc?.documentId ||
+      null
+    : null;
+
+const storageCheck = await checkUploadQuota({
+  userId: uploaderId,
+  incomingBytes: fileSizeBytes,
+  replaceDocumentId: quotaReplaceDocumentId,
+});
+
+if (!storageCheck.allowed) {
+  cleanupFile(req.file.path);
+
+  return res.status(413).json({
+    success: false,
+
+    code: "STORAGE_LIMIT_EXCEEDED",
+
+    message:
+      "Bạn đã vượt giới hạn dung lượng lưu trữ. Hãy xóa bớt tài liệu hoặc nâng cấp gói.",
+
+    storage: {
+      usedBytes: storageCheck.usedBytes,
+      limitBytes: storageCheck.limitBytes,
+      remainingBytes:
+        storageCheck.remainingBytes,
+
+      incomingBytes:
+        storageCheck.incomingBytes,
+
+      replacedBytes:
+        storageCheck.replacedBytes,
+
+      projectedBytes:
+        storageCheck.projectedBytes,
+
+      percentage:
+        storageCheck.percentage,
+
+      plan:
+        storageCheck.plan,
+    },
+  });
+}
 
     const fileUrl = await uploadDocumentToCloudinary(
       req.file.path,

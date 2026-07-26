@@ -1,8 +1,39 @@
 import { useEffect, useRef, useState } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
-import { uploadAvatar } from "../../../services/api";
+import {
+  uploadAvatar,
+  getSubscriptionPlans,
+  getUserStorage,
+  getUpgradePreview,
+  purchaseSubscriptionDemo,
+  getPaymentHistory,
+} from "../../../services/api";
 import "./SettingsModal.scss";
+
+const formatBytes = (bytes = 0) => {
+  const value = Number(bytes || 0);
+
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  if (value < 1024 * 1024 * 1024) {
+    return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`;
+};
+
+const formatMoney = (amount = 0) =>
+  `${Number(amount || 0).toLocaleString("vi-VN")} ₫`;
+
+const formatDate = (value) => {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("vi-VN");
+};
 
 const applyThemeToDOM = (theme) => {
   const finalTheme = theme === "dark" ? "dark" : "light";
@@ -41,6 +72,17 @@ export default function SettingsModal({ user, onClose, onSave }) {
   );
   const [saving, setSaving] = useState(false);
 
+  const [plans, setPlans] = useState([]);
+  const [storage, setStorage] = useState(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [upgradePreview, setUpgradePreview] = useState(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [planError, setPlanError] = useState("");
+  const [paymentSuccess, setPaymentSuccess] = useState("");
+
   useEffect(() => {
     applyThemeToDOM(theme);
   }, [theme]);
@@ -62,6 +104,96 @@ export default function SettingsModal({ user, onClose, onSave }) {
       }
     };
   }, [avatarPreview]);
+
+
+  const loadPlanData = async () => {
+    if (!user?.userId || user?.role !== "student") return;
+
+    try {
+      setPlanLoading(true);
+      setPlanError("");
+
+      const [plansResult, storageResult, paymentsResult] = await Promise.all([
+        getSubscriptionPlans(),
+        getUserStorage(user.userId),
+        getPaymentHistory(user.userId),
+      ]);
+
+      setPlans(plansResult?.data || []);
+      setStorage(storageResult?.data || null);
+      setPaymentHistory(paymentsResult?.data || []);
+    } catch (error) {
+      console.error(error);
+      setPlanError(error.message || "Không thể tải thông tin gói và dung lượng.");
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "plan" && user?.role === "student") {
+      loadPlanData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, user?.userId, user?.role]);
+
+  const handlePreviewUpgrade = async (plan) => {
+    if (!user?.userId || !plan?.planId) return;
+
+    try {
+      setPreviewLoading(true);
+      setPlanError("");
+      setPaymentSuccess("");
+      setSelectedPlan(plan);
+      setUpgradePreview(null);
+
+      const result = await getUpgradePreview(user.userId, plan.planId);
+      setUpgradePreview(result?.data || null);
+    } catch (error) {
+      console.error(error);
+      setPlanError(error.message || "Không thể tính giá nâng cấp.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!user?.userId || !selectedPlan?.planId || !upgradePreview) return;
+
+    const confirmed = window.confirm(
+      `Xác nhận thanh toán mô phỏng ${formatMoney(
+        upgradePreview.finalAmount,
+      )} để kích hoạt gói ${selectedPlan.planName}?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setPaymentLoading(true);
+      setPlanError("");
+      setPaymentSuccess("");
+
+      const result = await purchaseSubscriptionDemo(
+        user.userId,
+        selectedPlan.planId,
+      );
+
+      setPaymentSuccess(
+        `Thanh toán demo thành công. Gói ${
+          result?.data?.subscription?.planName || selectedPlan.planName
+        } đã được kích hoạt.`,
+      );
+
+      setSelectedPlan(null);
+      setUpgradePreview(null);
+      await loadPlanData();
+    } catch (error) {
+      console.error(error);
+      setPlanError(error.message || "Thanh toán không thành công.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   const handleThemeChange = (nextTheme) => {
     setTheme(nextTheme);
@@ -222,6 +354,25 @@ export default function SettingsModal({ user, onClose, onSave }) {
             <i className="bi bi-brightness-high"></i>
             Appearance
           </button>
+
+          {user?.role === "student" && (
+            <button
+              type="button"
+              className={`sm-tab ${
+                activeTab === "plan" ? "sm-tab--active" : ""
+              }`}
+              onClick={() => {
+                setActiveTab("plan");
+                setSelectedPlan(null);
+                setUpgradePreview(null);
+                setPlanError("");
+                setPaymentSuccess("");
+              }}
+            >
+              <i className="bi bi-cloud"></i>
+              Plan & Storage
+            </button>
+          )}
         </div>
 
         <div className="sm-body">
@@ -302,6 +453,235 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === "plan" && user?.role === "student" && (
+            <div className="sm-plan">
+              <div className="sm-demo-notice">
+                <i className="bi bi-info-circle"></i>
+                <span>
+                  Payment hiện là chế độ demo cho project, không trừ tiền ngân hàng thật.
+                </span>
+              </div>
+
+              {planError && <div className="sm-plan-error">{planError}</div>}
+              {paymentSuccess && (
+                <div className="sm-plan-success">{paymentSuccess}</div>
+              )}
+
+              {planLoading ? (
+                <div className="sm-plan-loading">Đang tải thông tin gói...</div>
+              ) : (
+                <>
+                  {storage && (
+                    <div className="sm-storage-card">
+                      <div className="sm-storage-head">
+                        <div>
+                          <span className="sm-storage-label">Current plan</span>
+                          <strong className="sm-storage-plan">
+                            {storage.plan?.planName || "Free"}
+                          </strong>
+                        </div>
+
+                        <span className="sm-storage-percent">
+                          {Number(storage.percentage || 0).toFixed(1)}%
+                        </span>
+                      </div>
+
+                      <div className="sm-storage-progress">
+                        <div
+                          className="sm-storage-progress__bar"
+                          style={{
+                            width: `${Math.min(
+                              Number(storage.percentage || 0),
+                              100,
+                            )}%`,
+                          }}
+                        />
+                      </div>
+
+                      <div className="sm-storage-meta">
+                        <span>{formatBytes(storage.usedBytes)} used</span>
+                        <span>{formatBytes(storage.limitBytes)} total</span>
+                      </div>
+
+                      <div className="sm-storage-docs">
+                        {storage.documentCount || 0} documents
+                        {storage.subscription?.endDate && (
+                          <span>
+                            Expires: {formatDate(storage.subscription.endDate)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="sm-plan-heading">
+                    <h3>Choose your plan</h3>
+                    <p>Nâng cấp để tăng giới hạn dung lượng lưu trữ.</p>
+                  </div>
+
+                  <div className="sm-plan-list">
+                    {plans.map((plan) => {
+                      const currentPrice = Number(storage?.plan?.price || 0);
+                      const planPrice = Number(plan.price || 0);
+                      const isCurrent =
+                        Number(plan.planId) === Number(storage?.plan?.planId) ||
+                        String(plan.planName || "").toLowerCase() ===
+                          String(storage?.plan?.planName || "").toLowerCase();
+                      const canUpgrade = !isCurrent && planPrice > currentPrice;
+
+                      return (
+                        <div
+                          key={plan.planId}
+                          className={`sm-plan-card ${
+                            selectedPlan?.planId === plan.planId
+                              ? "sm-plan-card--selected"
+                              : ""
+                          }`}
+                        >
+                          <div className="sm-plan-card__top">
+                            <div>
+                              <strong>{plan.planName}</strong>
+                              <span>
+                                {formatBytes(plan.storageLimitBytes)} storage
+                              </span>
+                            </div>
+
+                            {isCurrent && (
+                              <span className="sm-plan-current">Current</span>
+                            )}
+                          </div>
+
+                          <div className="sm-plan-price">
+                            {formatMoney(plan.price)}
+                            {Number(plan.price || 0) > 0 && (
+                              <span>/ {plan.durationDays} days</span>
+                            )}
+                          </div>
+
+                          {plan.description && (
+                            <p className="sm-plan-description">
+                              {plan.description}
+                            </p>
+                          )}
+
+                          <Button
+                            type="button"
+                            className="sm-plan-button"
+                            disabled={!canUpgrade || previewLoading || paymentLoading}
+                            onClick={() => handlePreviewUpgrade(plan)}
+                          >
+                            {isCurrent
+                              ? "Current plan"
+                              : canUpgrade
+                                ? "Upgrade"
+                                : "Not available"}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {previewLoading && (
+                    <div className="sm-plan-preview">
+                      Đang tính số tiền cần thanh toán...
+                    </div>
+                  )}
+
+                  {upgradePreview && !previewLoading && (
+                    <div className="sm-plan-preview">
+                      <div className="sm-plan-preview__title">
+                        Payment summary
+                      </div>
+
+                      <div className="sm-plan-preview__row">
+                        <span>Current plan</span>
+                        <strong>{upgradePreview.currentPlan?.planName}</strong>
+                      </div>
+
+                      <div className="sm-plan-preview__row">
+                        <span>New plan</span>
+                        <strong>{upgradePreview.targetPlan?.planName}</strong>
+                      </div>
+
+                      {upgradePreview.type === "upgrade" && (
+                        <>
+                          <div className="sm-plan-preview__row">
+                            <span>New plan cost for remaining time</span>
+                            <strong>
+                              {formatMoney(upgradePreview.originalAmount)}
+                            </strong>
+                          </div>
+
+                          <div className="sm-plan-preview__row">
+                            <span>Unused old-plan credit</span>
+                            <strong>
+                              -{formatMoney(upgradePreview.discountAmount)}
+                            </strong>
+                          </div>
+                        </>
+                      )}
+
+                      <div className="sm-plan-preview__total">
+                        <span>Pay now</span>
+                        <strong>{formatMoney(upgradePreview.finalAmount)}</strong>
+                      </div>
+
+                      {upgradePreview.endDate && (
+                        <div className="sm-plan-preview__note">
+                          Upgrade giữ nguyên ngày hết hạn hiện tại: {" "}
+                          {formatDate(upgradePreview.endDate)}
+                        </div>
+                      )}
+
+                      <Button
+                        type="button"
+                        className="sm-pay-button"
+                        onClick={handleConfirmPayment}
+                        disabled={paymentLoading}
+                      >
+                        {paymentLoading
+                          ? "Processing..."
+                          : "Confirm & Pay (Demo)"}
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="sm-payment-history">
+                    <div className="sm-plan-heading">
+                      <h3>Payment history</h3>
+                    </div>
+
+                    {paymentHistory.length === 0 ? (
+                      <div className="sm-payment-empty">No payments yet.</div>
+                    ) : (
+                      <div className="sm-payment-list">
+                        {paymentHistory.slice(0, 8).map((payment) => (
+                          <div className="sm-payment-item" key={payment.paymentId}>
+                            <div>
+                              <strong>{payment.planName || "Storage plan"}</strong>
+                              <span>
+                                {payment.paymentType === "upgrade"
+                                  ? "Upgrade"
+                                  : "New subscription"}
+                                {" • "}
+                                {formatDate(payment.paidAt || payment.createdAt)}
+                              </span>
+                            </div>
+
+                            <div className="sm-payment-item__amount">
+                              <strong>{formatMoney(payment.finalAmount)}</strong>
+                              <span>{payment.status}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

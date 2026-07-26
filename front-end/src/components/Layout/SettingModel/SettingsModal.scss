@@ -84,9 +84,11 @@
 
 .sm-tabs {
   display: flex;
+  flex-wrap: nowrap;
   gap: 4px;
   padding: 16px 24px 0;
   border-bottom: 1.5px solid #f1f5f9;
+  overflow-x: auto;
 }
 
 .sm-tab {
@@ -102,6 +104,8 @@
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1.5px;
+  white-space: nowrap;
+  flex: 0 0 auto;
   transition:
     color 0.15s,
     border-color 0.15s;
@@ -608,3 +612,384 @@ html[data-theme="dark"] .sm-close.btn {
   color: #f8fafc !important;
   border-color: #334155 !important;
 }
+
+/* =========================
+   PLAN / STORAGE / PAYMENT
+========================= */
+
+.sm-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sm-demo-notice,
+.sm-plan-error,
+.sm-plan-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.sm-demo-notice {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.sm-plan-error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.sm-plan-success {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.sm-plan-loading,
+.sm-payment-empty {
+  padding: 16px 0;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.sm-storage-card {
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.sm-storage-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sm-storage-label {
+  display: block;
+  margin-bottom: 2px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.sm-storage-plan {
+  color: #0f172a;
+  font-size: 17px;
+}
+
+.sm-storage-percent {
+  color: #6366f1;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sm-storage-progress {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+
+  &__bar {
+    height: 100%;
+    border-radius: inherit;
+    background: #6366f1;
+    transition: width 0.25s ease;
+  }
+}
+
+.sm-storage-meta,
+.sm-storage-docs {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.sm-plan-heading {
+  h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-size: 12.5px;
+  }
+}
+
+.sm-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sm-plan-card {
+  padding: 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 11px;
+  background: #ffffff;
+
+  &--selected {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+
+  &__top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+
+    > div {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    strong {
+      color: #0f172a;
+      font-size: 15px;
+    }
+
+    span {
+      color: #64748b;
+      font-size: 12px;
+    }
+  }
+}
+
+.sm-plan-current {
+  align-self: flex-start;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5 !important;
+  font-size: 11px !important;
+  font-weight: 700;
+}
+
+.sm-plan-price {
+  margin-top: 10px;
+  color: #0f172a;
+  font-size: 19px;
+  font-weight: 700;
+
+  span {
+    margin-left: 4px;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 400;
+  }
+}
+
+.sm-plan-description {
+  margin: 5px 0 10px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.sm-plan-button,
+.sm-pay-button {
+  &.btn {
+    width: 100%;
+    border: none;
+    background: #6366f1;
+    font-size: 13px;
+    font-weight: 600;
+
+    &:hover {
+      background: #4f46e5;
+    }
+
+    &:disabled {
+      background: #e2e8f0;
+      color: #94a3b8;
+      opacity: 1;
+    }
+  }
+}
+
+.sm-pay-button {
+  &.btn {
+    margin-top: 14px;
+  }
+}
+
+.sm-plan-preview {
+  padding: 15px;
+  border: 1px solid #c7d2fe;
+  border-radius: 11px;
+  background: #eef2ff;
+}
+
+.sm-plan-preview__title {
+  margin-bottom: 10px;
+  color: #3730a3;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sm-plan-preview__row,
+.sm-plan-preview__total {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.sm-plan-preview__row {
+  padding: 4px 0;
+  font-size: 12.5px;
+
+  span {
+    color: #64748b;
+  }
+
+  strong {
+    color: #0f172a;
+    text-align: right;
+  }
+}
+
+.sm-plan-preview__total {
+  margin-top: 9px;
+  padding-top: 10px;
+  border-top: 1px solid #c7d2fe;
+
+  span {
+    color: #3730a3;
+    font-weight: 600;
+  }
+
+  strong {
+    color: #4f46e5;
+    font-size: 17px;
+  }
+}
+
+.sm-plan-preview__note {
+  margin-top: 9px;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.sm-payment-history {
+  padding-top: 4px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.sm-payment-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sm-payment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  > div:first-child,
+  &__amount {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  strong {
+    color: #0f172a;
+    font-size: 12.5px;
+  }
+
+  span {
+    color: #64748b;
+    font-size: 11px;
+  }
+
+  &__amount {
+    align-items: flex-end;
+  }
+}
+
+html[data-theme="dark"] {
+  .sm-demo-notice {
+    background: #172554;
+    color: #bfdbfe;
+  }
+
+  .sm-plan-error {
+    background: #450a0a;
+    color: #fecaca;
+  }
+
+  .sm-plan-success {
+    background: #052e16;
+    color: #bbf7d0;
+  }
+
+  .sm-storage-card,
+  .sm-plan-card,
+  .sm-payment-list,
+  .sm-payment-item {
+    background: #1e293b;
+    border-color: #475569;
+  }
+
+  .sm-storage-plan,
+  .sm-plan-heading h3,
+  .sm-plan-card__top strong,
+  .sm-plan-price,
+  .sm-plan-preview__row strong,
+  .sm-payment-item strong {
+    color: #f8fafc;
+  }
+
+  .sm-storage-label,
+  .sm-storage-meta,
+  .sm-storage-docs,
+  .sm-plan-heading p,
+  .sm-plan-card__top span,
+  .sm-plan-description,
+  .sm-plan-preview__row span,
+  .sm-plan-preview__note,
+  .sm-payment-item span {
+    color: #cbd5e1;
+  }
+
+  .sm-storage-progress {
+    background: #334155;
+  }
+
+  .sm-plan-preview {
+    background: #1e1b4b;
+    border-color: #6366f1;
+  }
+
+  .sm-plan-preview__title,
+  .sm-plan-preview__total span {
+    color: #c7d2fe;
+  }
+}
+
