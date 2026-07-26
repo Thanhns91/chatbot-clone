@@ -30,10 +30,8 @@ const getStoredUser = () => {
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const [message, setMessage] = useState("");
 
-  // Quan trọng: khi VNPAY redirect về trang chủ, restore lại user đã đăng nhập
-  // thay vì luôn khởi tạo null.
+  const [message, setMessage] = useState("");
   const [currentUser, setCurrentUser] = useState(getStoredUser);
 
   const [conversations, setConversations] = useState([
@@ -46,64 +44,105 @@ const HomePage = () => {
       starred: false,
     },
   ]);
+
   const [activeId, setActiveId] = useState("1");
 
-  // Khi browser quay về từ VNPAY, backend redirect về frontend root kèm
-  // ?payment=...&txnRef=... . Ta đưa user đã đăng nhập trở lại trang phù hợp
-  // và giữ nguyên query để SettingsModal tiếp tục xử lý trạng thái thanh toán.
+  /**
+   * QUAN TRỌNG:
+   * Nếu user đã đăng nhập thì "/" chỉ là điểm trung gian.
+   * Phải chuyển user sang MemberPage / TeacherPage / AdminPage.
+   *
+   * Nếu vừa quay về từ VNPAY thì giữ lại query:
+   * ?payment=...&txnRef=...
+   */
   useEffect(() => {
     if (!currentUser) return;
 
     const params = new URLSearchParams(window.location.search);
     const paymentResult = params.get("payment");
 
-    if (!paymentResult) return;
+    let defaultPath = "/";
 
-    const savedPath = sessionStorage.getItem("vnpayReturnPath");
+    if (currentUser.role === "admin") {
+      defaultPath = "/admin/home";
+    } else if (currentUser.role === "teacher") {
+      defaultPath = "/teacher/home";
+    } else {
+      const slug =
+        toSlug(
+          currentUser.name ||
+            currentUser.fullName ||
+            "user",
+        ) || "user";
 
-    let returnPath = savedPath;
-
-    if (!returnPath) {
-      if (currentUser.role === "admin") {
-        returnPath = "/admin/home";
-      } else if (currentUser.role === "teacher") {
-        returnPath = "/teacher/home";
-      } else {
-        const slug =
-          toSlug(currentUser.name || currentUser.fullName || "user") || "user";
-
-        returnPath = `/u/${slug}/chat`;
-      }
+      defaultPath = `/u/${slug}/chat`;
     }
 
-    sessionStorage.removeItem("vnpayReturnPath");
+    let returnPath = defaultPath;
 
-    navigate(`${returnPath}${window.location.search}`, {
+    // Chỉ dùng đường dẫn đã lưu khi thực sự quay về từ VNPAY.
+    if (paymentResult) {
+      const savedPath =
+        sessionStorage.getItem("vnpayReturnPath");
+
+      const isValidSavedPath =
+        savedPath &&
+        savedPath !== "/" &&
+        savedPath !== window.location.pathname;
+
+      if (isValidSavedPath) {
+        returnPath = savedPath;
+      }
+
+      sessionStorage.removeItem("vnpayReturnPath");
+    }
+
+    // Khi VNPAY return thì giữ query để SettingsModal đọc kết quả.
+    const queryString = paymentResult
+      ? window.location.search
+      : "";
+
+    navigate(`${returnPath}${queryString}`, {
       replace: true,
     });
   }, [currentUser, navigate]);
 
   const handleLoginSuccess = (role, user) => {
     setCurrentUser(user);
-    localStorage.setItem("currentUser", JSON.stringify(user));
 
-    if (role === "admin") navigate("/admin/home");
-    else if (role === "teacher") navigate("/teacher/home");
-    else {
-      const slug = toSlug(user.name || user.fullName) || "user";
-      navigate(`/u/${slug}/chat`);
+    localStorage.setItem(
+      "currentUser",
+      JSON.stringify(user),
+    );
+
+    if (role === "admin") {
+      navigate("/admin/home");
+      return;
     }
+
+    if (role === "teacher") {
+      navigate("/teacher/home");
+      return;
+    }
+
+    const slug =
+      toSlug(user.name || user.fullName) || "user";
+
+    navigate(`/u/${slug}/chat`);
   };
 
   const handleLogout = () => {
     logout();
+
     localStorage.removeItem("currentUser");
     sessionStorage.clear();
+
     setCurrentUser(null);
   };
 
   const handleNew = () => {
     const newId = String(Date.now());
+
     const newConv = {
       id: newId,
       title: "New reflection",
@@ -112,10 +151,21 @@ const HomePage = () => {
       messageCount: 0,
       starred: false,
     };
-    setConversations((prev) => [newConv, ...prev]);
+
+    setConversations((prev) => [
+      newConv,
+      ...prev,
+    ]);
+
     setActiveId(newId);
   };
 
+  /**
+   * Phần dưới chỉ dành cho user CHƯA đăng nhập.
+   *
+   * User đã đăng nhập sẽ được useEffect phía trên
+   * chuyển sang MemberPage, nơi có ChatArea thật.
+   */
   return (
     <ChatLayout
       conversations={conversations}
@@ -126,18 +176,32 @@ const HomePage = () => {
       currentUser={currentUser}
       headerRight={
         currentUser ? (
-          <UserAvatar user={currentUser} onLogout={handleLogout} />
+          <UserAvatar
+            user={currentUser}
+            onLogout={handleLogout}
+          />
         ) : (
-          <AuthButton onLoginSuccess={handleLoginSuccess} />
+          <AuthButton
+            onLoginSuccess={handleLoginSuccess}
+          />
         )
       }
     >
       <div className="homepage__body">
         <div className="homepage__welcome">
-          <img src={logo7} alt="logo" className="homepage__logo" />
-          <h1 className="homepage__title">Where should we start?</h1>
+          <img
+            src={logo7}
+            alt="logo"
+            className="homepage__logo"
+          />
+
+          <h1 className="homepage__title">
+            Where should we start?
+          </h1>
+
           <p className="homepage__subtitle">
-            Ask me anything — I am here to help you learn and explore ideas.
+            Ask me anything — I am here to help you
+            learn and explore ideas.
           </p>
         </div>
       </div>
@@ -149,16 +213,28 @@ const HomePage = () => {
         >
           <i className="ti ti-paperclip" />
         </button>
+
         <Form.Control
           className="homepage__input"
           type="text"
           placeholder="Ask anything..."
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && setMessage("")}
+          onChange={(e) =>
+            setMessage(e.target.value)
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              setMessage("");
+            }
+          }}
         />
+
         <button
-          className={`homepage__send-btn ${message.trim() ? "homepage__send-btn--active" : ""}`}
+          className={`homepage__send-btn ${
+            message.trim()
+              ? "homepage__send-btn--active"
+              : ""
+          }`}
         >
           <i className="ti ti-send" />
         </button>
