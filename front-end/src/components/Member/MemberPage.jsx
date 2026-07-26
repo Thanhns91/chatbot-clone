@@ -148,13 +148,15 @@ const MemberPage = () => {
         foundDoc?.fileName ||
         activeConversation.fileName ||
         "Uploaded document",
+
+      uploadedBy: foundDoc?.uploadedBy || activeConversation.uploadedBy || null,
     });
   }, [
     activeConversation?.documentId,
     activeConversation?.fileName,
+    activeConversation?.uploadedBy,
     availableDocuments,
   ]);
-
   const handleSelect = (id) => {
     navigate(`/u/${username}/chat/${id}`);
   };
@@ -228,6 +230,7 @@ const MemberPage = () => {
     const selected = {
       documentId: doc.documentId,
       fileName: doc.fileName,
+      uploadedBy: doc.uploadedBy || null,
     };
 
     setSelectedDocument(selected);
@@ -247,6 +250,7 @@ const MemberPage = () => {
         userId,
         documentId: doc.documentId,
         fileName: doc.fileName,
+        uploadedBy: doc.uploadedBy || null,
         title: doc.fileName || "New Chat",
         preview: `Đang hỏi theo file: ${doc.fileName}`,
         date: "Today",
@@ -264,12 +268,12 @@ const MemberPage = () => {
     });
 
     handleConversationUpdated({
-      id: activeId,
-      documentId: doc.documentId,
-      fileName: doc.fileName,
-      preview: `Đang hỏi theo file: ${doc.fileName}`,
-    });
-  };
+  id: activeId,
+  documentId: doc.documentId,
+  fileName: doc.fileName,
+  uploadedBy: doc.uploadedBy || null,
+  preview: `Đang hỏi theo file: ${doc.fileName}`,
+});
 
   const handleUserUpdated = (updatedUser) => {
     setUser(updatedUser);
