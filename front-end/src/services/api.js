@@ -505,7 +505,7 @@ export async function updateMessageReportStatus(reportId, payload) {
 }
 
 /* =========================
-   SUBSCRIPTIONS / PAYMENT
+   SUBSCRIPTIONS / VNPAY
 ========================= */
 
 export async function getSubscriptionPlans() {
@@ -530,16 +530,26 @@ export async function getUpgradePreview(userId, targetPlanId) {
   });
 }
 
-// Thanh toán mô phỏng cho project học tập.
-// Không kết nối cổng ngân hàng thật.
-export async function purchaseSubscriptionDemo(userId, targetPlanId) {
-  return requestJson("/subscriptions/purchase-demo", {
+export async function createVnpayPayment(
+  userId,
+  targetPlanId,
+  options = {},
+) {
+  return requestJson("/subscriptions/vnpay/create-payment", {
     method: "POST",
     body: {
       userId,
       targetPlanId,
+      locale: options.locale || "vn",
+      bankCode: options.bankCode || "",
     },
   });
+}
+
+export async function getPaymentStatus(transactionCode) {
+  return requestJson(
+    `/subscriptions/payment-status/${encodeURIComponent(transactionCode)}`,
+  );
 }
 
 export async function getPaymentHistory(userId) {

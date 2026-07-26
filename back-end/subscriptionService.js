@@ -1,12 +1,10 @@
 import crypto from "crypto";
 import pool from "./db.js";
 
-// Fallback only. Khi bảng SubscriptionPlans có gói Free active,
-// hệ thống sẽ ưu tiên storageLimitBytes trong database.
+// User chưa có gói trả phí -> mặc định 150 MB.
 export const FREE_STORAGE_LIMIT_BYTES = 150 * 1024 * 1024;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
-const normalizePlan = (plan) => {
+function normalizePlan(plan) {
   if (!plan) return null;
 
   return {
@@ -15,89 +13,80 @@ const normalizePlan = (plan) => {
     price: Number(plan.price || 0),
     durationDays: Number(plan.durationDays || 0),
   };
-};
+}
 
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+function calculatePreviewFromRows(currentSubscription, targetPlan) {
+  const normalizedTarget = normalizePlan(targetPlan);
 
-function calculateProration({ currentSubscription, targetPlan, now = new Date() }) {
+  if (!normalizedTarget) {
+    throw new Error("Subscription plan not found");
+  }
+
+  if (normalizedTarget.status !== "active") {
+    throw new Error("Subscription plan is inactive");
+  }
+
+  if (Number(normalizedTarget.price || 0) <= 0) {
+    throw new Error("Free plan cannot be purchased");
+  }
+
   if (!currentSubscription) {
     return {
       type: "new_subscription",
-      originalAmount: Number(targetPlan.price || 0),
+      currentPlan: {
+        planId: null,
+        planName: "Free",
+        price: 0,
+        storageLimitBytes: FREE_STORAGE_LIMIT_BYTES,
+      },
+      targetPlan: normalizedTarget,
+      originalAmount: normalizedTarget.price,
       discountAmount: 0,
-      finalAmount: Number(targetPlan.price || 0),
+      finalAmount: normalizedTarget.price,
       remainingRatio: 1,
-      oldRemainingRatio: 0,
+      startDate: null,
       endDate: null,
     };
   }
 
   const currentPrice = Number(currentSubscription.price || 0);
-  const targetPrice = Number(targetPlan.price || 0);
-  const endMs = new Date(currentSubscription.endDate).getTime();
-  const nowMs = now.getTime();
 
-  if (!Number.isFinite(endMs) || endMs <= nowMs) {
-    throw new Error("Current subscription is expired");
+  if (normalizedTarget.price <= currentPrice) {
+    throw new Error("Target plan must have a higher price than current plan");
   }
 
-  const remainingMs = endMs - nowMs;
-  const currentDurationDays = Math.max(
-    Number(currentSubscription.durationDays || 30),
-    1,
-  );
-  const targetDurationDays = Math.max(Number(targetPlan.durationDays || 30), 1);
+  const start = new Date(currentSubscription.startDate).getTime();
+  const end = new Date(currentSubscription.endDate).getTime();
+  const now = Date.now();
 
-  // Mỗi gói được quy đổi theo chính durationDays của gói.
-  // Với các gói 30 ngày: remainingRatio = số ngày còn lại / 30.
-  const oldRemainingRatio = clamp(
-    remainingMs / (currentDurationDays * DAY_MS),
-    0,
-    1,
-  );
-  const targetRemainingRatio = clamp(
-    remainingMs / (targetDurationDays * DAY_MS),
-    0,
-    1,
-  );
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    throw new Error("Current subscription period is invalid");
+  }
 
-  const oldPlanCredit = currentPrice * oldRemainingRatio;
-  const targetRemainingCost = targetPrice * targetRemainingRatio;
+  const totalTime = end - start;
+  const remainingTime = Math.max(end - now, 0);
+  const remainingRatio = remainingTime / totalTime;
+
+  const oldPlanCredit = currentPrice * remainingRatio;
+  const targetRemainingCost = normalizedTarget.price * remainingRatio;
   const finalAmount = Math.max(targetRemainingCost - oldPlanCredit, 0);
 
   return {
     type: "upgrade",
+    currentPlan: {
+      planId: currentSubscription.planId,
+      planName: currentSubscription.planName,
+      price: currentPrice,
+      storageLimitBytes: Number(currentSubscription.storageLimitBytes || 0),
+    },
+    targetPlan: normalizedTarget,
     originalAmount: Math.round(targetRemainingCost),
     discountAmount: Math.round(oldPlanCredit),
     finalAmount: Math.round(finalAmount),
-    remainingRatio: Number(targetRemainingRatio.toFixed(6)),
-    oldRemainingRatio: Number(oldRemainingRatio.toFixed(6)),
+    remainingRatio: Number(remainingRatio.toFixed(6)),
+    startDate: currentSubscription.startDate,
     endDate: currentSubscription.endDate,
   };
-}
-
-export async function getFreePlan() {
-  const [rows] = await pool.query(
-    `
-    SELECT
-      planId,
-      planName,
-      description,
-      storageLimitBytes,
-      price,
-      durationDays,
-      status,
-      createdAt,
-      updatedAt
-    FROM SubscriptionPlans
-    WHERE LOWER(planName) = 'free'
-      AND status = 'active'
-    ORDER BY planId ASC
-    LIMIT 1
-    `,
-  );
-
-  return normalizePlan(rows[0] || null);
 }
 
 export async function getActiveSubscription(userId) {
@@ -127,9 +116,9 @@ export async function getActiveSubscription(userId) {
 
     WHERE us.userId = ?
       AND us.status = 'active'
+      AND sp.status = 'active'
       AND us.startDate <= NOW()
       AND us.endDate > NOW()
-      AND sp.status = 'active'
 
     ORDER BY
       us.startDate DESC,
@@ -140,16 +129,7 @@ export async function getActiveSubscription(userId) {
     [userId],
   );
 
-  const row = rows[0];
-  if (!row) return null;
-
-  return {
-    ...row,
-    storageLimitBytes: Number(row.storageLimitBytes || 0),
-    price: Number(row.price || 0),
-    durationDays: Number(row.durationDays || 0),
-    amountPaid: Number(row.amountPaid || 0),
-  };
+  return rows[0] || null;
 }
 
 export async function getUsedStorage(userId) {
@@ -175,32 +155,18 @@ export async function getUsedStorage(userId) {
 }
 
 export async function getUserStorageInfo(userId) {
-  const [subscription, usage, freePlan] = await Promise.all([
-    getActiveSubscription(userId),
-    getUsedStorage(userId),
-    getFreePlan(),
-  ]);
+  const subscription = await getActiveSubscription(userId);
+  const usage = await getUsedStorage(userId);
 
-  const fallbackFreePlan = freePlan || {
-    planId: null,
-    planName: "Free",
-    storageLimitBytes: FREE_STORAGE_LIMIT_BYTES,
-    price: 0,
-    durationDays: 30,
-  };
-
-  const currentPlan = subscription || fallbackFreePlan;
-  const limitBytes = Number(
-    currentPlan.storageLimitBytes || FREE_STORAGE_LIMIT_BYTES,
-  );
+  const limitBytes = subscription
+    ? Number(subscription.storageLimitBytes || 0)
+    : FREE_STORAGE_LIMIT_BYTES;
 
   const remainingBytes = Math.max(limitBytes - usage.usedBytes, 0);
 
   const percentage =
     limitBytes > 0
-      ? Number(
-          Math.min((usage.usedBytes / limitBytes) * 100, 100).toFixed(2),
-        )
+      ? Number(Math.min((usage.usedBytes / limitBytes) * 100, 100).toFixed(2))
       : 0;
 
   return {
@@ -210,15 +176,19 @@ export async function getUserStorageInfo(userId) {
     limitBytes,
     remainingBytes,
     percentage,
-
-    plan: {
-      planId: currentPlan.planId ?? null,
-      planName: currentPlan.planName || "Free",
-      price: Number(currentPlan.price || 0),
-      storageLimitBytes: limitBytes,
-      durationDays: Number(currentPlan.durationDays || 30),
-    },
-
+    plan: subscription
+      ? {
+          planId: subscription.planId,
+          planName: subscription.planName,
+          price: Number(subscription.price || 0),
+          durationDays: Number(subscription.durationDays || 0),
+        }
+      : {
+          planId: null,
+          planName: "Free",
+          price: 0,
+          durationDays: null,
+        },
     subscription: subscription
       ? {
           subscriptionId: subscription.subscriptionId,
@@ -243,9 +213,7 @@ export async function checkUploadQuota({
   if (replaceDocumentId) {
     const [rows] = await pool.query(
       `
-      SELECT
-        uploaderId,
-        fileSizeBytes
+      SELECT uploaderId, fileSizeBytes
       FROM Documents
       WHERE documentId = ?
         AND isDeleted = FALSE
@@ -301,79 +269,58 @@ export async function getSubscriptionPlan(planId) {
 }
 
 export async function calculateUpgradePreview(userId, targetPlanId) {
-  const [targetPlan, currentSubscription, freePlan] = await Promise.all([
-    getSubscriptionPlan(targetPlanId),
-    getActiveSubscription(userId),
-    getFreePlan(),
-  ]);
+  const targetPlan = await getSubscriptionPlan(targetPlanId);
+  const currentSubscription = await getActiveSubscription(userId);
 
-  if (!targetPlan || targetPlan.status !== "active") {
-    throw new Error("Subscription plan not found or inactive");
-  }
-
-  const currentPrice = Number(currentSubscription?.price || 0);
-
-  if (Number(targetPlan.price || 0) <= currentPrice) {
-    throw new Error("Target plan must have a higher price than current plan");
-  }
-
-  const proration = calculateProration({
-    currentSubscription,
-    targetPlan,
-  });
-
-  const currentPlan = currentSubscription
-    ? {
-        planId: currentSubscription.planId,
-        planName: currentSubscription.planName,
-        price: Number(currentSubscription.price || 0),
-        storageLimitBytes: Number(currentSubscription.storageLimitBytes || 0),
-      }
-    : {
-        planId: freePlan?.planId ?? null,
-        planName: freePlan?.planName || "Free",
-        price: Number(freePlan?.price || 0),
-        storageLimitBytes: Number(
-          freePlan?.storageLimitBytes || FREE_STORAGE_LIMIT_BYTES,
-        ),
-      };
-
-  return {
-    type: proration.type,
-    currentPlan,
-    targetPlan,
-    originalAmount: proration.originalAmount,
-    discountAmount: proration.discountAmount,
-    finalAmount: proration.finalAmount,
-    remainingRatio: proration.remainingRatio,
-    oldRemainingRatio: proration.oldRemainingRatio,
-    startDate: currentSubscription?.startDate || null,
-    endDate: proration.endDate,
-  };
+  return calculatePreviewFromRows(currentSubscription, targetPlan);
 }
 
-/**
- * Thanh toán DEMO cho project học tập.
- * Hàm này KHÔNG kết nối ngân hàng/VNPay/MoMo.
- * Khi transaction DB thành công, Payment được đánh dấu paid ngay và gói được kích hoạt.
- */
-export async function purchaseSubscriptionDemo({ userId, targetPlanId }) {
+function createTransactionCode(userId) {
+  const randomPart = crypto.randomBytes(6).toString("hex").toUpperCase();
+  return `PAY${Date.now()}U${Number(userId)}${randomPart}`;
+}
+
+async function getLockedActiveSubscription(connection, userId) {
+  const [rows] = await connection.query(
+    `
+    SELECT
+      us.subscriptionId,
+      us.userId,
+      us.planId,
+      us.startDate,
+      us.endDate,
+      us.amountPaid,
+      us.status AS subscriptionStatus,
+      us.previousSubscriptionId,
+      sp.planName,
+      sp.description,
+      sp.storageLimitBytes,
+      sp.price,
+      sp.durationDays,
+      sp.status AS planStatus
+    FROM UserSubscriptions us
+    INNER JOIN SubscriptionPlans sp
+      ON sp.planId = us.planId
+    WHERE us.userId = ?
+      AND us.status = 'active'
+      AND sp.status = 'active'
+      AND us.startDate <= NOW()
+      AND us.endDate > NOW()
+    ORDER BY us.startDate DESC, us.subscriptionId DESC
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [userId],
+  );
+
+  return rows[0] || null;
+}
+
+export async function createPendingVnpayPayment(userId, targetPlanId) {
   const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction();
-
-    // Dọn những subscription đã hết hạn nhưng status vẫn còn active.
-    await connection.query(
-      `
-      UPDATE UserSubscriptions
-      SET status = 'expired'
-      WHERE userId = ?
-        AND status = 'active'
-        AND endDate <= NOW()
-      `,
-      [userId],
-    );
 
     const [users] = await connection.query(
       `
@@ -412,173 +359,76 @@ export async function purchaseSubscriptionDemo({ userId, targetPlanId }) {
         status
       FROM SubscriptionPlans
       WHERE planId = ?
-        AND status = 'active'
       LIMIT 1
+      FOR UPDATE
       `,
       [targetPlanId],
     );
 
     const targetPlan = normalizePlan(planRows[0] || null);
+    const currentSubscription = await getLockedActiveSubscription(
+      connection,
+      userId,
+    );
 
-    if (!targetPlan) {
-      throw new Error("Subscription plan not found or inactive");
+    const preview = calculatePreviewFromRows(currentSubscription, targetPlan);
+
+    if (preview.finalAmount <= 0) {
+      throw new Error("Payment amount must be greater than 0");
     }
 
-    const [currentRows] = await connection.query(
+    // Một user chỉ nên có một yêu cầu VNPAY pending tại một thời điểm.
+    await connection.query(
       `
-      SELECT
-        us.subscriptionId,
-        us.userId,
-        us.planId,
-        us.startDate,
-        us.endDate,
-        us.amountPaid,
-        us.status AS subscriptionStatus,
-        us.previousSubscriptionId,
-        sp.planName,
-        sp.storageLimitBytes,
-        sp.price,
-        sp.durationDays
-      FROM UserSubscriptions us
-      INNER JOIN SubscriptionPlans sp
-        ON sp.planId = us.planId
-      WHERE us.userId = ?
-        AND us.status = 'active'
-        AND us.startDate <= NOW()
-        AND us.endDate > NOW()
-      ORDER BY us.startDate DESC, us.subscriptionId DESC
-      LIMIT 1
-      FOR UPDATE
+      UPDATE Payments
+      SET status = 'cancelled'
+      WHERE userId = ?
+        AND paymentMethod = 'vnpay'
+        AND status = 'pending'
       `,
       [userId],
     );
 
-    const currentSubscription = currentRows[0]
-      ? {
-          ...currentRows[0],
-          price: Number(currentRows[0].price || 0),
-          durationDays: Number(currentRows[0].durationDays || 30),
-        }
-      : null;
+    const transactionCode = createTransactionCode(userId);
+    const sourceSubscriptionId = currentSubscription?.subscriptionId || null;
 
-    const currentPrice = Number(currentSubscription?.price || 0);
-
-    if (targetPlan.price <= currentPrice) {
-      throw new Error("Target plan must have a higher price than current plan");
-    }
-
-    const now = new Date();
-    const proration = calculateProration({
-      currentSubscription,
-      targetPlan,
-      now,
-    });
-
-    let endDate;
-    let previousSubscriptionId = null;
-
-    if (currentSubscription) {
-      endDate = currentSubscription.endDate;
-      previousSubscriptionId = currentSubscription.subscriptionId;
-
-      await connection.query(
-        `
-        UPDATE UserSubscriptions
-        SET status = 'upgraded'
-        WHERE subscriptionId = ?
-        `,
-        [currentSubscription.subscriptionId],
-      );
-    } else {
-      const durationDays = Math.max(Number(targetPlan.durationDays || 30), 1);
-      endDate = new Date(now.getTime() + durationDays * DAY_MS);
-    }
-
-    const [subscriptionResult] = await connection.query(
+    const [result] = await connection.query(
       `
-      INSERT INTO UserSubscriptions
-      (
-        userId,
-        planId,
-        startDate,
-        endDate,
-        amountPaid,
-        status,
-        previousSubscriptionId
-      )
-      VALUES (?, ?, ?, ?, ?, 'active', ?)
-      `,
-      [
-        userId,
-        targetPlan.planId,
-        now,
-        endDate,
-        proration.finalAmount,
-        previousSubscriptionId,
-      ],
-    );
-
-    const subscriptionId = Number(subscriptionResult.insertId);
-    const transactionCode = `DEMO-${Date.now()}-${crypto.randomUUID()}`;
-
-    const [paymentResult] = await connection.query(
-      `
-      INSERT INTO Payments
-      (
+      INSERT INTO Payments (
         userId,
         subscriptionId,
+        targetPlanId,
+        sourceSubscriptionId,
         paymentType,
         originalAmount,
         discountAmount,
         finalAmount,
         paymentMethod,
         status,
-        transactionCode,
-        paidAt
+        transactionCode
       )
-      VALUES (?, ?, ?, ?, ?, ?, 'demo', 'paid', ?, NOW())
+      VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 'vnpay', 'pending', ?)
       `,
       [
         userId,
-        subscriptionId,
-        proration.type,
-        proration.originalAmount,
-        proration.discountAmount,
-        proration.finalAmount,
+        targetPlan.planId,
+        sourceSubscriptionId,
+        preview.type,
+        preview.originalAmount,
+        preview.discountAmount,
+        preview.finalAmount,
         transactionCode,
       ],
     );
 
     await connection.commit();
 
-    const storage = await getUserStorageInfo(userId);
-
     return {
-      payment: {
-        paymentId: Number(paymentResult.insertId),
-        userId: Number(userId),
-        subscriptionId,
-        paymentType: proration.type,
-        originalAmount: proration.originalAmount,
-        discountAmount: proration.discountAmount,
-        finalAmount: proration.finalAmount,
-        paymentMethod: "demo",
-        status: "paid",
-        transactionCode,
-        paidAt: new Date().toISOString(),
-      },
-      subscription: {
-        subscriptionId,
-        userId: Number(userId),
-        planId: targetPlan.planId,
-        planName: targetPlan.planName,
-        startDate: now,
-        endDate,
-        amountPaid: proration.finalAmount,
-        status: "active",
-        previousSubscriptionId,
-      },
-      storage,
+      paymentId: result.insertId,
+      transactionCode,
+      targetPlan,
+      sourceSubscriptionId,
+      ...preview,
     };
   } catch (error) {
     await connection.rollback();
@@ -588,13 +438,15 @@ export async function purchaseSubscriptionDemo({ userId, targetPlanId }) {
   }
 }
 
-export async function getPaymentHistory(userId) {
+export async function getPaymentByTransactionCode(transactionCode) {
   const [rows] = await pool.query(
     `
     SELECT
       p.paymentId,
       p.userId,
       p.subscriptionId,
+      p.targetPlanId,
+      p.sourceSubscriptionId,
       p.paymentType,
       p.originalAmount,
       p.discountAmount,
@@ -602,17 +454,296 @@ export async function getPaymentHistory(userId) {
       p.paymentMethod,
       p.status,
       p.transactionCode,
+      p.gatewayTransactionNo,
+      p.gatewayResponseCode,
       p.paidAt,
       p.createdAt,
-      us.planId,
+      sp.planName,
+      sp.storageLimitBytes,
+      sp.price AS planPrice
+    FROM Payments p
+    LEFT JOIN SubscriptionPlans sp
+      ON sp.planId = p.targetPlanId
+    WHERE p.transactionCode = ?
+    LIMIT 1
+    `,
+    [transactionCode],
+  );
+
+  if (!rows[0]) return null;
+
+  return {
+    ...rows[0],
+    originalAmount: Number(rows[0].originalAmount || 0),
+    discountAmount: Number(rows[0].discountAmount || 0),
+    finalAmount: Number(rows[0].finalAmount || 0),
+    storageLimitBytes: Number(rows[0].storageLimitBytes || 0),
+    planPrice: Number(rows[0].planPrice || 0),
+  };
+}
+
+export async function finalizeVnpayPayment({
+  transactionCode,
+  gatewayAmountVnd,
+  responseCode,
+  transactionStatus,
+  gatewayTransactionNo = null,
+}) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [paymentRows] = await connection.query(
+      `
+      SELECT
+        p.*,
+        sp.planName,
+        sp.storageLimitBytes,
+        sp.price AS planPrice,
+        sp.durationDays,
+        sp.status AS planStatus
+      FROM Payments p
+      LEFT JOIN SubscriptionPlans sp
+        ON sp.planId = p.targetPlanId
+      WHERE p.transactionCode = ?
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [transactionCode],
+    );
+
+    const payment = paymentRows[0];
+
+    if (!payment) {
+      await connection.rollback();
+      return { result: "not_found" };
+    }
+
+    const expectedAmount = Math.round(Number(payment.finalAmount || 0));
+    const receivedAmount = Math.round(Number(gatewayAmountVnd || 0));
+
+    if (expectedAmount !== receivedAmount) {
+      await connection.rollback();
+      return { result: "invalid_amount" };
+    }
+
+    if (payment.status !== "pending") {
+      await connection.rollback();
+      return {
+        result: "already_confirmed",
+        paymentStatus: payment.status,
+      };
+    }
+
+    const gatewaySuccess =
+      String(responseCode) === "00" && String(transactionStatus) === "00";
+
+    if (!gatewaySuccess) {
+      await connection.query(
+        `
+        UPDATE Payments
+        SET
+          status = 'failed',
+          gatewayTransactionNo = ?,
+          gatewayResponseCode = ?
+        WHERE paymentId = ?
+        `,
+        [gatewayTransactionNo, String(responseCode || ""), payment.paymentId],
+      );
+
+      await connection.commit();
+
+      return {
+        result: "confirmed_failed",
+        paymentId: payment.paymentId,
+      };
+    }
+
+    if (!payment.targetPlanId || payment.planStatus !== "active") {
+      throw new Error("Target subscription plan is unavailable");
+    }
+
+    let newEndDate = null;
+    let previousSubscriptionId = null;
+
+    if (payment.paymentType === "upgrade") {
+      if (!payment.sourceSubscriptionId) {
+        throw new Error("Source subscription is missing");
+      }
+
+      const [sourceRows] = await connection.query(
+        `
+        SELECT subscriptionId, userId, endDate, status
+        FROM UserSubscriptions
+        WHERE subscriptionId = ?
+        LIMIT 1
+        FOR UPDATE
+        `,
+        [payment.sourceSubscriptionId],
+      );
+
+      const sourceSubscription = sourceRows[0];
+
+      if (
+        !sourceSubscription ||
+        Number(sourceSubscription.userId) !== Number(payment.userId) ||
+        sourceSubscription.status !== "active"
+      ) {
+        throw new Error("Source subscription is no longer active");
+      }
+
+      previousSubscriptionId = sourceSubscription.subscriptionId;
+      newEndDate = sourceSubscription.endDate;
+
+      await connection.query(
+        `
+        UPDATE UserSubscriptions
+        SET status = 'upgraded'
+        WHERE subscriptionId = ?
+        `,
+        [sourceSubscription.subscriptionId],
+      );
+    } else {
+      const [activeRows] = await connection.query(
+        `
+        SELECT subscriptionId
+        FROM UserSubscriptions
+        WHERE userId = ?
+          AND status = 'active'
+          AND startDate <= NOW()
+          AND endDate > NOW()
+        LIMIT 1
+        FOR UPDATE
+        `,
+        [payment.userId],
+      );
+
+      if (activeRows.length > 0) {
+        throw new Error("User already has an active subscription");
+      }
+    }
+
+    let subscriptionResult;
+
+    if (payment.paymentType === "upgrade") {
+      [subscriptionResult] = await connection.query(
+        `
+        INSERT INTO UserSubscriptions (
+          userId,
+          planId,
+          startDate,
+          endDate,
+          amountPaid,
+          status,
+          previousSubscriptionId
+        )
+        VALUES (?, ?, NOW(), ?, ?, 'active', ?)
+        `,
+        [
+          payment.userId,
+          payment.targetPlanId,
+          newEndDate,
+          expectedAmount,
+          previousSubscriptionId,
+        ],
+      );
+    } else {
+      [subscriptionResult] = await connection.query(
+        `
+        INSERT INTO UserSubscriptions (
+          userId,
+          planId,
+          startDate,
+          endDate,
+          amountPaid,
+          status,
+          previousSubscriptionId
+        )
+        VALUES (
+          ?,
+          ?,
+          NOW(),
+          DATE_ADD(NOW(), INTERVAL ? DAY),
+          ?,
+          'active',
+          NULL
+        )
+        `,
+        [
+          payment.userId,
+          payment.targetPlanId,
+          Number(payment.durationDays || 30),
+          expectedAmount,
+        ],
+      );
+    }
+
+    const subscriptionId = subscriptionResult.insertId;
+
+    await connection.query(
+      `
+      UPDATE Payments
+      SET
+        subscriptionId = ?,
+        status = 'paid',
+        gatewayTransactionNo = ?,
+        gatewayResponseCode = ?,
+        paidAt = NOW()
+      WHERE paymentId = ?
+      `,
+      [
+        subscriptionId,
+        gatewayTransactionNo,
+        String(responseCode || ""),
+        payment.paymentId,
+      ],
+    );
+
+    await connection.commit();
+
+    return {
+      result: "confirmed_paid",
+      paymentId: payment.paymentId,
+      subscriptionId,
+      userId: payment.userId,
+      planId: payment.targetPlanId,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function getUserPaymentHistory(userId) {
+  const [rows] = await pool.query(
+    `
+    SELECT
+      p.paymentId,
+      p.userId,
+      p.subscriptionId,
+      p.targetPlanId,
+      p.sourceSubscriptionId,
+      p.paymentType,
+      p.originalAmount,
+      p.discountAmount,
+      p.finalAmount,
+      p.paymentMethod,
+      p.status,
+      p.transactionCode,
+      p.gatewayTransactionNo,
+      p.gatewayResponseCode,
+      p.paidAt,
+      p.createdAt,
       sp.planName
     FROM Payments p
-    LEFT JOIN UserSubscriptions us
-      ON us.subscriptionId = p.subscriptionId
     LEFT JOIN SubscriptionPlans sp
-      ON sp.planId = us.planId
+      ON sp.planId = p.targetPlanId
     WHERE p.userId = ?
     ORDER BY p.createdAt DESC, p.paymentId DESC
+    LIMIT 50
     `,
     [userId],
   );

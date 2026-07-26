@@ -6,34 +6,11 @@ import {
   getSubscriptionPlans,
   getUserStorage,
   getUpgradePreview,
-  purchaseSubscriptionDemo,
+  createVnpayPayment,
   getPaymentHistory,
+  getPaymentStatus,
 } from "../../../services/api";
 import "./SettingsModal.scss";
-
-const formatBytes = (bytes = 0) => {
-  const value = Number(bytes || 0);
-
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  if (value < 1024 * 1024 * 1024) {
-    return `${(value / 1024 / 1024).toFixed(1)} MB`;
-  }
-
-  return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`;
-};
-
-const formatMoney = (amount = 0) =>
-  `${Number(amount || 0).toLocaleString("vi-VN")} ₫`;
-
-const formatDate = (value) => {
-  if (!value) return "-";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return date.toLocaleDateString("vi-VN");
-};
 
 const applyThemeToDOM = (theme) => {
   const finalTheme = theme === "dark" ? "dark" : "light";
@@ -49,6 +26,43 @@ const applyThemeToDOM = (theme) => {
     document.body.classList.remove("dark-mode");
     document.body.classList.remove("theme-dark");
   }
+};
+
+const formatBytes = (bytes = 0) => {
+  const value = Number(bytes || 0);
+
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+
+  if (value < 1024 * 1024 * 1024) {
+    return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`;
+};
+
+const formatMoney = (amount = 0) =>
+  `${Number(amount || 0).toLocaleString("vi-VN")} ₫`;
+
+const formatDateTime = (value) => {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleString("vi-VN");
+};
+
+const paymentStatusLabel = (status) => {
+  const map = {
+    pending: "Đang chờ",
+    paid: "Đã thanh toán",
+    failed: "Thất bại",
+    cancelled: "Đã hủy",
+  };
+
+  return map[status] || status || "-";
 };
 
 export default function SettingsModal({ user, onClose, onSave }) {
@@ -74,14 +88,16 @@ export default function SettingsModal({ user, onClose, onSave }) {
 
   const [plans, setPlans] = useState([]);
   const [storage, setStorage] = useState(null);
-  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState("");
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [upgradePreview, setUpgradePreview] = useState(null);
-  const [planLoading, setPlanLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [planError, setPlanError] = useState("");
-  const [paymentSuccess, setPaymentSuccess] = useState("");
+  const [paymentNotice, setPaymentNotice] = useState("");
+  const [returnTxnRef, setReturnTxnRef] = useState("");
+  const [planReloadToken, setPlanReloadToken] = useState(0);
 
   useEffect(() => {
     applyThemeToDOM(theme);
@@ -105,95 +121,145 @@ export default function SettingsModal({ user, onClose, onSave }) {
     };
   }, [avatarPreview]);
 
+  useEffect(() => {
+    if (user?.role !== "student") return;
 
-  const loadPlanData = async () => {
-    if (!user?.userId || user?.role !== "student") return;
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const txnRef = params.get("txnRef") || "";
 
-    try {
-      setPlanLoading(true);
-      setPlanError("");
+    if (!payment) return;
 
-      const [plansResult, storageResult, paymentsResult] = await Promise.all([
-        getSubscriptionPlans(),
-        getUserStorage(user.userId),
-        getPaymentHistory(user.userId),
-      ]);
+    setActiveTab("plan");
+    setReturnTxnRef(txnRef);
 
-      setPlans(plansResult?.data || []);
-      setStorage(storageResult?.data || null);
-      setPaymentHistory(paymentsResult?.data || []);
-    } catch (error) {
-      console.error(error);
-      setPlanError(error.message || "Không thể tải thông tin gói và dung lượng.");
-    } finally {
-      setPlanLoading(false);
+    if (payment === "success") {
+      setPaymentNotice("Thanh toán VNPAY thành công. Gói của bạn đã được cập nhật.");
+    } else if (payment === "pending") {
+      setPaymentNotice(
+        "VNPAY đã trả kết quả thành công. Hệ thống đang chờ IPN xác nhận giao dịch...",
+      );
+    } else if (payment === "failed") {
+      setPaymentNotice("Giao dịch VNPAY không thành công hoặc đã bị hủy.");
+    } else if (payment === "invalid") {
+      setPaymentNotice("Không thể xác thực dữ liệu trả về từ VNPAY.");
+    } else {
+      setPaymentNotice("Không thể xác định kết quả giao dịch VNPAY.");
     }
-  };
+  }, [user?.role]);
 
   useEffect(() => {
-    if (activeTab === "plan" && user?.role === "student") {
-      loadPlanData();
+    if (
+      activeTab !== "plan" ||
+      user?.role !== "student" ||
+      !user?.userId
+    ) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, user?.userId, user?.role]);
 
-  const handlePreviewUpgrade = async (plan) => {
-    if (!user?.userId || !plan?.planId) return;
+    let cancelled = false;
 
-    try {
-      setPreviewLoading(true);
-      setPlanError("");
-      setPaymentSuccess("");
-      setSelectedPlan(plan);
-      setUpgradePreview(null);
+    const loadPlanData = async () => {
+      try {
+        setPlanLoading(true);
+        setPlanError("");
 
-      const result = await getUpgradePreview(user.userId, plan.planId);
-      setUpgradePreview(result?.data || null);
-    } catch (error) {
-      console.error(error);
-      setPlanError(error.message || "Không thể tính giá nâng cấp.");
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
+        const [plansResult, storageResult, paymentsResult] = await Promise.all([
+          getSubscriptionPlans(),
+          getUserStorage(user.userId),
+          getPaymentHistory(user.userId),
+        ]);
 
-  const handleConfirmPayment = async () => {
-    if (!user?.userId || !selectedPlan?.planId || !upgradePreview) return;
+        if (cancelled) return;
 
-    const confirmed = window.confirm(
-      `Xác nhận thanh toán mô phỏng ${formatMoney(
-        upgradePreview.finalAmount,
-      )} để kích hoạt gói ${selectedPlan.planName}?`,
-    );
+        setPlans(plansResult.data || []);
+        setStorage(storageResult.data || null);
+        setPayments(paymentsResult.data || []);
+      } catch (error) {
+        if (!cancelled) {
+          console.error(error);
+          setPlanError(
+            error.message || "Không thể tải thông tin gói và dung lượng.",
+          );
+        }
+      } finally {
+        if (!cancelled) setPlanLoading(false);
+      }
+    };
 
-    if (!confirmed) return;
+    loadPlanData();
 
-    try {
-      setPaymentLoading(true);
-      setPlanError("");
-      setPaymentSuccess("");
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, user?.role, user?.userId, planReloadToken]);
 
-      const result = await purchaseSubscriptionDemo(
-        user.userId,
-        selectedPlan.planId,
-      );
+  useEffect(() => {
+    if (!returnTxnRef || user?.role !== "student") return;
 
-      setPaymentSuccess(
-        `Thanh toán demo thành công. Gói ${
-          result?.data?.subscription?.planName || selectedPlan.planName
-        } đã được kích hoạt.`,
-      );
+    let cancelled = false;
+    let timerId;
 
-      setSelectedPlan(null);
-      setUpgradePreview(null);
-      await loadPlanData();
-    } catch (error) {
-      console.error(error);
-      setPlanError(error.message || "Thanh toán không thành công.");
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
+    const clearPaymentQuery = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment");
+      url.searchParams.delete("txnRef");
+      url.searchParams.delete("vnp_ResponseCode");
+      window.history.replaceState({}, "", url.toString());
+    };
+
+    const pollPayment = async () => {
+      for (let attempt = 0; attempt < 10 && !cancelled; attempt += 1) {
+        try {
+          const result = await getPaymentStatus(returnTxnRef);
+          const payment = result.data;
+
+          if (payment?.status === "paid") {
+            setPaymentNotice("Thanh toán VNPAY thành công. Gói đã được kích hoạt.");
+            setReturnTxnRef("");
+            setPlanReloadToken((value) => value + 1);
+            clearPaymentQuery();
+            return;
+          }
+
+          if (payment?.status === "failed") {
+            setPaymentNotice("Giao dịch VNPAY thất bại.");
+            setReturnTxnRef("");
+            setPlanReloadToken((value) => value + 1);
+            clearPaymentQuery();
+            return;
+          }
+
+          if (payment?.status === "cancelled") {
+            setPaymentNotice("Yêu cầu thanh toán này đã bị hủy.");
+            setReturnTxnRef("");
+            setPlanReloadToken((value) => value + 1);
+            clearPaymentQuery();
+            return;
+          }
+        } catch (error) {
+          console.error("Check VNPAY payment status failed:", error);
+        }
+
+        await new Promise((resolve) => {
+          timerId = window.setTimeout(resolve, 1500);
+        });
+      }
+
+      if (!cancelled) {
+        setPaymentNotice(
+          "Giao dịch vẫn đang chờ VNPAY IPN. Bạn có thể đóng Settings và kiểm tra lại sau.",
+        );
+      }
+    };
+
+    pollPayment();
+
+    return () => {
+      cancelled = true;
+      if (timerId) window.clearTimeout(timerId);
+    };
+  }, [returnTxnRef, user?.role]);
 
   const handleThemeChange = (nextTheme) => {
     setTheme(nextTheme);
@@ -316,6 +382,53 @@ export default function SettingsModal({ user, onClose, onSave }) {
     }
   };
 
+  const handlePreviewUpgrade = async (plan) => {
+    if (!user?.userId || !plan?.planId) return;
+
+    try {
+      setPreviewLoading(true);
+      setPlanError("");
+      setPaymentNotice("");
+      setSelectedPlan(plan);
+      setUpgradePreview(null);
+
+      const result = await getUpgradePreview(user.userId, plan.planId);
+      setUpgradePreview(result.data || null);
+    } catch (error) {
+      console.error(error);
+      setPlanError(error.message || "Không thể tính giá nâng cấp.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handlePayWithVnpay = async () => {
+    if (!user?.userId || !selectedPlan?.planId || !upgradePreview) return;
+
+    try {
+      setPaymentLoading(true);
+      setPlanError("");
+      setPaymentNotice("Đang tạo giao dịch VNPAY Sandbox...");
+
+      const result = await createVnpayPayment(user.userId, selectedPlan.planId, {
+        locale: chatLanguage === "en" ? "en" : "vn",
+      });
+
+      const paymentUrl = result.data?.paymentUrl;
+
+      if (!paymentUrl) {
+        throw new Error("Backend không trả về VNPAY payment URL.");
+      }
+
+      window.location.assign(paymentUrl);
+    } catch (error) {
+      console.error(error);
+      setPlanError(error.message || "Không thể tạo giao dịch VNPAY.");
+      setPaymentNotice("");
+      setPaymentLoading(false);
+    }
+  };
+
   return (
     <div
       className="sm-overlay"
@@ -365,8 +478,6 @@ export default function SettingsModal({ user, onClose, onSave }) {
                 setActiveTab("plan");
                 setSelectedPlan(null);
                 setUpgradePreview(null);
-                setPlanError("");
-                setPaymentSuccess("");
               }}
             >
               <i className="bi bi-cloud"></i>
@@ -458,34 +569,28 @@ export default function SettingsModal({ user, onClose, onSave }) {
 
           {activeTab === "plan" && user?.role === "student" && (
             <div className="sm-plan">
-              <div className="sm-demo-notice">
-                <i className="bi bi-info-circle"></i>
-                <span>
-                  Payment hiện là chế độ demo cho project, không trừ tiền ngân hàng thật.
-                </span>
-              </div>
-
-              {planError && <div className="sm-plan-error">{planError}</div>}
-              {paymentSuccess && (
-                <div className="sm-plan-success">{paymentSuccess}</div>
-              )}
-
               {planLoading ? (
                 <div className="sm-plan-loading">Đang tải thông tin gói...</div>
               ) : (
                 <>
+                  {planError && <div className="sm-plan-error">{planError}</div>}
+
+                  {paymentNotice && (
+                    <div className="sm-payment-notice">{paymentNotice}</div>
+                  )}
+
                   {storage && (
                     <div className="sm-storage-card">
                       <div className="sm-storage-head">
                         <div>
-                          <span className="sm-storage-label">Current plan</span>
+                          <span className="sm-storage-label">Gói hiện tại</span>
                           <strong className="sm-storage-plan">
                             {storage.plan?.planName || "Free"}
                           </strong>
                         </div>
 
                         <span className="sm-storage-percent">
-                          {Number(storage.percentage || 0).toFixed(1)}%
+                          {storage.percentage || 0}%
                         </span>
                       </div>
 
@@ -502,34 +607,28 @@ export default function SettingsModal({ user, onClose, onSave }) {
                       </div>
 
                       <div className="sm-storage-meta">
-                        <span>{formatBytes(storage.usedBytes)} used</span>
-                        <span>{formatBytes(storage.limitBytes)} total</span>
+                        <span>{formatBytes(storage.usedBytes)} đã dùng</span>
+                        <span>{formatBytes(storage.limitBytes)} tổng</span>
                       </div>
 
                       <div className="sm-storage-docs">
-                        {storage.documentCount || 0} documents
-                        {storage.subscription?.endDate && (
-                          <span>
-                            Expires: {formatDate(storage.subscription.endDate)}
-                          </span>
-                        )}
+                        {storage.documentCount || 0} tài liệu
                       </div>
                     </div>
                   )}
 
                   <div className="sm-plan-heading">
-                    <h3>Choose your plan</h3>
-                    <p>Nâng cấp để tăng giới hạn dung lượng lưu trữ.</p>
+                    <h3>Chọn gói lưu trữ</h3>
+                    <p>Thanh toán qua VNPAY Sandbox.</p>
                   </div>
 
-                  <div className="sm-plan-list">
+                  <div className="sm-plan-grid">
                     {plans.map((plan) => {
                       const currentPrice = Number(storage?.plan?.price || 0);
                       const planPrice = Number(plan.price || 0);
                       const isCurrent =
-                        Number(plan.planId) === Number(storage?.plan?.planId) ||
-                        String(plan.planName || "").toLowerCase() ===
-                          String(storage?.plan?.planName || "").toLowerCase();
+                        String(plan.planName).toLowerCase() ===
+                        String(storage?.plan?.planName || "").toLowerCase();
                       const canUpgrade = !isCurrent && planPrice > currentPrice;
 
                       return (
@@ -557,7 +656,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
                           <div className="sm-plan-price">
                             {formatMoney(plan.price)}
                             {Number(plan.price || 0) > 0 && (
-                              <span>/ {plan.durationDays} days</span>
+                              <span>/ {plan.durationDays} ngày</span>
                             )}
                           </div>
 
@@ -574,10 +673,10 @@ export default function SettingsModal({ user, onClose, onSave }) {
                             onClick={() => handlePreviewUpgrade(plan)}
                           >
                             {isCurrent
-                              ? "Current plan"
+                              ? "Gói hiện tại"
                               : canUpgrade
-                                ? "Upgrade"
-                                : "Not available"}
+                                ? "Chọn gói"
+                                : "Không khả dụng"}
                           </Button>
                         </div>
                       );
@@ -593,30 +692,30 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   {upgradePreview && !previewLoading && (
                     <div className="sm-plan-preview">
                       <div className="sm-plan-preview__title">
-                        Payment summary
+                        Xác nhận thanh toán
                       </div>
 
                       <div className="sm-plan-preview__row">
-                        <span>Current plan</span>
+                        <span>Gói hiện tại</span>
                         <strong>{upgradePreview.currentPlan?.planName}</strong>
                       </div>
 
                       <div className="sm-plan-preview__row">
-                        <span>New plan</span>
+                        <span>Gói mới</span>
                         <strong>{upgradePreview.targetPlan?.planName}</strong>
                       </div>
 
                       {upgradePreview.type === "upgrade" && (
                         <>
                           <div className="sm-plan-preview__row">
-                            <span>New plan cost for remaining time</span>
+                            <span>Giá gói mới cho thời gian còn lại</span>
                             <strong>
                               {formatMoney(upgradePreview.originalAmount)}
                             </strong>
                           </div>
 
                           <div className="sm-plan-preview__row">
-                            <span>Unused old-plan credit</span>
+                            <span>Credit gói cũ chưa sử dụng</span>
                             <strong>
                               -{formatMoney(upgradePreview.discountAmount)}
                             </strong>
@@ -625,55 +724,64 @@ export default function SettingsModal({ user, onClose, onSave }) {
                       )}
 
                       <div className="sm-plan-preview__total">
-                        <span>Pay now</span>
+                        <span>Thanh toán</span>
                         <strong>{formatMoney(upgradePreview.finalAmount)}</strong>
                       </div>
 
                       {upgradePreview.endDate && (
                         <div className="sm-plan-preview__note">
-                          Upgrade giữ nguyên ngày hết hạn hiện tại: {" "}
-                          {formatDate(upgradePreview.endDate)}
+                          Sau khi upgrade, ngày hết hạn vẫn giữ: {" "}
+                          {new Date(upgradePreview.endDate).toLocaleDateString(
+                            "vi-VN",
+                          )}
                         </div>
                       )}
 
                       <Button
                         type="button"
-                        className="sm-pay-button"
-                        onClick={handleConfirmPayment}
+                        className="sm-vnpay-button"
                         disabled={paymentLoading}
+                        onClick={handlePayWithVnpay}
                       >
-                        {paymentLoading
-                          ? "Processing..."
-                          : "Confirm & Pay (Demo)"}
+                        {paymentLoading ? (
+                          "Đang chuyển sang VNPAY..."
+                        ) : (
+                          <>
+                            <i className="bi bi-credit-card"></i>
+                            Thanh toán VNPAY Sandbox
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}
 
                   <div className="sm-payment-history">
                     <div className="sm-plan-heading">
-                      <h3>Payment history</h3>
+                      <h3>Lịch sử thanh toán</h3>
                     </div>
 
-                    {paymentHistory.length === 0 ? (
-                      <div className="sm-payment-empty">No payments yet.</div>
+                    {payments.length === 0 ? (
+                      <div className="sm-payment-empty">Chưa có giao dịch.</div>
                     ) : (
                       <div className="sm-payment-list">
-                        {paymentHistory.slice(0, 8).map((payment) => (
-                          <div className="sm-payment-item" key={payment.paymentId}>
+                        {payments.map((payment) => (
+                          <div
+                            className="sm-payment-item"
+                            key={payment.paymentId}
+                          >
                             <div>
-                              <strong>{payment.planName || "Storage plan"}</strong>
-                              <span>
-                                {payment.paymentType === "upgrade"
-                                  ? "Upgrade"
-                                  : "New subscription"}
-                                {" • "}
-                                {formatDate(payment.paidAt || payment.createdAt)}
-                              </span>
+                              <strong>{payment.planName || "Subscription"}</strong>
+                              <span>{formatDateTime(payment.createdAt)}</span>
+                              <small>{payment.transactionCode}</small>
                             </div>
 
-                            <div className="sm-payment-item__amount">
+                            <div className="sm-payment-item__right">
                               <strong>{formatMoney(payment.finalAmount)}</strong>
-                              <span>{payment.status}</span>
+                              <span
+                                className={`sm-payment-status sm-payment-status--${payment.status}`}
+                              >
+                                {paymentStatusLabel(payment.status)}
+                              </span>
                             </div>
                           </div>
                         ))}

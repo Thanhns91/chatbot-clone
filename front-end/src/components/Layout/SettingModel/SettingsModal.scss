@@ -25,7 +25,7 @@
   background: #ffffff;
   border-radius: 12px;
   width: 100%;
-  max-width: 480px;
+  max-width: 720px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.14);
@@ -84,11 +84,11 @@
 
 .sm-tabs {
   display: flex;
-  flex-wrap: nowrap;
   gap: 4px;
   padding: 16px 24px 0;
   border-bottom: 1.5px solid #f1f5f9;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .sm-tab {
@@ -614,52 +614,45 @@ html[data-theme="dark"] .sm-close.btn {
 }
 
 /* =========================
-   PLAN / STORAGE / PAYMENT
+   PLAN / STORAGE / VNPAY
 ========================= */
 
 .sm-plan {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-}
-
-.sm-demo-notice,
-.sm-plan-error,
-.sm-plan-success {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  line-height: 1.45;
-}
-
-.sm-demo-notice {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.sm-plan-error {
-  background: #fef2f2;
-  color: #b91c1c;
-}
-
-.sm-plan-success {
-  background: #f0fdf4;
-  color: #15803d;
+  gap: 20px;
 }
 
 .sm-plan-loading,
 .sm-payment-empty {
-  padding: 16px 0;
+  padding: 22px 0;
   text-align: center;
   color: #64748b;
   font-size: 13px;
 }
 
+.sm-plan-error,
+.sm-payment-notice {
+  padding: 11px 13px;
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sm-plan-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.sm-payment-notice {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
 .sm-storage-card {
-  padding: 16px;
+  padding: 18px;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   background: #f8fafc;
@@ -667,26 +660,26 @@ html[data-theme="dark"] .sm-close.btn {
 
 .sm-storage-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .sm-storage-label {
   display: block;
   margin-bottom: 2px;
-  color: #64748b;
   font-size: 12px;
+  color: #64748b;
 }
 
 .sm-storage-plan {
   color: #0f172a;
-  font-size: 17px;
+  font-size: 18px;
 }
 
 .sm-storage-percent {
-  color: #6366f1;
+  color: #4f46e5;
   font-size: 14px;
   font-weight: 700;
 }
@@ -705,13 +698,18 @@ html[data-theme="dark"] .sm-close.btn {
   }
 }
 
-.sm-storage-meta,
-.sm-storage-docs {
+.sm-storage-meta {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 9px;
   color: #64748b;
+  font-size: 12px;
+}
+
+.sm-storage-docs {
+  margin-top: 9px;
+  color: #94a3b8;
   font-size: 12px;
 }
 
@@ -719,7 +717,7 @@ html[data-theme="dark"] .sm-close.btn {
   h3 {
     margin: 0;
     color: #0f172a;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
   }
 
@@ -730,17 +728,18 @@ html[data-theme="dark"] .sm-close.btn {
   }
 }
 
-.sm-plan-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.sm-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .sm-plan-card {
-  padding: 14px;
+  padding: 16px;
   border: 1.5px solid #e2e8f0;
-  border-radius: 11px;
+  border-radius: 12px;
   background: #ffffff;
+  transition: border-color 0.15s, box-shadow 0.15s;
 
   &--selected {
     border-color: #6366f1;
@@ -750,7 +749,7 @@ html[data-theme="dark"] .sm-close.btn {
   &__top {
     display: flex;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
 
     > div {
       display: flex;
@@ -781,33 +780,39 @@ html[data-theme="dark"] .sm-close.btn {
 }
 
 .sm-plan-price {
-  margin-top: 10px;
+  margin-top: 12px;
   color: #0f172a;
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 700;
 
   span {
-    margin-left: 4px;
+    margin-left: 3px;
     color: #94a3b8;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 400;
   }
 }
 
 .sm-plan-description {
-  margin: 5px 0 10px;
+  min-height: 36px;
+  margin: 6px 0 12px;
   color: #64748b;
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .sm-plan-button,
-.sm-pay-button {
+.sm-vnpay-button {
   &.btn {
     width: 100%;
     border: none;
-    background: #6366f1;
     font-size: 13px;
     font-weight: 600;
+  }
+}
+
+.sm-plan-button {
+  &.btn {
+    background: #6366f1;
 
     &:hover {
       background: #4f46e5;
@@ -821,35 +826,45 @@ html[data-theme="dark"] .sm-close.btn {
   }
 }
 
-.sm-pay-button {
+.sm-vnpay-button {
   &.btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     margin-top: 14px;
+    padding: 11px 14px;
+    background: #0b65b1;
+
+    &:hover {
+      background: #084f8a;
+    }
+
+    &:disabled {
+      opacity: 0.65;
+    }
   }
 }
 
 .sm-plan-preview {
-  padding: 15px;
+  padding: 16px;
   border: 1px solid #c7d2fe;
-  border-radius: 11px;
+  border-radius: 12px;
   background: #eef2ff;
 }
 
 .sm-plan-preview__title {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   color: #3730a3;
   font-size: 14px;
   font-weight: 700;
 }
 
-.sm-plan-preview__row,
-.sm-plan-preview__total {
+.sm-plan-preview__row {
   display: flex;
   justify-content: space-between;
-  gap: 14px;
-}
-
-.sm-plan-preview__row {
-  padding: 4px 0;
+  gap: 16px;
+  padding: 5px 0;
   font-size: 12.5px;
 
   span {
@@ -863,8 +878,11 @@ html[data-theme="dark"] .sm-close.btn {
 }
 
 .sm-plan-preview__total {
-  margin-top: 9px;
-  padding-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+  padding-top: 12px;
   border-top: 1px solid #c7d2fe;
 
   span {
@@ -874,45 +892,40 @@ html[data-theme="dark"] .sm-close.btn {
 
   strong {
     color: #4f46e5;
-    font-size: 17px;
+    font-size: 18px;
   }
 }
 
 .sm-plan-preview__note {
-  margin-top: 9px;
+  margin-top: 10px;
   color: #64748b;
   font-size: 11.5px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .sm-payment-history {
   padding-top: 4px;
-  border-top: 1px solid #f1f5f9;
 }
 
 .sm-payment-list {
   display: flex;
   flex-direction: column;
+  gap: 8px;
   margin-top: 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  overflow: hidden;
 }
 
 .sm-payment-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 11px 12px;
-  border-bottom: 1px solid #f1f5f9;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
 
-  &:last-child {
-    border-bottom: none;
-  }
-
-  > div:first-child,
-  &__amount {
+  > div:first-child {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -920,41 +933,67 @@ html[data-theme="dark"] .sm-close.btn {
 
   strong {
     color: #0f172a;
-    font-size: 12.5px;
+    font-size: 13px;
   }
 
-  span {
+  span,
+  small {
     color: #64748b;
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
-  &__amount {
+  small {
+    max-width: 340px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__right {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
     align-items: flex-end;
+    gap: 5px;
+  }
+}
+
+.sm-payment-status {
+  display: inline-flex;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10.5px !important;
+  font-weight: 700;
+
+  &--paid {
+    background: #dcfce7;
+    color: #15803d !important;
+  }
+
+  &--pending {
+    background: #fef3c7;
+    color: #a16207 !important;
+  }
+
+  &--failed,
+  &--cancelled {
+    background: #fee2e2;
+    color: #b91c1c !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .sm-plan-grid {
+    grid-template-columns: 1fr;
   }
 }
 
 html[data-theme="dark"] {
-  .sm-demo-notice {
-    background: #172554;
-    color: #bfdbfe;
-  }
-
-  .sm-plan-error {
-    background: #450a0a;
-    color: #fecaca;
-  }
-
-  .sm-plan-success {
-    background: #052e16;
-    color: #bbf7d0;
-  }
-
   .sm-storage-card,
   .sm-plan-card,
-  .sm-payment-list,
   .sm-payment-item {
     background: #1e293b;
-    border-color: #475569;
+    border-color: #334155;
   }
 
   .sm-storage-plan,
@@ -972,9 +1011,8 @@ html[data-theme="dark"] {
   .sm-plan-heading p,
   .sm-plan-card__top span,
   .sm-plan-description,
-  .sm-plan-preview__row span,
-  .sm-plan-preview__note,
-  .sm-payment-item span {
+  .sm-payment-item span,
+  .sm-payment-item small {
     color: #cbd5e1;
   }
 
@@ -990,6 +1028,23 @@ html[data-theme="dark"] {
   .sm-plan-preview__title,
   .sm-plan-preview__total span {
     color: #c7d2fe;
+  }
+
+  .sm-plan-preview__row span,
+  .sm-plan-preview__note {
+    color: #cbd5e1;
+  }
+
+  .sm-payment-notice {
+    background: #172554;
+    color: #bfdbfe;
+    border-color: #1d4ed8;
+  }
+
+  .sm-plan-error {
+    background: #450a0a;
+    color: #fecaca;
+    border-color: #7f1d1d;
   }
 }
 
