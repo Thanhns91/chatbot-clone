@@ -538,10 +538,305 @@ router.get("/vnpay/return", async (req, res) => {
     });
   }
 });
-
 /**
- * GET /subscriptions/payment-status/:transactionCode
+ * GET /subscriptions/admin/revenue-stats
+ *
+ * Dashboard doanh thu Admin.
+ * Chỉ tính giao dịch:
+ * - status = 'paid'
+ * - paidAt IS NOT NULL
+ *
+ * Doanh thu thực tế lấy từ Payments.finalAmount.
  */
+router.get("/admin/revenue-stats", async (req, res) => {
+  try {
+    // =========================
+    // TỔNG QUAN DOANH THU
+    // =========================
+    const [summaryRows] = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(finalAmount), 0) AS totalRevenue,
+
+        COALESCE(
+          SUM(
+            CASE
+              WHEN DATE(paidAt) = CURDATE()
+              THEN finalAmount
+              ELSE 0
+            END
+          ),
+          0
+        ) AS todayRevenue,
+
+        COALESCE(
+          SUM(
+            CASE
+              WHEN YEAR(paidAt) = YEAR(CURDATE())
+               AND MONTH(paidAt) = MONTH(CURDATE())
+              THEN finalAmount
+              ELSE 0
+            END
+          ),
+          0
+        ) AS monthRevenue,
+
+        COUNT(*) AS paidPayments,
+
+        COALESCE(
+          AVG(finalAmount),
+          0
+        ) AS averageOrderValue,
+
+        SUM(
+          CASE
+            WHEN paymentType = 'new_subscription'
+            THEN 1
+            ELSE 0
+          END
+        ) AS newSubscriptions,
+
+        SUM(
+          CASE
+            WHEN paymentType = 'upgrade'
+            THEN 1
+            ELSE 0
+          END
+        ) AS upgrades
+
+      FROM Payments
+
+      WHERE status = 'paid'
+        AND paidAt IS NOT NULL
+      `,
+    );
+
+    // =========================
+    // DOANH THU 30 NGÀY
+    // =========================
+    const [revenueChartRows] = await pool.query(
+      `
+      SELECT
+        DATE(paidAt) AS date,
+        COALESCE(SUM(finalAmount), 0) AS revenue,
+        COUNT(*) AS payments
+
+      FROM Payments
+
+      WHERE status = 'paid'
+        AND paidAt IS NOT NULL
+        AND paidAt >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+
+      GROUP BY DATE(paidAt)
+
+      ORDER BY DATE(paidAt) ASC
+      `,
+    );
+
+    // =========================
+    // DOANH THU THEO GÓI
+    // =========================
+    const [planRevenueRows] = await pool.query(
+      `
+      SELECT
+        COALESCE(
+          targetPlan.planId,
+          subscriptionPlan.planId
+        ) AS planId,
+
+        COALESCE(
+          targetPlan.planName,
+          subscriptionPlan.planName,
+          'Unknown'
+        ) AS planName,
+
+        COALESCE(
+          SUM(p.finalAmount),
+          0
+        ) AS revenue,
+
+        COUNT(*) AS payments
+
+      FROM Payments p
+
+      LEFT JOIN SubscriptionPlans targetPlan
+        ON targetPlan.planId = p.targetPlanId
+
+      LEFT JOIN UserSubscriptions us
+        ON us.subscriptionId = p.subscriptionId
+
+      LEFT JOIN SubscriptionPlans subscriptionPlan
+        ON subscriptionPlan.planId = us.planId
+
+      WHERE p.status = 'paid'
+        AND p.paidAt IS NOT NULL
+
+      GROUP BY
+        COALESCE(
+          targetPlan.planId,
+          subscriptionPlan.planId
+        ),
+        COALESCE(
+          targetPlan.planName,
+          subscriptionPlan.planName,
+          'Unknown'
+        )
+
+      ORDER BY revenue DESC, planName ASC
+      `,
+    );
+
+    // =========================
+    // 8 THANH TOÁN GẦN NHẤT
+    // =========================
+    const [recentPaymentRows] = await pool.query(
+      `
+      SELECT
+        p.paymentId,
+        p.userId,
+
+        u.fullName,
+        u.email,
+
+        p.paymentType,
+        p.finalAmount,
+        p.paymentMethod,
+        p.transactionCode,
+        p.paidAt,
+
+        COALESCE(
+          targetPlan.planName,
+          subscriptionPlan.planName,
+          'Unknown'
+        ) AS planName
+
+      FROM Payments p
+
+      INNER JOIN Users u
+        ON u.userId = p.userId
+
+      LEFT JOIN SubscriptionPlans targetPlan
+        ON targetPlan.planId = p.targetPlanId
+
+      LEFT JOIN UserSubscriptions us
+        ON us.subscriptionId = p.subscriptionId
+
+      LEFT JOIN SubscriptionPlans subscriptionPlan
+        ON subscriptionPlan.planId = us.planId
+
+      WHERE p.status = 'paid'
+        AND p.paidAt IS NOT NULL
+
+      ORDER BY
+        p.paidAt DESC,
+        p.paymentId DESC
+
+      LIMIT 8
+      `,
+    );
+
+    const summary = summaryRows[0] || {};
+
+    return res.json({
+      success: true,
+
+      data: {
+        summary: {
+          totalRevenue: Number(
+            summary.totalRevenue || 0,
+          ),
+
+          todayRevenue: Number(
+            summary.todayRevenue || 0,
+          ),
+
+          monthRevenue: Number(
+            summary.monthRevenue || 0,
+          ),
+
+          paidPayments: Number(
+            summary.paidPayments || 0,
+          ),
+
+          averageOrderValue: Number(
+            summary.averageOrderValue || 0,
+          ),
+
+          newSubscriptions: Number(
+            summary.newSubscriptions || 0,
+          ),
+
+          upgrades: Number(
+            summary.upgrades || 0,
+          ),
+        },
+
+        revenueChart: revenueChartRows.map(
+          (row) => ({
+            date: row.date,
+
+            revenue: Number(
+              row.revenue || 0,
+            ),
+
+            payments: Number(
+              row.payments || 0,
+            ),
+          }),
+        ),
+
+        planRevenue: planRevenueRows.map(
+          (row) => ({
+            planId:
+              row.planId == null
+                ? null
+                : Number(row.planId),
+
+            planName:
+              row.planName || "Unknown",
+
+            revenue: Number(
+              row.revenue || 0,
+            ),
+
+            payments: Number(
+              row.payments || 0,
+            ),
+          }),
+        ),
+
+        recentPayments: recentPaymentRows.map(
+          (row) => ({
+            ...row,
+
+            paymentId: Number(
+              row.paymentId,
+            ),
+
+            userId: Number(
+              row.userId,
+            ),
+
+            finalAmount: Number(
+              row.finalAmount || 0,
+            ),
+          }),
+        ),
+      },
+    });
+  } catch (error) {
+    console.log(
+      "Load admin revenue stats failed:",
+      error,
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Cannot load revenue statistics",
+      detail: error.message,
+    });
+  }
+});
 router.get("/payment-status/:transactionCode", async (req, res) => {
   try {
     const transactionCode = String(req.params.transactionCode || "").trim();
