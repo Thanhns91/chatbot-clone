@@ -67,10 +67,20 @@ const paymentStatusLabel = (status) => {
   return map[status] || status || "-";
 };
 
-export default function SettingsModal({ user, onClose, onSave }) {
+export default function SettingsModal({
+  user,
+  onClose,
+  onSave,
+  initialTab,
+  planOnly = false,
+}) {
   const fileInputRef = useRef(null);
 
-  const [activeTab, setActiveTab] = useState(user ? "profile" : "appearance");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (planOnly) return "plan";
+    if (initialTab) return initialTab;
+    return user ? "profile" : "appearance";
+  });
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
   const [chatLanguage, setChatLanguage] = useState(
     localStorage.getItem("chatLanguage") || "vi",
@@ -127,6 +137,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
 
   useEffect(() => {
     if (user?.role !== "student") return;
+    if (!planOnly && initialTab !== "plan") return;
 
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
@@ -150,7 +161,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
     } else {
       setPaymentNotice("Không thể xác định kết quả giao dịch VNPAY.");
     }
-  }, [user?.role]);
+  }, [user?.role, planOnly, initialTab]);
 
   useEffect(() => {
     if (
@@ -543,55 +554,40 @@ export default function SettingsModal({ user, onClose, onSave }) {
     >
       <div className="sm-card">
         <div className="sm-header">
-          <h2 className="sm-title">Settings</h2>
+          <h2 className="sm-title">{planOnly ? "Gói & dung lượng" : "Settings"}</h2>
 
           <Button variant="light" className="sm-close" onClick={onClose}>
             <i className="bi bi-x-lg"></i>
           </Button>
         </div>
 
-        <div className="sm-tabs">
-          {user && (
+        {!planOnly && (
+          <div className="sm-tabs">
+            {user && (
+              <button
+                type="button"
+                className={`sm-tab ${
+                  activeTab === "profile" ? "sm-tab--active" : ""
+                }`}
+                onClick={() => setActiveTab("profile")}
+              >
+                <i className="bi bi-person"></i>
+                Profile
+              </button>
+            )}
+
             <button
               type="button"
               className={`sm-tab ${
-                activeTab === "profile" ? "sm-tab--active" : ""
+                activeTab === "appearance" ? "sm-tab--active" : ""
               }`}
-              onClick={() => setActiveTab("profile")}
+              onClick={() => setActiveTab("appearance")}
             >
-              <i className="bi bi-person"></i>
-              Profile
+              <i className="bi bi-brightness-high"></i>
+              Appearance
             </button>
-          )}
-
-          <button
-            type="button"
-            className={`sm-tab ${
-              activeTab === "appearance" ? "sm-tab--active" : ""
-            }`}
-            onClick={() => setActiveTab("appearance")}
-          >
-            <i className="bi bi-brightness-high"></i>
-            Appearance
-          </button>
-
-          {user?.role === "student" && (
-            <button
-              type="button"
-              className={`sm-tab ${
-                activeTab === "plan" ? "sm-tab--active" : ""
-              }`}
-              onClick={() => {
-                setActiveTab("plan");
-                setSelectedPlan(null);
-                setUpgradePreview(null);
-              }}
-            >
-              <i className="bi bi-cloud"></i>
-              Plan & Storage
-            </button>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="sm-body">
           {activeTab === "appearance" && (
@@ -823,7 +819,11 @@ export default function SettingsModal({ user, onClose, onSave }) {
                   )}
 
                   <div className="sm-plan-heading">
-                    <h3>Chọn gói lưu trữ</h3>
+                    <h3>
+                      {Number(storage?.plan?.price || 0) > 0
+                        ? "Nâng cấp gói lưu trữ"
+                        : "Chọn gói lưu trữ"}
+                    </h3>
                     <p>Thanh toán qua VNPAY Sandbox.</p>
                   </div>
 
@@ -880,7 +880,9 @@ export default function SettingsModal({ user, onClose, onSave }) {
                             {isCurrent
                               ? "Gói hiện tại"
                               : canUpgrade
-                                ? "Chọn gói"
+                                ? currentPrice > 0
+                                  ? "Nâng gói"
+                                  : "Chọn gói"
                                 : "Không khả dụng"}
                           </Button>
                         </div>
