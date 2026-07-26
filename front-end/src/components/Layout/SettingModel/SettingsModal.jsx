@@ -386,6 +386,13 @@ export default function SettingsModal({ user, onClose, onSave }) {
     }
   };
 
+  const saveVnpayReturnPath = () => {
+    // Lưu đúng route hiện tại để sau khi VNPAY return có thể quay về
+    // trang student đang sử dụng thay vì rơi về HomePage như chưa đăng nhập.
+    const returnPath = `${window.location.pathname}${window.location.hash || ""}`;
+    sessionStorage.setItem("vnpayReturnPath", returnPath);
+  };
+
   const handlePreviewUpgrade = async (plan) => {
     if (!user?.userId || !plan?.planId) return;
 
@@ -424,6 +431,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
         throw new Error("Backend không trả về VNPAY payment URL.");
       }
 
+      saveVnpayReturnPath();
       window.location.assign(paymentUrl);
     } catch (error) {
       console.error(error);
@@ -518,6 +526,7 @@ export default function SettingsModal({ user, onClose, onSave }) {
         throw new Error("Backend không trả về VNPAY payment URL.");
       }
 
+      saveVnpayReturnPath();
       window.location.assign(paymentUrl);
     } catch (error) {
       console.error(error);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../services/authService";
 import ChatLayout from "../components/Layout/ChatLayout";
@@ -15,10 +15,26 @@ const toSlug = (name = "") =>
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "");
 
+const getStoredUser = () => {
+  try {
+    const rawUser =
+      localStorage.getItem("currentUser") ||
+      sessionStorage.getItem("currentUser");
+
+    return rawUser ? JSON.parse(rawUser) : null;
+  } catch (error) {
+    console.error("Cannot restore current user:", error);
+    return null;
+  }
+};
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
+
+  // Quan trọng: khi VNPAY redirect về trang chủ, restore lại user đã đăng nhập
+  // thay vì luôn khởi tạo null.
+  const [currentUser, setCurrentUser] = useState(getStoredUser);
 
   const [conversations, setConversations] = useState([
     {
@@ -32,6 +48,41 @@ const HomePage = () => {
   ]);
   const [activeId, setActiveId] = useState("1");
 
+  // Khi browser quay về từ VNPAY, backend redirect về frontend root kèm
+  // ?payment=...&txnRef=... . Ta đưa user đã đăng nhập trở lại trang phù hợp
+  // và giữ nguyên query để SettingsModal tiếp tục xử lý trạng thái thanh toán.
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const paymentResult = params.get("payment");
+
+    if (!paymentResult) return;
+
+    const savedPath = sessionStorage.getItem("vnpayReturnPath");
+
+    let returnPath = savedPath;
+
+    if (!returnPath) {
+      if (currentUser.role === "admin") {
+        returnPath = "/admin/home";
+      } else if (currentUser.role === "teacher") {
+        returnPath = "/teacher/home";
+      } else {
+        const slug =
+          toSlug(currentUser.name || currentUser.fullName || "user") || "user";
+
+        returnPath = `/u/${slug}/chat`;
+      }
+    }
+
+    sessionStorage.removeItem("vnpayReturnPath");
+
+    navigate(`${returnPath}${window.location.search}`, {
+      replace: true,
+    });
+  }, [currentUser, navigate]);
+
   const handleLoginSuccess = (role, user) => {
     setCurrentUser(user);
     localStorage.setItem("currentUser", JSON.stringify(user));
@@ -39,7 +90,7 @@ const HomePage = () => {
     if (role === "admin") navigate("/admin/home");
     else if (role === "teacher") navigate("/teacher/home");
     else {
-      const slug = toSlug(user.name) || "user";
+      const slug = toSlug(user.name || user.fullName) || "user";
       navigate(`/u/${slug}/chat`);
     }
   };
