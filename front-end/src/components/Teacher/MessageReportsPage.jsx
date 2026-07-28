@@ -207,10 +207,6 @@ export default function MessageReportsPage({ user: propUser }) {
 
   return (
     <>
-      <div className="admin-topbar">
-        <h1>Message Reports</h1>
-        <p>Review reported AI answers and replace incorrect source documents</p>
-      </div>
 
       <div className="admin-body">
         <div className="a-card mb-3">

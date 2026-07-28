@@ -3,6 +3,7 @@ import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import logo7 from "../../assets/images/7.png";
+
 import {
   uploadFile,
   sendMessage,
@@ -13,10 +14,14 @@ import {
   updateChatMessageApproved,
   reportMessage,
 } from "../../services/api";
+
 import "./Member.scss";
 
 const makeId = () => {
-  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+
   return String(Date.now() + Math.random());
 };
 
@@ -30,12 +35,30 @@ const defaultUploadMeta = {
 };
 
 const REPORT_REASONS = [
-  { value: "incorrect_answer", label: "AI answer is incorrect" },
-  { value: "wrong_document_content", label: "Document content is wrong" },
-  { value: "misleading_content", label: "Answer is misleading" },
-  { value: "unsafe_content", label: "Unsafe or inappropriate content" },
-  { value: "outdated_content", label: "Outdated content" },
-  { value: "other", label: "Other" },
+  {
+    value: "incorrect_answer",
+    label: "AI answer is incorrect",
+  },
+  {
+    value: "wrong_document_content",
+    label: "Document content is wrong",
+  },
+  {
+    value: "misleading_content",
+    label: "Answer is misleading",
+  },
+  {
+    value: "unsafe_content",
+    label: "Unsafe or inappropriate content",
+  },
+  {
+    value: "outdated_content",
+    label: "Outdated content",
+  },
+  {
+    value: "other",
+    label: "Other",
+  },
 ];
 
 const splitTags = (value = "") => {
@@ -53,10 +76,17 @@ const joinTags = (tags = []) => {
   return [...new Set(normalized)].join(", ");
 };
 
-const TagInput = ({ value, onChange, placeholder = "Add tag..." }) => {
+const TagInput = ({
+  value,
+  onChange,
+  placeholder = "Add tag...",
+}) => {
   const [input, setInput] = useState("");
 
-  const tags = useMemo(() => splitTags(value), [value]);
+  const tags = useMemo(
+    () => splitTags(value),
+    [value],
+  );
 
   const addTags = (rawValue = "") => {
     const nextTags = splitTags(rawValue);
@@ -68,25 +98,43 @@ const TagInput = ({ value, onChange, placeholder = "Add tag..." }) => {
   };
 
   const removeTag = (tagToRemove) => {
-    onChange(joinTags(tags.filter((tag) => tag !== tagToRemove)));
+    onChange(
+      joinTags(
+        tags.filter(
+          (tag) => tag !== tagToRemove,
+        ),
+      ),
+    );
   };
 
   const handleKeyDown = (event) => {
-    if (["Enter", "Tab", ","].includes(event.key)) {
+    if (
+      ["Enter", "Tab", ","].includes(
+        event.key,
+      )
+    ) {
       event.preventDefault();
       addTags(input);
       return;
     }
 
-    if (event.key === "Backspace" && !input && tags.length > 0) {
+    if (
+      event.key === "Backspace" &&
+      !input &&
+      tags.length > 0
+    ) {
       removeTag(tags[tags.length - 1]);
     }
   };
 
   const handlePaste = (event) => {
-    const text = event.clipboardData.getData("text");
+    const text =
+      event.clipboardData.getData("text");
 
-    if (text.includes(",") || text.includes("\n")) {
+    if (
+      text.includes(",") ||
+      text.includes("\n")
+    ) {
       event.preventDefault();
       addTags(text);
     }
@@ -107,8 +155,12 @@ const TagInput = ({ value, onChange, placeholder = "Add tag..." }) => {
         background: "#fff",
       }}
       onClick={(event) => {
-        const inputEl = event.currentTarget.querySelector("input");
-        inputEl?.focus();
+        const inputElement =
+          event.currentTarget.querySelector(
+            "input",
+          );
+
+        inputElement?.focus();
       }}
     >
       {tags.map((tag) => (
@@ -127,6 +179,7 @@ const TagInput = ({ value, onChange, placeholder = "Add tag..." }) => {
           }}
         >
           {tag}
+
           <button
             type="button"
             aria-label={`Remove ${tag}`}
@@ -151,8 +204,14 @@ const TagInput = ({ value, onChange, placeholder = "Add tag..." }) => {
 
       <input
         value={input}
-        placeholder={tags.length === 0 ? placeholder : ""}
-        onChange={(event) => setInput(event.target.value)}
+        placeholder={
+          tags.length === 0
+            ? placeholder
+            : ""
+        }
+        onChange={(event) =>
+          setInput(event.target.value)
+        }
         onKeyDown={handleKeyDown}
         onBlur={() => addTags(input)}
         onPaste={handlePaste}
@@ -177,80 +236,165 @@ const ChatArea = ({
   selectedDocument,
   setSelectedDocument,
   setAvailableDocuments,
+  onDocumentsRefresh,
 }) => {
   const fileInputRef = useRef(null);
 
-  // Scroll chat
   const chatBodyRef = useRef(null);
   const isNearBottomRef = useRef(true);
 
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [approvedAnswers, setApprovedAnswers] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [
+    showScrollToBottom,
+    setShowScrollToBottom,
+  ] = useState(false);
 
-  const [reportTarget, setReportTarget] = useState(null);
-  const [reportReason, setReportReason] = useState("wrong_document_content");
-  const [reportDescription, setReportDescription] = useState("");
-  const [submittingReport, setSubmittingReport] = useState(false);
+  const [message, setMessage] =
+    useState("");
 
-  const [pendingUploadFile, setPendingUploadFile] = useState(null);
-  const [showUploadMetaModal, setShowUploadMetaModal] = useState(false);
-  const [metadataLoading, setMetadataLoading] = useState(false);
-  const [subjects, setSubjects] = useState([]);
-  const [topics, setTopics] = useState([]);
-  const [documentTypes, setDocumentTypes] = useState([]);
-  const [documentLevels, setDocumentLevels] = useState([]);
-  const [uploadMeta, setUploadMeta] = useState(defaultUploadMeta);
+  const [messages, setMessages] =
+    useState([]);
 
-  const showToast = (type, title, message = "") => {
+  const [
+    approvedAnswers,
+    setApprovedAnswers,
+  ] = useState([]);
+
+  const [uploading, setUploading] =
+    useState(false);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [
+    loadingMessages,
+    setLoadingMessages,
+  ] = useState(false);
+
+  const [toast, setToast] =
+    useState(null);
+
+  const [reportTarget, setReportTarget] =
+    useState(null);
+
+  const [reportReason, setReportReason] =
+    useState("wrong_document_content");
+
+  const [
+    reportDescription,
+    setReportDescription,
+  ] = useState("");
+
+  const [
+    submittingReport,
+    setSubmittingReport,
+  ] = useState(false);
+
+  const [
+    pendingUploadFile,
+    setPendingUploadFile,
+  ] = useState(null);
+
+  const [
+    showUploadMetaModal,
+    setShowUploadMetaModal,
+  ] = useState(false);
+
+  const [
+    metadataLoading,
+    setMetadataLoading,
+  ] = useState(false);
+
+  const [subjects, setSubjects] =
+    useState([]);
+
+  const [topics, setTopics] =
+    useState([]);
+
+  const [
+    documentTypes,
+    setDocumentTypes,
+  ] = useState([]);
+
+  const [
+    documentLevels,
+    setDocumentLevels,
+  ] = useState([]);
+
+  const [uploadMeta, setUploadMeta] =
+    useState(defaultUploadMeta);
+
+  const showToast = (
+    type,
+    title,
+    toastMessage = "",
+  ) => {
     const toastId = Date.now();
 
     setToast({
       id: toastId,
       type,
       title,
-      message,
+      message: toastMessage,
     });
 
     setTimeout(() => {
       setToast((current) => {
-        if (current?.id === toastId) return null;
+        if (current?.id === toastId) {
+          return null;
+        }
+
         return current;
       });
     }, 3200);
   };
 
   const filteredTopics = useMemo(() => {
-    if (!uploadMeta.subjectId) return topics;
+    if (!uploadMeta.subjectId) {
+      return topics;
+    }
 
     return topics.filter(
-      (topic) => String(topic.subjectId) === String(uploadMeta.subjectId),
+      (topic) =>
+        String(topic.subjectId) ===
+        String(uploadMeta.subjectId),
     );
   }, [topics, uploadMeta.subjectId]);
 
   const isTeacherDocument =
-    selectedDocument?.uploadedBy === "teacher" ||
-    activeConversation?.uploadedBy === "teacher";
+    selectedDocument?.uploadedBy ===
+      "teacher" ||
+    activeConversation?.uploadedBy ===
+      "teacher";
 
   const loadMetadata = async () => {
     try {
       setMetadataLoading(true);
+
       const data = await getMetadata();
 
       if (data.success) {
         setSubjects(data.subjects || []);
         setTopics(data.topics || []);
-        setDocumentTypes(data.documentTypes || []);
-        setDocumentLevels(data.documentLevels || []);
+
+        setDocumentTypes(
+          data.documentTypes || [],
+        );
+
+        setDocumentLevels(
+          data.documentLevels || [],
+        );
       }
     } catch (error) {
-      console.log("Cannot load metadata:", error);
-      showToast("error", "Cannot load metadata", error.message);
+      console.log(
+        "Cannot load metadata:",
+        error,
+      );
+
+      showToast(
+        "error",
+        "Cannot load metadata",
+        error.message,
+      );
     } finally {
       setMetadataLoading(false);
     }
@@ -268,57 +412,117 @@ const ChatArea = ({
       try {
         setLoadingMessages(true);
 
-        const data = await getChatMessages(conversationId);
+        const data =
+          await getChatMessages(
+            conversationId,
+          );
 
         let lastUserQuestion = "";
 
-        const formatted = Array.isArray(data)
-          ? data
-              .filter((item) => item.sender !== "system")
-              .map((item) => {
-                const msg = {
-                  id: item.messageId,
-                  role: item.sender,
-                  content: item.message,
-                  sourceExcerpt: item.sourceExcerpt || "",
-                  sourceDocumentName: item.sourceDocumentName || "",
-                  approved: Boolean(item.isApproved),
-                  question: "",
-                };
+        const formatted =
+          Array.isArray(data)
+            ? data
+                .filter(
+                  (item) =>
+                    item.sender !==
+                    "system",
+                )
+                .map((item) => {
+                  const chatMessage = {
+                    id: item.messageId,
+                    role: item.sender,
+                    content: item.message,
 
-                if (item.sender === "user") {
-                  lastUserQuestion = item.message;
-                }
+                    sourceExcerpt:
+                      item.sourceExcerpt ||
+                      "",
 
-                if (item.sender === "ai") {
-                  msg.question = lastUserQuestion;
-                }
+                    sourceDocumentName:
+                      item.sourceDocumentName ||
+                      "",
 
-                return msg;
-              })
-          : [];
+                    approved: Boolean(
+                      item.isApproved,
+                    ),
+
+                    question: "",
+                  };
+
+                  if (
+                    item.sender === "user"
+                  ) {
+                    lastUserQuestion =
+                      item.message;
+                  }
+
+                  if (
+                    item.sender === "ai"
+                  ) {
+                    chatMessage.question =
+                      lastUserQuestion;
+                  }
+
+                  return chatMessage;
+                })
+            : [];
 
         setMessages(formatted);
 
-        if (activeConversation?.documentId) {
+        if (
+          activeConversation?.documentId
+        ) {
           setSelectedDocument?.({
-            documentId: activeConversation.documentId,
-            fileName: activeConversation.fileName || "Uploaded document",
-            uploadedBy: activeConversation.uploadedBy,
+            documentId:
+              activeConversation.documentId,
+
+            fileName:
+              activeConversation.fileName ||
+              "Uploaded document",
+
+            uploadedBy:
+              activeConversation.uploadedBy,
+
+            reviewStatus:
+              activeConversation.reviewStatus ||
+              null,
+
+            versionNo:
+              activeConversation.versionNo ||
+              1,
+
+            versionGroupId:
+              activeConversation.versionGroupId ||
+              null,
           });
         }
 
-        const approvedFromDb = formatted
-          .filter((msg) => msg.role === "ai" && msg.approved)
-          .map((msg) => ({
-            id: msg.id,
-            question: msg.question || "",
-            answer: msg.content,
-          }));
+        const approvedFromDb =
+          formatted
+            .filter(
+              (chatMessage) =>
+                chatMessage.role ===
+                  "ai" &&
+                chatMessage.approved,
+            )
+            .map((chatMessage) => ({
+              id: chatMessage.id,
 
-        setApprovedAnswers(approvedFromDb);
+              question:
+                chatMessage.question ||
+                "",
+
+              answer:
+                chatMessage.content,
+            }));
+
+        setApprovedAnswers(
+          approvedFromDb,
+        );
       } catch (error) {
-        console.log("Cannot load messages:", error);
+        console.log(
+          "Cannot load messages:",
+          error,
+        );
       } finally {
         setLoadingMessages(false);
       }
@@ -330,16 +534,23 @@ const ChatArea = ({
     activeConversation?.documentId,
     activeConversation?.fileName,
     activeConversation?.uploadedBy,
+    activeConversation?.reviewStatus,
+    activeConversation?.versionNo,
+    activeConversation?.versionGroupId,
     setSelectedDocument,
   ]);
 
   const handleChooseFile = async () => {
     if (!conversationId) {
-      alert("Bạn cần tạo New Chat trước khi upload tài liệu.");
+      alert(
+        "Bạn cần tạo New Chat trước khi upload tài liệu.",
+      );
+
       return;
     }
 
     await loadMetadata();
+
     fileInputRef.current?.click();
   };
 
@@ -349,21 +560,34 @@ const ChatArea = ({
     setUploadMeta(defaultUploadMeta);
   };
 
-  const handleOpenPendingFile = (file) => {
+  const handleOpenPendingFile = (
+    file,
+  ) => {
     if (!file) return;
 
-    const fileUrl = URL.createObjectURL(file);
-    window.open(fileUrl, "_blank", "noopener,noreferrer");
+    const fileUrl =
+      URL.createObjectURL(file);
+
+    window.open(
+      fileUrl,
+      "_blank",
+      "noopener,noreferrer",
+    );
 
     setTimeout(() => {
       URL.revokeObjectURL(fileUrl);
     }, 30000);
   };
 
-  const handleUpload = async (event) => {
-    const file = event.target.files?.[0];
+  const handleUpload = async (
+    event,
+  ) => {
+    const file =
+      event.target.files?.[0];
 
-    if (!file || !conversationId) return;
+    if (!file || !conversationId) {
+      return;
+    }
 
     setPendingUploadFile(file);
     setUploadMeta(defaultUploadMeta);
@@ -372,26 +596,63 @@ const ChatArea = ({
     event.target.value = "";
   };
 
-  const findById = (list, idKey, idValue) => {
+  const findById = (
+    list,
+    idKey,
+    idValue,
+  ) => {
     if (!idValue) return null;
 
-    return list.find((item) => String(item[idKey]) === String(idValue));
+    return list.find(
+      (item) =>
+        String(item[idKey]) ===
+        String(idValue),
+    );
   };
 
-  const buildUploadedDocument = (result, uploadedBy) => {
-    const subjectId = result.subjectId || uploadMeta.subjectId;
-    const topicId = result.topicId || uploadMeta.topicId;
-    const documentTypeId = result.documentTypeId || uploadMeta.documentTypeId;
-    const levelId = result.levelId || uploadMeta.levelId;
+  const buildUploadedDocument = (
+    result,
+    uploadedBy,
+  ) => {
+    const subjectId =
+      result.subjectId ||
+      uploadMeta.subjectId;
 
-    const subject = findById(subjects, "subjectId", subjectId);
-    const topic = findById(topics, "topicId", topicId);
+    const topicId =
+      result.topicId ||
+      uploadMeta.topicId;
+
+    const documentTypeId =
+      result.documentTypeId ||
+      uploadMeta.documentTypeId;
+
+    const levelId =
+      result.levelId ||
+      uploadMeta.levelId;
+
+    const subject = findById(
+      subjects,
+      "subjectId",
+      subjectId,
+    );
+
+    const topic = findById(
+      topics,
+      "topicId",
+      topicId,
+    );
+
     const documentType = findById(
       documentTypes,
       "documentTypeId",
       documentTypeId,
     );
-    const level = findById(documentLevels, "levelId", levelId);
+
+    const level = findById(
+      documentLevels,
+      "levelId",
+      levelId,
+    );
 
     return {
       documentId: result.documentId,
@@ -405,48 +666,111 @@ const ChatArea = ({
 
       reviewStatus:
         result.reviewStatus ||
-        (uploadedBy === "teacher" ? "approved" : "private"),
+        (uploadedBy === "teacher"
+          ? "approved"
+          : "private"),
 
       subjectId,
       topicId,
       documentTypeId,
       levelId,
 
-      tags: result.tags || uploadMeta.tags,
-      summary: result.summary || uploadMeta.summary,
+      tags:
+        result.tags ||
+        uploadMeta.tags,
 
-      subjectCode: result.subjectCode || subject?.subjectCode || "",
-      subjectName: result.subjectName || subject?.subjectName || "",
-      topicName: result.topicName || topic?.topicName || "Uncategorized",
-      documentTypeName: result.documentTypeName || documentType?.typeName || "",
-      levelName: result.levelName || level?.levelName || "",
+      summary:
+        result.summary ||
+        uploadMeta.summary,
 
-      versionNo: result.versionNo || 1,
-      versionGroupId: result.versionGroupId,
-      vectorDocumentId: result.vectorDocumentId,
-      isDuplicate: Boolean(result.isDuplicate || result.duplicate),
-      uploadDate: result.uploadDate || new Date().toISOString(),
+      subjectCode:
+        result.subjectCode ||
+        subject?.subjectCode ||
+        "",
+
+      subjectName:
+        result.subjectName ||
+        subject?.subjectName ||
+        "",
+
+      topicName:
+        result.topicName ||
+        topic?.topicName ||
+        "Uncategorized",
+
+      documentTypeName:
+        result.documentTypeName ||
+        documentType?.typeName ||
+        "",
+
+      levelName:
+        result.levelName ||
+        level?.levelName ||
+        "",
+
+      versionNo:
+        result.versionNo || 1,
+
+      versionGroupId:
+        result.versionGroupId ||
+        null,
+
+      vectorDocumentId:
+        result.vectorDocumentId ||
+        null,
+
+      isDuplicate: Boolean(
+        result.isDuplicate ||
+          result.duplicate,
+      ),
+
+      uploadDate:
+        result.uploadDate ||
+        new Date().toISOString(),
     };
   };
 
-  const doUpload = async (extraOptions = {}) => {
-    const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
+  const doUpload = async (
+    extraOptions = {},
+  ) => {
+    const uploadedBy =
+      user?.role === "teacher"
+        ? "teacher"
+        : "student";
 
-    return uploadFile(pendingUploadFile, {
-      uploadedBy,
-      uploaderId: user?.userId,
-      subjectId: uploadMeta.subjectId,
-      topicId: uploadMeta.topicId,
-      documentTypeId: uploadMeta.documentTypeId,
-      levelId: uploadMeta.levelId,
-      tags: uploadMeta.tags,
-      summary: uploadMeta.summary,
-      ...extraOptions,
-    });
+    return uploadFile(
+      pendingUploadFile,
+      {
+        uploadedBy,
+        uploaderId: user?.userId,
+
+        subjectId:
+          uploadMeta.subjectId,
+
+        topicId:
+          uploadMeta.topicId,
+
+        documentTypeId:
+          uploadMeta.documentTypeId,
+
+        levelId:
+          uploadMeta.levelId,
+
+        tags: uploadMeta.tags,
+        summary: uploadMeta.summary,
+
+        ...extraOptions,
+      },
+    );
   };
 
   const handleConfirmUpload = async () => {
-    if (!pendingUploadFile || !conversationId) return;
+    if (
+      !pendingUploadFile ||
+      !conversationId
+    ) {
+      return;
+    }
 
     try {
       setUploading(true);
@@ -454,93 +778,232 @@ const ChatArea = ({
       let result = await doUpload();
 
       if (result.needConfirm) {
-        const saveAsVersion = window.confirm(
-          `${result.message || "File already exists."}\n\nOK = Save as new version\nCancel = Replace old file`,
-        );
+        const saveAsVersion =
+          window.confirm(
+            `${
+              result.message ||
+              "File already exists."
+            }\n\nOK = Save as new version\nCancel = Replace old file`,
+          );
 
         result = await doUpload({
-          duplicateAction: saveAsVersion ? "new_version" : "replace_old",
-          replaceDocumentId: result.existingDocumentId,
+          duplicateAction:
+            saveAsVersion
+              ? "new_version"
+              : "replace_old",
+
+          replaceDocumentId:
+            result.existingDocumentId,
         });
       }
 
-      if (result.error || result.success === false) {
-        throw new Error(result.detail || result.message || result.error);
+      if (
+        result.error ||
+        result.success === false
+      ) {
+        throw new Error(
+          result.detail ||
+            result.message ||
+            result.error,
+        );
       }
 
-      await updateChatSession(conversationId, {
-        documentId: result.documentId,
-      });
+      await updateChatSession(
+        conversationId,
+        {
+          documentId:
+            result.documentId,
+        },
+      );
 
-      const uploadedBy = user?.role === "teacher" ? "teacher" : "student";
-      const uploadedDocument = buildUploadedDocument(result, uploadedBy);
+      const uploadedBy =
+        user?.role === "teacher"
+          ? "teacher"
+          : "student";
 
-      setSelectedDocument?.(uploadedDocument);
-
-      setAvailableDocuments?.((prev) => {
-        const existed = prev.some(
-          (item) => String(item.documentId) === String(result.documentId),
+      const uploadedDocument =
+        buildUploadedDocument(
+          result,
+          uploadedBy,
         );
 
-        if (existed) return prev;
+      setSelectedDocument?.(
+        uploadedDocument,
+      );
 
-        return [uploadedDocument, ...prev];
-      });
+      setAvailableDocuments?.(
+        (previousDocuments = []) => {
+          const safeDocuments =
+            Array.isArray(
+              previousDocuments,
+            )
+              ? previousDocuments
+              : [];
 
-      if (result.replacedOld) {
-        showToast("success", "File replaced", result.fileName);
-      } else if (result.duplicate) {
-        showToast(
-          "success",
-          "File already exists!",
-          `Saved as Version ${result.versionNo || 2} in your library.`,
-        );
-      } else {
-        showToast("success", "Upload successful!");
-      }
+          const existed =
+            safeDocuments.some(
+              (document) =>
+                String(
+                  document.documentId,
+                ) ===
+                String(
+                  result.documentId,
+                ),
+            );
+
+          if (existed) {
+            return safeDocuments.map(
+              (document) =>
+                String(
+                  document.documentId,
+                ) ===
+                String(
+                  result.documentId,
+                )
+                  ? {
+                      ...document,
+                      ...uploadedDocument,
+                    }
+                  : document,
+            );
+          }
+
+          return [
+            uploadedDocument,
+            ...safeDocuments,
+          ];
+        },
+      );
 
       onConversationUpdated?.({
         id: conversationId,
-        documentId: result.documentId,
-        fileName: result.fileName,
+
+        documentId:
+          result.documentId,
+
+        fileName:
+          result.fileName,
+
         uploadedBy,
-        preview: result.duplicate
-          ? `Saved as Version ${result.versionNo || 2}: ${result.fileName}`
-          : result.fileName,
-        messageCount: (activeConversation?.messageCount || 0) + 1,
+
+        reviewStatus:
+          uploadedDocument.reviewStatus,
+
+        versionNo:
+          uploadedDocument.versionNo ||
+          1,
+
+        versionGroupId:
+          uploadedDocument.versionGroupId ||
+          null,
+
+        preview:
+          result.duplicate ||
+          result.isDuplicate
+            ? `Saved as Version ${
+                result.versionNo ||
+                2
+              }: ${
+                result.fileName
+              }`
+            : result.fileName,
+
+        messageCount:
+          (
+            activeConversation
+              ?.messageCount || 0
+          ) + 1,
       });
+
+      /*
+       * Tải lại toàn bộ Library từ API.
+       * Việc này giúp giữ lại các file
+       * Private sau khi upload file trùng.
+       */
+      await onDocumentsRefresh?.();
+
+      /*
+       * Giữ file vừa upload đang được chọn
+       * sau khi danh sách được đồng bộ lại.
+       */
+      setSelectedDocument?.(
+        uploadedDocument,
+      );
+
+      if (result.replacedOld) {
+        showToast(
+          "success",
+          "File replaced",
+          result.fileName,
+        );
+      } else if (
+        result.duplicate ||
+        result.isDuplicate
+      ) {
+        showToast(
+          "success",
+          "File already exists!",
+          `Saved as Version ${
+            result.versionNo || 2
+          } in your library.`,
+        );
+      } else {
+        showToast(
+          "success",
+          "Upload successful!",
+        );
+      }
 
       resetUploadMetaModal();
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: makeId(),
-          role: "system",
-          content: `Upload thất bại: ${error.message}`,
-        },
-      ]);
+      setMessages(
+        (previousMessages) => [
+          ...previousMessages,
+          {
+            id: makeId(),
+            role: "system",
+            content:
+              `Upload thất bại: ${
+                error.message
+              }`,
+          },
+        ],
+      );
     } finally {
       setUploading(false);
     }
   };
 
   const handleSend = async () => {
-    const userText = message.trim();
+    const userText =
+      message.trim();
 
-    if (!userText || loading || !conversationId) return;
+    if (
+      !userText ||
+      loading ||
+      !conversationId
+    ) {
+      return;
+    }
 
-    if (!selectedDocument?.documentId) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: makeId(),
-          role: "ai",
-          content:
-            "Bạn cần chọn tài liệu trong Library hoặc upload tài liệu trước, sau đó mình mới có thể trả lời theo file đó.",
-          approved: false,
-        },
-      ]);
+    if (
+      !selectedDocument?.documentId
+    ) {
+      setMessages(
+        (previousMessages) => [
+          ...previousMessages,
+          {
+            id: makeId(),
+            role: "ai",
+
+            content:
+              "Bạn cần chọn tài liệu trong Library hoặc upload tài liệu trước, sau đó mình mới có thể trả lời theo file đó.",
+
+            approved: false,
+          },
+        ],
+      );
+
       return;
     }
 
@@ -550,186 +1013,331 @@ const ChatArea = ({
       content: userText,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages(
+      (previousMessages) => [
+        ...previousMessages,
+        userMessage,
+      ],
+    );
+
     setMessage("");
     setLoading(true);
 
     try {
-      const savedUserMessage = await saveChatMessage(
-        conversationId,
-        "user",
-        userText,
-      );
+      const savedUserMessage =
+        await saveChatMessage(
+          conversationId,
+          "user",
+          userText,
+        );
 
-      if (savedUserMessage?.messageId) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === userMessage.id
-              ? { ...msg, id: savedUserMessage.messageId }
-              : msg,
-          ),
+      if (
+        savedUserMessage?.messageId
+      ) {
+        setMessages(
+          (previousMessages) =>
+            previousMessages.map(
+              (chatMessage) =>
+                chatMessage.id ===
+                userMessage.id
+                  ? {
+                      ...chatMessage,
+
+                      id:
+                        savedUserMessage.messageId,
+                    }
+                  : chatMessage,
+            ),
         );
       }
 
-      const oldMessageCount = activeConversation?.messageCount || 0;
+      const oldMessageCount =
+        activeConversation
+          ?.messageCount || 0;
 
       const shouldRename =
-        !activeConversation?.title || activeConversation.title === "New Chat";
+        !activeConversation?.title ||
+        activeConversation.title ===
+          "New Chat";
 
       const newTitle =
-        userText.length > 45 ? `${userText.slice(0, 45)}...` : userText;
+        userText.length > 45
+          ? `${userText.slice(
+              0,
+              45,
+            )}...`
+          : userText;
 
       if (shouldRename) {
-        await updateChatSession(conversationId, {
-          title: newTitle,
-        });
+        await updateChatSession(
+          conversationId,
+          {
+            title: newTitle,
+          },
+        );
       }
 
-      const result = await sendMessage(
-        selectedDocument.documentId,
-        userText,
-        approvedAnswers,
-      );
+      const result =
+        await sendMessage(
+          selectedDocument.documentId,
+          userText,
+          approvedAnswers,
+        );
 
-      const aiAnswer = result.answer || "Không có phản hồi.";
-      const sourceExcerpt = result.sourceExcerpt || "";
+      const aiAnswer =
+        result.answer ||
+        "Không có phản hồi.";
+
+      const sourceExcerpt =
+        result.sourceExcerpt || "";
+
       const sourceDocumentName =
-        result.sourceDocumentName || selectedDocument?.fileName || "";
+        result.sourceDocumentName ||
+        selectedDocument?.fileName ||
+        "";
 
-      const savedAiMessage = await saveChatMessage(
-        conversationId,
-        "ai",
-        aiAnswer,
-        {
-          sourceExcerpt,
-          sourceDocumentName,
-        },
-      );
+      const savedAiMessage =
+        await saveChatMessage(
+          conversationId,
+          "ai",
+          aiAnswer,
+          {
+            sourceExcerpt,
+            sourceDocumentName,
+          },
+        );
 
       const aiMessage = {
-        id: savedAiMessage?.messageId || makeId(),
+        id:
+          savedAiMessage?.messageId ||
+          makeId(),
+
         role: "ai",
         content: aiAnswer,
         sourceExcerpt,
         sourceDocumentName,
         question: userText,
         approved: false,
-        outOfScope: result.outOfScope || false,
-        evidence: result.evidence || [],
+
+        outOfScope:
+          result.outOfScope || false,
+
+        evidence:
+          result.evidence || [],
       };
 
-      setMessages((prev) => [...prev, aiMessage]);
+      setMessages(
+        (previousMessages) => [
+          ...previousMessages,
+          aiMessage,
+        ],
+      );
 
       onConversationUpdated?.({
         id: conversationId,
-        title: shouldRename ? newTitle : activeConversation?.title,
+
+        title: shouldRename
+          ? newTitle
+          : activeConversation?.title,
+
         preview: aiAnswer,
-        messageCount: oldMessageCount + 2,
+
+        messageCount:
+          oldMessageCount + 2,
       });
     } catch (error) {
-      const errorText = `Lỗi khi gọi AI: ${error.message}`;
+      const errorText =
+        `Lỗi khi gọi AI: ${error.message}`;
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: makeId(),
-          role: "ai",
-          content: errorText,
-          approved: false,
-        },
-      ]);
+      setMessages(
+        (previousMessages) => [
+          ...previousMessages,
+          {
+            id: makeId(),
+            role: "ai",
+            content: errorText,
+            approved: false,
+          },
+        ],
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleApproved = async (aiMessage) => {
-    if (!aiMessage?.id || String(aiMessage.id).startsWith("temp-")) return;
+  const handleToggleApproved = async (
+    aiMessage,
+  ) => {
+    if (
+      !aiMessage?.id ||
+      String(aiMessage.id).startsWith(
+        "temp-",
+      )
+    ) {
+      return;
+    }
 
-    const nextApproved = !aiMessage.approved;
+    const nextApproved =
+      !aiMessage.approved;
 
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === aiMessage.id ? { ...msg, approved: nextApproved } : msg,
-      ),
+    setMessages(
+      (previousMessages) =>
+        previousMessages.map(
+          (chatMessage) =>
+            chatMessage.id ===
+            aiMessage.id
+              ? {
+                  ...chatMessage,
+
+                  approved:
+                    nextApproved,
+                }
+              : chatMessage,
+        ),
     );
 
-    setApprovedAnswers((prev) => {
-      const existed = prev.some((item) => item.id === aiMessage.id);
+    setApprovedAnswers(
+      (previousAnswers) => {
+        const existed =
+          previousAnswers.some(
+            (item) =>
+              item.id ===
+              aiMessage.id,
+          );
 
-      if (nextApproved) {
-        if (existed) return prev;
-
-        return [
-          ...prev,
-          {
-            id: aiMessage.id,
-            question: aiMessage.question || "",
-            answer: aiMessage.content,
-          },
-        ];
-      }
-
-      return prev.filter((item) => item.id !== aiMessage.id);
-    });
-
-    try {
-      await updateChatMessageApproved(aiMessage.id, nextApproved);
-    } catch (error) {
-      console.log("Cannot update approved status:", error);
-
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === aiMessage.id
-            ? { ...msg, approved: aiMessage.approved }
-            : msg,
-        ),
-      );
-
-      setApprovedAnswers((prev) => {
-        const existed = prev.some((item) => item.id === aiMessage.id);
-
-        if (aiMessage.approved) {
-          if (existed) return prev;
+        if (nextApproved) {
+          if (existed) {
+            return previousAnswers;
+          }
 
           return [
-            ...prev,
+            ...previousAnswers,
             {
               id: aiMessage.id,
-              question: aiMessage.question || "",
-              answer: aiMessage.content,
+
+              question:
+                aiMessage.question ||
+                "",
+
+              answer:
+                aiMessage.content,
             },
           ];
         }
 
-        return prev.filter((item) => item.id !== aiMessage.id);
-      });
+        return previousAnswers.filter(
+          (item) =>
+            item.id !== aiMessage.id,
+        );
+      },
+    );
 
-      showToast("error", "Không thể lưu ngôi sao", error.message);
+    try {
+      await updateChatMessageApproved(
+        aiMessage.id,
+        nextApproved,
+      );
+    } catch (error) {
+      console.log(
+        "Cannot update approved status:",
+        error,
+      );
+
+      setMessages(
+        (previousMessages) =>
+          previousMessages.map(
+            (chatMessage) =>
+              chatMessage.id ===
+              aiMessage.id
+                ? {
+                    ...chatMessage,
+
+                    approved:
+                      aiMessage.approved,
+                  }
+                : chatMessage,
+          ),
+      );
+
+      setApprovedAnswers(
+        (previousAnswers) => {
+          const existed =
+            previousAnswers.some(
+              (item) =>
+                item.id ===
+                aiMessage.id,
+            );
+
+          if (aiMessage.approved) {
+            if (existed) {
+              return previousAnswers;
+            }
+
+            return [
+              ...previousAnswers,
+              {
+                id: aiMessage.id,
+
+                question:
+                  aiMessage.question ||
+                  "",
+
+                answer:
+                  aiMessage.content,
+              },
+            ];
+          }
+
+          return previousAnswers.filter(
+            (item) =>
+              item.id !==
+              aiMessage.id,
+          );
+        },
+      );
+
+      showToast(
+        "error",
+        "Không thể lưu ngôi sao",
+        error.message,
+      );
     }
   };
 
-  const openReportModal = (aiMessage) => {
+  const openReportModal = (
+    aiMessage,
+  ) => {
     if (!isTeacherDocument) {
       showToast(
         "warning",
         "Cannot report this answer",
         "Only AI answers based on teacher-uploaded documents can be reported.",
       );
+
       return;
     }
 
-    if (!aiMessage?.id || String(aiMessage.id).startsWith("temp-")) {
+    if (
+      !aiMessage?.id ||
+      String(aiMessage.id).startsWith(
+        "temp-",
+      )
+    ) {
       showToast(
         "error",
         "Cannot report this message",
         "Please wait until the AI answer is saved.",
       );
+
       return;
     }
 
     setReportTarget(aiMessage);
-    setReportReason("wrong_document_content");
+
+    setReportReason(
+      "wrong_document_content",
+    );
+
     setReportDescription("");
   };
 
@@ -737,81 +1345,124 @@ const ChatArea = ({
     if (submittingReport) return;
 
     setReportTarget(null);
-    setReportReason("wrong_document_content");
+
+    setReportReason(
+      "wrong_document_content",
+    );
+
     setReportDescription("");
   };
 
-  const handleSubmitReport = async () => {
-    if (!reportTarget?.id || !conversationId || !user?.userId) {
-      showToast(
-        "error",
-        "Cannot submit report",
-        "Missing message or user information.",
-      );
-      return;
-    }
+  const handleSubmitReport =
+    async () => {
+      if (
+        !reportTarget?.id ||
+        !conversationId ||
+        !user?.userId
+      ) {
+        showToast(
+          "error",
+          "Cannot submit report",
+          "Missing message or user information.",
+        );
 
-    if (!isTeacherDocument) {
-      showToast(
-        "warning",
-        "Cannot report this answer",
-        "Only AI answers based on teacher-uploaded documents can be reported.",
-      );
-      return;
-    }
+        return;
+      }
 
-    try {
-      setSubmittingReport(true);
+      if (!isTeacherDocument) {
+        showToast(
+          "warning",
+          "Cannot report this answer",
+          "Only AI answers based on teacher-uploaded documents can be reported.",
+        );
 
-      await reportMessage({
-        messageId: reportTarget.id,
-        sessionId: conversationId,
-        documentId:
-          selectedDocument?.documentId ||
-          activeConversation?.documentId ||
-          null,
-        studentId: user.userId,
-        reason: reportReason,
-        description: reportDescription,
-      });
+        return;
+      }
 
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === reportTarget.id ? { ...msg, reported: true } : msg,
-        ),
-      );
+      try {
+        setSubmittingReport(true);
 
-      showToast(
-        "success",
-        "Report submitted",
-        "Teacher will review the answer and related document.",
-      );
+        await reportMessage({
+          messageId:
+            reportTarget.id,
 
-      closeReportModal();
-    } catch (error) {
-      showToast("error", "Report failed", error.message);
-    } finally {
-      setSubmittingReport(false);
-    }
-  };
+          sessionId:
+            conversationId,
+
+          documentId:
+            selectedDocument?.documentId ||
+            activeConversation?.documentId ||
+            null,
+
+          studentId:
+            user.userId,
+
+          reason:
+            reportReason,
+
+          description:
+            reportDescription,
+        });
+
+        setMessages(
+          (previousMessages) =>
+            previousMessages.map(
+              (chatMessage) =>
+                chatMessage.id ===
+                reportTarget.id
+                  ? {
+                      ...chatMessage,
+                      reported: true,
+                    }
+                  : chatMessage,
+            ),
+        );
+
+        showToast(
+          "success",
+          "Report submitted",
+          "Teacher will review the answer and related document.",
+        );
+
+        closeReportModal();
+      } catch (error) {
+        showToast(
+          "error",
+          "Report failed",
+          error.message,
+        );
+      } finally {
+        setSubmittingReport(false);
+      }
+    };
 
   const handleChatScroll = () => {
-    const element = chatBodyRef.current;
+    const element =
+      chatBodyRef.current;
 
     if (!element) return;
 
     const distanceFromBottom =
-      element.scrollHeight - element.scrollTop - element.clientHeight;
+      element.scrollHeight -
+      element.scrollTop -
+      element.clientHeight;
 
-    const isNearBottom = distanceFromBottom <= 120;
+    const isNearBottom =
+      distanceFromBottom <= 120;
 
-    isNearBottomRef.current = isNearBottom;
+    isNearBottomRef.current =
+      isNearBottom;
 
-    setShowScrollToBottom(!isNearBottom);
+    setShowScrollToBottom(
+      !isNearBottom,
+    );
   };
 
-  const scrollToBottom = (behavior = "smooth") => {
-    const element = chatBodyRef.current;
+  const scrollToBottom = (
+    behavior = "smooth",
+  ) => {
+    const element =
+      chatBodyRef.current;
 
     if (!element) return;
 
@@ -821,23 +1472,30 @@ const ChatArea = ({
     });
 
     isNearBottomRef.current = true;
+
     setShowScrollToBottom(false);
   };
 
-  // Khi mở lại hoặc F5 conversation
-  // tự chạy xuống tin nhắn cuối.
   useEffect(() => {
-    if (!conversationId || loadingMessages) return;
+    if (
+      !conversationId ||
+      loadingMessages
+    ) {
+      return undefined;
+    }
 
     const timer = setTimeout(() => {
       scrollToBottom("auto");
     }, 0);
 
-    return () => clearTimeout(timer);
-  }, [conversationId, loadingMessages]);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [
+    conversationId,
+    loadingMessages,
+  ]);
 
-  // Khi user gửi câu hỏi và AI bắt đầu xử lý,
-  // nếu user đang đứng cuối chat thì giữ màn hình ở cuối.
   useEffect(() => {
     if (!loading) return;
 
@@ -848,9 +1506,6 @@ const ChatArea = ({
     }
   }, [loading]);
 
-  // Khi có tin nhắn mới:
-  // - đang ở cuối: tự scroll xuống
-  // - đang kéo lên đọc: không giật xuống, chỉ hiện nút mũi tên
   useEffect(() => {
     if (loadingMessages) return;
 
@@ -861,7 +1516,10 @@ const ChatArea = ({
     } else {
       setShowScrollToBottom(true);
     }
-  }, [messages.length, loadingMessages]);
+  }, [
+    messages.length,
+    loadingMessages,
+  ]);
 
   return (
     <>
@@ -876,27 +1534,42 @@ const ChatArea = ({
       <Modal
         show={showUploadMetaModal}
         onHide={() => {
-          if (!uploading) resetUploadMetaModal();
+          if (!uploading) {
+            resetUploadMetaModal();
+          }
         }}
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Document metadata</Modal.Title>
+          <Modal.Title>
+            Document metadata
+          </Modal.Title>
         </Modal.Header>
 
         <Modal.Body>
           <div className="mb-3">
             <div className="d-flex align-items-center justify-content-between gap-2">
               <p className="text-muted mb-0">
-                File: <b>{pendingUploadFile?.name}</b>
+                File:{" "}
+                <b>
+                  {
+                    pendingUploadFile?.name
+                  }
+                </b>
               </p>
 
               <Button
                 type="button"
                 variant="outline-primary"
                 size="sm"
-                onClick={() => handleOpenPendingFile(pendingUploadFile)}
-                disabled={!pendingUploadFile}
+                onClick={() =>
+                  handleOpenPendingFile(
+                    pendingUploadFile,
+                  )
+                }
+                disabled={
+                  !pendingUploadFile
+                }
               >
                 <i className="bi bi-box-arrow-up-right me-1" />
                 Open file
@@ -904,126 +1577,239 @@ const ChatArea = ({
             </div>
 
             <p className="text-muted mb-0 mt-1">
-              Leave fields empty to let the system auto-fill metadata.
+              Leave fields empty to
+              let the system auto-fill
+              metadata.
             </p>
           </div>
 
-          {metadataLoading && <p className="text-muted">Loading metadata...</p>}
+          {metadataLoading && (
+            <p className="text-muted">
+              Loading metadata...
+            </p>
+          )}
 
           <Form.Group className="mb-3">
-            <Form.Label>Subject</Form.Label>
+            <Form.Label>
+              Subject
+            </Form.Label>
+
             <Form.Select
-              value={uploadMeta.subjectId}
-              onChange={(e) =>
-                setUploadMeta((prev) => ({
-                  ...prev,
-                  subjectId: e.target.value,
-                  topicId: "",
-                }))
+              value={
+                uploadMeta.subjectId
+              }
+              onChange={(event) =>
+                setUploadMeta(
+                  (previous) => ({
+                    ...previous,
+
+                    subjectId:
+                      event.target
+                        .value,
+
+                    topicId: "",
+                  }),
+                )
               }
             >
-              <option value="">Auto-fill subject</option>
-              {subjects.map((subject) => (
-                <option key={subject.subjectId} value={subject.subjectId}>
-                  {subject.subjectCode
-                    ? `${subject.subjectCode} - ${subject.subjectName}`
-                    : subject.subjectName}
-                </option>
-              ))}
+              <option value="">
+                Auto-fill subject
+              </option>
+
+              {subjects.map(
+                (subject) => (
+                  <option
+                    key={
+                      subject.subjectId
+                    }
+                    value={
+                      subject.subjectId
+                    }
+                  >
+                    {subject.subjectCode
+                      ? `${subject.subjectCode} - ${subject.subjectName}`
+                      : subject.subjectName}
+                  </option>
+                ),
+              )}
             </Form.Select>
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Topic</Form.Label>
+            <Form.Label>
+              Topic
+            </Form.Label>
+
             <Form.Select
-              value={uploadMeta.topicId}
-              onChange={(e) =>
-                setUploadMeta((prev) => ({
-                  ...prev,
-                  topicId: e.target.value,
-                }))
+              value={
+                uploadMeta.topicId
               }
-              disabled={!uploadMeta.subjectId}
+              onChange={(event) =>
+                setUploadMeta(
+                  (previous) => ({
+                    ...previous,
+
+                    topicId:
+                      event.target
+                        .value,
+                  }),
+                )
+              }
+              disabled={
+                !uploadMeta.subjectId
+              }
             >
-              <option value="">Auto-fill topic</option>
-              {filteredTopics.map((topic) => (
-                <option key={topic.topicId} value={topic.topicId}>
-                  {topic.topicName}
-                </option>
-              ))}
+              <option value="">
+                Auto-fill topic
+              </option>
+
+              {filteredTopics.map(
+                (topic) => (
+                  <option
+                    key={
+                      topic.topicId
+                    }
+                    value={
+                      topic.topicId
+                    }
+                  >
+                    {topic.topicName}
+                  </option>
+                ),
+              )}
             </Form.Select>
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Document Type</Form.Label>
+            <Form.Label>
+              Document Type
+            </Form.Label>
+
             <Form.Select
-              value={uploadMeta.documentTypeId}
-              onChange={(e) =>
-                setUploadMeta((prev) => ({
-                  ...prev,
-                  documentTypeId: e.target.value,
-                }))
+              value={
+                uploadMeta.documentTypeId
+              }
+              onChange={(event) =>
+                setUploadMeta(
+                  (previous) => ({
+                    ...previous,
+
+                    documentTypeId:
+                      event.target
+                        .value,
+                  }),
+                )
               }
             >
-              <option value="">Auto-fill type</option>
-              {documentTypes.map((type) => (
-                <option key={type.documentTypeId} value={type.documentTypeId}>
-                  {type.typeName}
-                </option>
-              ))}
+              <option value="">
+                Auto-fill type
+              </option>
+
+              {documentTypes.map(
+                (type) => (
+                  <option
+                    key={
+                      type.documentTypeId
+                    }
+                    value={
+                      type.documentTypeId
+                    }
+                  >
+                    {type.typeName}
+                  </option>
+                ),
+              )}
             </Form.Select>
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Level</Form.Label>
+            <Form.Label>
+              Level
+            </Form.Label>
+
             <Form.Select
-              value={uploadMeta.levelId}
-              onChange={(e) =>
-                setUploadMeta((prev) => ({
-                  ...prev,
-                  levelId: e.target.value,
-                }))
+              value={
+                uploadMeta.levelId
+              }
+              onChange={(event) =>
+                setUploadMeta(
+                  (previous) => ({
+                    ...previous,
+
+                    levelId:
+                      event.target
+                        .value,
+                  }),
+                )
               }
             >
-              <option value="">Auto-fill level</option>
-              {documentLevels.map((level) => (
-                <option key={level.levelId} value={level.levelId}>
-                  {level.levelName}
-                </option>
-              ))}
+              <option value="">
+                Auto-fill level
+              </option>
+
+              {documentLevels.map(
+                (level) => (
+                  <option
+                    key={level.levelId}
+                    value={
+                      level.levelId
+                    }
+                  >
+                    {level.levelName}
+                  </option>
+                ),
+              )}
             </Form.Select>
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Tags</Form.Label>
+            <Form.Label>
+              Tags
+            </Form.Label>
+
             <TagInput
               value={uploadMeta.tags}
               placeholder="Type a tag then press Enter, Tab, or comma"
               onChange={(tags) =>
-                setUploadMeta((prev) => ({
-                  ...prev,
-                  tags,
-                }))
+                setUploadMeta(
+                  (previous) => ({
+                    ...previous,
+                    tags,
+                  }),
+                )
               }
             />
+
             <Form.Text className="text-muted">
-              Example: rag, week 1, assignment. Tags will be saved as
-              comma-separated text.
+              Example: rag, week 1,
+              assignment. Tags will be
+              saved as comma-separated
+              text.
             </Form.Text>
           </Form.Group>
 
           <Form.Group>
-            <Form.Label>Tên/Ghi chú tài liệu</Form.Label>
+            <Form.Label>
+              Tên/Ghi chú tài liệu
+            </Form.Label>
+
             <Form.Control
               as="textarea"
               rows={3}
-              value={uploadMeta.summary}
+              value={
+                uploadMeta.summary
+              }
               placeholder="Ví dụ: Bài tập RAG của Khang / ghi chú ngắn"
-              onChange={(e) =>
-                setUploadMeta((prev) => ({
-                  ...prev,
-                  summary: e.target.value,
-                }))
+              onChange={(event) =>
+                setUploadMeta(
+                  (previous) => ({
+                    ...previous,
+
+                    summary:
+                      event.target
+                        .value,
+                  }),
+                )
               }
             />
           </Form.Group>
@@ -1033,7 +1819,9 @@ const ChatArea = ({
           <Button
             variant="secondary"
             disabled={uploading}
-            onClick={resetUploadMetaModal}
+            onClick={
+              resetUploadMetaModal
+            }
           >
             Cancel
           </Button>
@@ -1041,56 +1829,98 @@ const ChatArea = ({
           <Button
             variant="primary"
             disabled={uploading}
-            onClick={handleConfirmUpload}
+            onClick={
+              handleConfirmUpload
+            }
           >
-            {uploading ? "Uploading..." : "Upload"}
+            {uploading
+              ? "Uploading..."
+              : "Upload"}
           </Button>
         </Modal.Footer>
       </Modal>
 
-      <Modal show={Boolean(reportTarget)} onHide={closeReportModal} centered>
+      <Modal
+        show={Boolean(
+          reportTarget,
+        )}
+        onHide={closeReportModal}
+        centered
+      >
         <Modal.Header closeButton>
-          <Modal.Title>Report AI answer</Modal.Title>
+          <Modal.Title>
+            Report AI answer
+          </Modal.Title>
         </Modal.Header>
 
         <Modal.Body>
           <p className="text-muted">
-            Use this when the AI answer may be wrong because the source document
-            contains incorrect, outdated, or misleading content.
+            Use this when the AI
+            answer may be wrong
+            because the source
+            document contains
+            incorrect, outdated, or
+            misleading content.
           </p>
 
           <Form.Group className="mb-3">
-            <Form.Label>Reason</Form.Label>
+            <Form.Label>
+              Reason
+            </Form.Label>
+
             <Form.Select
               value={reportReason}
-              onChange={(event) => setReportReason(event.target.value)}
+              onChange={(event) =>
+                setReportReason(
+                  event.target.value,
+                )
+              }
             >
-              {REPORT_REASONS.map((reason) => (
-                <option key={reason.value} value={reason.value}>
-                  {reason.label}
-                </option>
-              ))}
+              {REPORT_REASONS.map(
+                (reason) => (
+                  <option
+                    key={reason.value}
+                    value={reason.value}
+                  >
+                    {reason.label}
+                  </option>
+                ),
+              )}
             </Form.Select>
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Description</Form.Label>
+            <Form.Label>
+              Description
+            </Form.Label>
+
             <Form.Control
               as="textarea"
               rows={4}
-              value={reportDescription}
+              value={
+                reportDescription
+              }
               placeholder="Example: The document says AI can be used in the final exam, but the real exam rule does not allow AI."
-              onChange={(event) => setReportDescription(event.target.value)}
+              onChange={(event) =>
+                setReportDescription(
+                  event.target.value,
+                )
+              }
             />
           </Form.Group>
 
           <div className="p-3 rounded bg-light">
-            <div className="fw-bold mb-2">Reported answer</div>
+            <div className="fw-bold mb-2">
+              Reported answer
+            </div>
+
             <div
               style={{
                 maxHeight: 160,
                 overflow: "auto",
-                whiteSpace: "pre-wrap",
+
+                whiteSpace:
+                  "pre-wrap",
               }}
             >
               {reportTarget?.content}
@@ -1100,12 +1930,18 @@ const ChatArea = ({
           {reportTarget?.sourceExcerpt && (
             <div className="member-report-source mt-3">
               <div className="member-report-source__title">
-                Source excerpt used by AI
+                Source excerpt used
+                by AI
                 {reportTarget.sourceDocumentName
                   ? `: ${reportTarget.sourceDocumentName}`
                   : ""}
               </div>
-              <pre>{reportTarget.sourceExcerpt}</pre>
+
+              <pre>
+                {
+                  reportTarget.sourceExcerpt
+                }
+              </pre>
             </div>
           )}
         </Modal.Body>
@@ -1113,44 +1949,79 @@ const ChatArea = ({
         <Modal.Footer>
           <Button
             variant="secondary"
-            disabled={submittingReport}
-            onClick={closeReportModal}
+            disabled={
+              submittingReport
+            }
+            onClick={
+              closeReportModal
+            }
           >
             Cancel
           </Button>
+
           <Button
             variant="danger"
-            disabled={submittingReport}
-            onClick={handleSubmitReport}
+            disabled={
+              submittingReport
+            }
+            onClick={
+              handleSubmitReport
+            }
           >
-            {submittingReport ? "Submitting..." : "Submit report"}
+            {submittingReport
+              ? "Submitting..."
+              : "Submit report"}
           </Button>
         </Modal.Footer>
       </Modal>
 
       {toast && (
-        <div className={`member-toast member-toast--${toast.type}`}>
+        <div
+          className={`member-toast member-toast--${toast.type}`}
+        >
           <div className="member-toast__main">
             <div className="member-toast__icon">
-              {toast.type === "success" && <i className="ti ti-check"></i>}
-              {toast.type === "error" && <i className="ti ti-x"></i>}
-              {toast.type === "warning" && (
-                <i className="ti ti-alert-circle"></i>
+              {toast.type ===
+                "success" && (
+                <i className="ti ti-check" />
               )}
-              {toast.type === "info" && <i className="ti ti-loader-2"></i>}
+
+              {toast.type ===
+                "error" && (
+                <i className="ti ti-x" />
+              )}
+
+              {toast.type ===
+                "warning" && (
+                <i className="ti ti-alert-circle" />
+              )}
+
+              {toast.type ===
+                "info" && (
+                <i className="ti ti-loader-2" />
+              )}
             </div>
 
             <div className="member-toast__content">
-              <strong>{toast.title}</strong>
-              {toast.message && <span>{toast.message}</span>}
+              <strong>
+                {toast.title}
+              </strong>
+
+              {toast.message && (
+                <span>
+                  {toast.message}
+                </span>
+              )}
             </div>
 
             <button
               className="member-toast__close"
               type="button"
-              onClick={() => setToast(null)}
+              onClick={() =>
+                setToast(null)
+              }
             >
-              <i className="ti ti-x"></i>
+              <i className="ti ti-x" />
             </button>
           </div>
 
@@ -1164,14 +2035,26 @@ const ChatArea = ({
         onScroll={handleChatScroll}
       >
         {loadingMessages ? (
-          <p>Đang tải tin nhắn...</p>
+          <p>
+            Đang tải tin nhắn...
+          </p>
         ) : messages.length === 0 ? (
           <div className="member-chat__welcome">
-            <img src={logo7} alt="logo" className="member-chat__logo" />
-            <h1 className="member-chat__title">Where should we start?</h1>
+            <img
+              src={logo7}
+              alt="logo"
+              className="member-chat__logo"
+            />
+
+            <h1 className="member-chat__title">
+              Where should we start?
+            </h1>
+
             <p className="member-chat__subtitle">
-              Upload tài liệu hoặc mở Library để chọn file, sau đó hỏi AI dựa
-              trên nội dung trong file.
+              Upload tài liệu hoặc mở
+              Library để chọn file, sau
+              đó hỏi AI dựa trên nội
+              dung trong file.
             </p>
           </div>
         ) : (
@@ -1179,88 +2062,139 @@ const ChatArea = ({
             {selectedDocument && (
               <div className="member-chat__document-info">
                 <i className="ti ti-file-text" />
+
                 <span>
-                  Đang hỏi theo file: <b>{selectedDocument.fileName}</b>
+                  Đang hỏi theo file:{" "}
+                  <b>
+                    {
+                      selectedDocument.fileName
+                    }
+                  </b>
+
+                  {selectedDocument.versionNo &&
+                    Number(
+                      selectedDocument.versionNo,
+                    ) > 1 && (
+                      <>
+                        {" "}
+                        — Version{" "}
+                        {
+                          selectedDocument.versionNo
+                        }
+                      </>
+                    )}
                 </span>
               </div>
             )}
 
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`member-chat__message-row member-chat__message-row--${msg.role}`}
-              >
-                {msg.role !== "system" && (
-                  <div className="member-chat__sender">
-                    {msg.role === "user" ? "You" : "AI Learning"}
-                  </div>
-                )}
-
+            {messages.map(
+              (chatMessage) => (
                 <div
-                  className={`member-chat__bubble member-chat__bubble--${msg.role}`}
+                  key={chatMessage.id}
+                  className={`member-chat__message-row member-chat__message-row--${chatMessage.role}`}
                 >
-                  {msg.content}
-
-                  {msg.role === "ai" && msg.sourceExcerpt && (
-                    <details className="member-chat__source">
-                      <summary>
-                        <i className="bi bi-file-text me-1"></i>
-                        Source from document
-                        {msg.sourceDocumentName
-                          ? `: ${msg.sourceDocumentName}`
-                          : ""}
-                      </summary>
-                      <pre>{msg.sourceExcerpt}</pre>
-                    </details>
-                  )}
-
-                  {msg.role === "ai" && (
-                    <div className="member-chat__message-actions">
-                      <button
-                        className={`member-chat__approve-btn ${
-                          msg.approved ? "member-chat__approve-btn--active" : ""
-                        }`}
-                        title="Đánh dấu câu trả lời này phù hợp"
-                        onClick={() => handleToggleApproved(msg)}
-                      >
-                        <i className="ti ti-check" />
-                      </button>
-
-                      {isTeacherDocument && (
-                        <button
-                          className={`member-chat__report-btn ${
-                            msg.reported
-                              ? "member-chat__report-btn--active"
-                              : ""
-                          }`}
-                          title="Report this AI answer"
-                          onClick={() => openReportModal(msg)}
-                          disabled={Boolean(msg.reported)}
-                        >
-                          <i
-                            className={
-                              msg.reported ? "ti ti-flag-filled" : "ti ti-flag"
-                            }
-                          />
-                          {msg.reported ? "Reported" : "Report"}
-                        </button>
-                      )}
+                  {chatMessage.role !==
+                    "system" && (
+                    <div className="member-chat__sender">
+                      {chatMessage.role ===
+                      "user"
+                        ? "You"
+                        : "AI Learning"}
                     </div>
                   )}
+
+                  <div
+                    className={`member-chat__bubble member-chat__bubble--${chatMessage.role}`}
+                  >
+                    {
+                      chatMessage.content
+                    }
+
+                    {chatMessage.role ===
+                      "ai" &&
+                      chatMessage.sourceExcerpt && (
+                        <details className="member-chat__source">
+                          <summary>
+                            <i className="bi bi-file-text me-1" />
+                            Source from
+                            document
+                            {chatMessage.sourceDocumentName
+                              ? `: ${chatMessage.sourceDocumentName}`
+                              : ""}
+                          </summary>
+
+                          <pre>
+                            {
+                              chatMessage.sourceExcerpt
+                            }
+                          </pre>
+                        </details>
+                      )}
+
+                    {chatMessage.role ===
+                      "ai" && (
+                      <div className="member-chat__message-actions">
+                        <button
+                          className={`member-chat__approve-btn ${
+                            chatMessage.approved
+                              ? "member-chat__approve-btn--active"
+                              : ""
+                          }`}
+                          title="Đánh dấu câu trả lời này phù hợp"
+                          onClick={() =>
+                            handleToggleApproved(
+                              chatMessage,
+                            )
+                          }
+                        >
+                          <i className="ti ti-check" />
+                        </button>
+
+                        {isTeacherDocument && (
+                          <button
+                            className={`member-chat__report-btn ${
+                              chatMessage.reported
+                                ? "member-chat__report-btn--active"
+                                : ""
+                            }`}
+                            title="Report this AI answer"
+                            onClick={() =>
+                              openReportModal(
+                                chatMessage,
+                              )
+                            }
+                            disabled={Boolean(
+                              chatMessage.reported,
+                            )}
+                          >
+                            <i
+                              className={
+                                chatMessage.reported
+                                  ? "ti ti-flag-filled"
+                                  : "ti ti-flag"
+                              }
+                            />
+
+                            {chatMessage.reported
+                              ? "Reported"
+                              : "Report"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ),
+            )}
 
             {loading && (
               <div className="member-chat__message-row member-chat__message-row--ai">
-                <div className="member-chat__sender">AI Learning</div>
+                <div className="member-chat__sender">
+                  AI Learning
+                </div>
 
                 <div
-                  className="
-        member-chat__bubble
-        member-chat__bubble--ai
-        member-chat__typing-bubble
-      "
+                  className="member-chat__bubble member-chat__bubble--ai member-chat__typing-bubble"
                   aria-label="AI đang trả lời"
                 >
                   <span className="member-chat__typing-dot" />
@@ -1272,23 +2206,29 @@ const ChatArea = ({
           </div>
         )}
       </div>
-        {showScrollToBottom && (
+
+      {showScrollToBottom && (
         <button
           type="button"
           className="member-chat__scroll-bottom"
-          onClick={() => scrollToBottom("smooth")}
+          onClick={() =>
+            scrollToBottom("smooth")
+          }
           title="Đi tới tin nhắn mới nhất"
           aria-label="Đi tới tin nhắn mới nhất"
         >
           <i className="ti ti-arrow-down" />
         </button>
       )}
+
       <div className="member-chat__input-bar">
         <button
           className="member-chat__tool-btn member-chat__tool-btn--attach"
           title="Upload tài liệu"
           onClick={handleChooseFile}
-          disabled={uploading || loading}
+          disabled={
+            uploading || loading
+          }
         >
           <i className="ti ti-paperclip" />
         </button>
@@ -1302,19 +2242,33 @@ const ChatArea = ({
               : "Chọn file trong Library hoặc upload tài liệu trước..."
           }
           value={message}
-          disabled={uploading || loading}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSend();
+          disabled={
+            uploading || loading
+          }
+          onChange={(event) =>
+            setMessage(
+              event.target.value,
+            )
+          }
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter"
+            ) {
+              handleSend();
+            }
           }}
         />
 
         <button
           className={`member-chat__send-btn ${
-            message.trim() ? "member-chat__send-btn--active" : ""
+            message.trim()
+              ? "member-chat__send-btn--active"
+              : ""
           }`}
           onClick={handleSend}
-          disabled={uploading || loading}
+          disabled={
+            uploading || loading
+          }
         >
           <i className="ti ti-send" />
         </button>

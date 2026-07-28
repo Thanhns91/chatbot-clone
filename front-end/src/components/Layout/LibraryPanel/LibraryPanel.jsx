@@ -1,13 +1,31 @@
-import React, { useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import Button from "react-bootstrap/Button";
-import { getLibraryDocuments, publishDocument } from "../../../services/api";
+
+import {
+  getLibraryDocuments,
+  publishDocument,
+} from "../../../services/api";
+
 import "./LibraryPanel.scss";
 
 const getFileIcon = (fileName = "") => {
-  const lower = fileName.toLowerCase();
+  const lowerName = String(
+    fileName || "",
+  ).toLowerCase();
 
-  if (lower.endsWith(".pdf")) return "bi bi-file-earmark-pdf";
-  if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
+  if (lowerName.endsWith(".pdf")) {
+    return "bi bi-file-earmark-pdf";
+  }
+
+  if (
+    lowerName.endsWith(".doc") ||
+    lowerName.endsWith(".docx")
+  ) {
     return "bi bi-file-earmark-word";
   }
 
@@ -18,7 +36,9 @@ const formatDate = (date) => {
   if (!date) return "";
 
   try {
-    return new Date(date).toLocaleDateString("en-US", {
+    return new Date(
+      date,
+    ).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
     });
@@ -27,28 +47,38 @@ const formatDate = (date) => {
   }
 };
 
-const getDocumentUrl = (doc) => {
+const getDocumentUrl = (document) => {
   return (
-    doc?.fileUrl ||
-    doc?.file_url ||
-    doc?.url ||
-    doc?.downloadUrl ||
-    doc?.download_url ||
-    doc?.secure_url ||
+    document?.fileUrl ||
+    document?.file_url ||
+    document?.url ||
+    document?.downloadUrl ||
+    document?.download_url ||
+    document?.secure_url ||
     ""
   );
 };
 
-const getSubjectLabel = (doc) => {
-  if (doc.subjectCode && doc.subjectName) {
-    return `${doc.subjectCode} - ${doc.subjectName}`;
+const getSubjectLabel = (document) => {
+  if (
+    document.subjectCode &&
+    document.subjectName
+  ) {
+    return `${document.subjectCode} - ${document.subjectName}`;
   }
 
-  return doc.subjectName || doc.subjectCode || "No Subject";
+  return (
+    document.subjectName ||
+    document.subjectCode ||
+    "No Subject"
+  );
 };
 
-const getTopicLabel = (doc) => {
-  return doc.topicName || "Uncategorized";
+const getTopicLabel = (document) => {
+  return (
+    document.topicName ||
+    "Uncategorized"
+  );
 };
 
 const normalizeUser = (user) => {
@@ -56,8 +86,15 @@ const normalizeUser = (user) => {
 
   return {
     ...user,
-    userId: user.userId || user.id,
-    role: user.role,
+    userId:
+      user.userId ||
+      user.id ||
+      null,
+
+    role:
+      String(user.role || "")
+        .trim()
+        .toLowerCase(),
   };
 };
 
@@ -66,52 +103,139 @@ const getStoredUser = () => {
     const rawUser =
       localStorage.getItem("user") ||
       sessionStorage.getItem("user") ||
-      localStorage.getItem("currentUser") ||
-      sessionStorage.getItem("currentUser");
+      localStorage.getItem(
+        "currentUser",
+      ) ||
+      sessionStorage.getItem(
+        "currentUser",
+      );
 
-    return rawUser ? normalizeUser(JSON.parse(rawUser)) : null;
+    if (!rawUser) return null;
+
+    return normalizeUser(
+      JSON.parse(rawUser),
+    );
   } catch {
     return null;
   }
 };
 
-const isPrivateStudentFile = (doc) => {
-  return doc?.uploadedBy === "student" && doc?.reviewStatus === "private";
+const normalizeReviewStatus = (
+  document,
+) => {
+  return String(
+    document?.reviewStatus ||
+      document?.visibilityStatus ||
+      "private",
+  )
+    .trim()
+    .toLowerCase();
 };
 
-const isApprovedStudentFile = (doc) => {
-  return doc?.uploadedBy === "student" && doc?.reviewStatus === "approved";
+const isPrivateStudentFile = (
+  document,
+) => {
+  return (
+    String(
+      document?.uploadedBy || "",
+    ).toLowerCase() === "student" &&
+    normalizeReviewStatus(
+      document,
+    ) === "private"
+  );
+};
+
+const isApprovedStudentFile = (
+  document,
+) => {
+  const status =
+    normalizeReviewStatus(document);
+
+  return (
+    String(
+      document?.uploadedBy || "",
+    ).toLowerCase() === "student" &&
+    ["approved", "public"].includes(
+      status,
+    )
+  );
+};
+
+const normalizeDocuments = (
+  result,
+) => {
+  const documents = Array.isArray(result)
+    ? result
+    : Array.isArray(result?.data)
+      ? result.data
+      : [];
+
+  return documents.filter(
+    (document, index, array) =>
+      index ===
+      array.findIndex(
+        (item) =>
+          String(item.documentId) ===
+          String(document.documentId),
+      ),
+  );
 };
 
 const groupByMetadata = (files) => {
   const subjectMap = new Map();
 
-  files.forEach((doc) => {
-    const subjectKey = `${doc.subjectId || "none"}-${getSubjectLabel(doc)}`;
-    const topicKey = `${doc.topicId || "none"}-${getTopicLabel(doc)}`;
+  files.forEach((document) => {
+    const subjectKey = `${
+      document.subjectId || "none"
+    }-${getSubjectLabel(document)}`;
 
-    if (!subjectMap.has(subjectKey)) {
+    const topicKey = `${
+      document.topicId || "none"
+    }-${getTopicLabel(document)}`;
+
+    if (
+      !subjectMap.has(subjectKey)
+    ) {
       subjectMap.set(subjectKey, {
-        label: getSubjectLabel(doc),
+        label:
+          getSubjectLabel(document),
+
         topics: new Map(),
       });
     }
 
-    const subjectGroup = subjectMap.get(subjectKey);
+    const subjectGroup =
+      subjectMap.get(subjectKey);
 
-    if (!subjectGroup.topics.has(topicKey)) {
-      subjectGroup.topics.set(topicKey, {
-        label: getTopicLabel(doc),
-        files: [],
-      });
+    if (
+      !subjectGroup.topics.has(
+        topicKey,
+      )
+    ) {
+      subjectGroup.topics.set(
+        topicKey,
+        {
+          label:
+            getTopicLabel(document),
+
+          files: [],
+        },
+      );
     }
 
-    subjectGroup.topics.get(topicKey).files.push(doc);
+    subjectGroup.topics
+      .get(topicKey)
+      .files.push(document);
   });
 
-  return Array.from(subjectMap.values()).map((subject) => ({
+  return Array.from(
+    subjectMap.values(),
+  ).map((subject) => ({
     ...subject,
-    topics: Array.from(subject.topics.values()),
+
+    topics: Array.from(
+      subject.topics.values(),
+    ),
   }));
 };
 
@@ -124,124 +248,303 @@ const LibraryPanel = ({
   user: propUser,
   onDocumentsChanged,
 }) => {
-  const [activeTab, setActiveTab] = useState("teacher");
-  const [publishingId, setPublishingId] = useState(null);
-  const [statusOverrides, setStatusOverrides] = useState({});
-  const [libraryDocs, setLibraryDocs] = useState(documents);
-  const [loadingLibrary, setLoadingLibrary] = useState(false);
+  const [activeTab, setActiveTab] =
+    useState("teacher");
 
-  const currentUser = normalizeUser(propUser) || getStoredUser();
-  const currentUserRole = currentUser?.role;
-  const currentUserId = currentUser?.userId;
+  const [
+    publishingId,
+    setPublishingId,
+  ] = useState(null);
 
-  React.useEffect(() => {
-    setLibraryDocs(documents);
+  const [
+    statusOverrides,
+    setStatusOverrides,
+  ] = useState({});
+
+  const [libraryDocs, setLibraryDocs] =
+    useState(() =>
+      normalizeDocuments(documents),
+    );
+
+  const [
+    loadingLibrary,
+    setLoadingLibrary,
+  ] = useState(false);
+
+  const currentUser =
+    normalizeUser(propUser) ||
+    getStoredUser();
+
+  const currentUserRole =
+    currentUser?.role || "";
+
+  const currentUserId =
+    currentUser?.userId || null;
+
+  /*
+   * Khi MemberPage tải lại Library,
+   * đồng bộ dữ liệu mới vào panel.
+   */
+  useEffect(() => {
+    setLibraryDocs(
+      normalizeDocuments(documents),
+    );
   }, [documents]);
 
-  React.useEffect(() => {
-    const loadLibraryDocuments = async () => {
-      if (!open || !currentUserId || !currentUserRole) return;
-
-      try {
-        setLoadingLibrary(true);
-        const data = await getLibraryDocuments(currentUserId, currentUserRole);
-
-        if (data.success) {
-          setLibraryDocs(data.data || []);
+  /*
+   * Mỗi lần mở Library, tải lại dữ liệu
+   * trực tiếp từ API để tránh state cũ.
+   */
+  useEffect(() => {
+    const loadLibraryDocuments =
+      async () => {
+        if (
+          !open ||
+          !currentUserId ||
+          !currentUserRole
+        ) {
+          return;
         }
-      } catch (error) {
-        console.log("Cannot refresh library documents:", error);
-      } finally {
-        setLoadingLibrary(false);
-      }
-    };
+
+        try {
+          setLoadingLibrary(true);
+
+          const result =
+            await getLibraryDocuments(
+              currentUserId,
+              currentUserRole,
+            );
+
+          const nextDocuments =
+            normalizeDocuments(result);
+
+          setLibraryDocs(
+            nextDocuments,
+          );
+        } catch (error) {
+          console.log(
+            "Cannot refresh library documents:",
+            error,
+          );
+        } finally {
+          setLoadingLibrary(false);
+        }
+      };
 
     loadLibraryDocuments();
-  }, [open, currentUserId, currentUserRole]);
+  }, [
+    open,
+    currentUserId,
+    currentUserRole,
+  ]);
 
-  const visibleDocuments = libraryDocs.map((doc) => ({
-    ...doc,
-    reviewStatus: statusOverrides[doc.documentId] || doc.reviewStatus,
-  }));
+  const visibleDocuments =
+    useMemo(
+      () =>
+        libraryDocs.map(
+          (document) => ({
+            ...document,
 
-  const teacherFiles = visibleDocuments.filter(
-    (doc) => doc.uploadedBy === "teacher",
+            reviewStatus:
+              statusOverrides[
+                document.documentId
+              ] ||
+              document.reviewStatus,
+          }),
+        ),
+      [
+        libraryDocs,
+        statusOverrides,
+      ],
+    );
+
+  const teacherFiles =
+    useMemo(
+      () =>
+        visibleDocuments.filter(
+          (document) =>
+            String(
+              document.uploadedBy ||
+                "",
+            ).toLowerCase() ===
+            "teacher",
+        ),
+      [visibleDocuments],
+    );
+
+  const studentFiles =
+    useMemo(
+      () =>
+        visibleDocuments.filter(
+          (document) => {
+            if (
+              String(
+                document.uploadedBy ||
+                  "",
+              ).toLowerCase() !==
+              "student"
+            ) {
+              return false;
+            }
+
+            /*
+             * Student được nhìn thấy toàn bộ
+             * file do chính mình upload,
+             * kể cả file đang Private.
+             */
+            if (
+              currentUserRole ===
+              "student"
+            ) {
+              return (
+                String(
+                  document.uploaderId,
+                ) ===
+                String(currentUserId)
+              );
+            }
+
+            /*
+             * Teacher/Admin chỉ nhìn thấy
+             * file Student đã Public.
+             */
+            return [
+              "approved",
+              "public",
+            ].includes(
+              normalizeReviewStatus(
+                document,
+              ),
+            );
+          },
+        ),
+      [
+        visibleDocuments,
+        currentUserRole,
+        currentUserId,
+      ],
+    );
+
+  const currentFiles =
+    activeTab === "teacher"
+      ? teacherFiles
+      : studentFiles;
+
+  const groupedFiles = useMemo(
+    () =>
+      groupByMetadata(
+        currentFiles,
+      ),
+    [currentFiles],
   );
 
-  const studentFiles = visibleDocuments.filter((doc) => {
-    if (doc.uploadedBy !== "student") {
-      return false;
-    }
-
-    if (currentUserRole === "student") {
-      return Number(doc.uploaderId) === Number(currentUserId);
-    }
-
-    return doc.reviewStatus === "approved";
-  });
-
-  const currentFiles = activeTab === "teacher" ? teacherFiles : studentFiles;
-  const groupedFiles = groupByMetadata(currentFiles);
-
-  const handleOpenFile = (doc) => {
-    const rawUrl = getDocumentUrl(doc);
+  const handleOpenFile = (
+    document,
+  ) => {
+    const rawUrl =
+      getDocumentUrl(document);
 
     if (!rawUrl) return;
 
-    window.open(rawUrl, "_blank", "noopener,noreferrer");
+    window.open(
+      rawUrl,
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
-  const handlePublishDocument = async (doc) => {
-    if (!currentUserId) {
-      window.alert("Bạn cần đăng nhập để public file.");
-      return;
-    }
+  const handlePublishDocument =
+    async (document) => {
+      if (!currentUserId) {
+        window.alert(
+          "Bạn cần đăng nhập để public file.",
+        );
 
-    const ok = window.confirm(
-      `Public file "${doc.fileName}"?\nTeacher và Admin sẽ xem được file này.`,
-    );
-
-    if (!ok) return;
-
-    try {
-      setPublishingId(doc.documentId);
-
-      const result = await publishDocument(doc.documentId, currentUserId);
-
-      if (!result.success) {
-        throw new Error(result.message || "Public file thất bại");
+        return;
       }
 
-      setStatusOverrides((prev) => ({
-        ...prev,
-        [doc.documentId]: "approved",
-      }));
+      const confirmed =
+        window.confirm(
+          `Public file "${document.fileName}"?\nTeacher và Admin sẽ xem được file này.`,
+        );
 
-      setLibraryDocs((prev) =>
-        prev.map((item) =>
-          String(item.documentId) === String(doc.documentId)
-            ? { ...item, reviewStatus: "approved", visibilityStatus: "Public" }
-            : item,
-        ),
-      );
+      if (!confirmed) return;
 
-      onDocumentsChanged?.({
-        ...doc,
-        reviewStatus: "approved",
-      });
+      try {
+        setPublishingId(
+          document.documentId,
+        );
 
-      window.alert("File đã được public. Teacher và Admin có thể xem file này.");
-    } catch (error) {
-      window.alert(error.message || "Public file thất bại");
-    } finally {
-      setPublishingId(null);
-    }
-  };
+        const result =
+          await publishDocument(
+            document.documentId,
+            currentUserId,
+          );
+
+        if (
+          result?.success === false
+        ) {
+          throw new Error(
+            result.message ||
+              "Public file thất bại",
+          );
+        }
+
+        setStatusOverrides(
+          (previous) => ({
+            ...previous,
+
+            [document.documentId]:
+              "approved",
+          }),
+        );
+
+        setLibraryDocs(
+          (previousDocuments) =>
+            previousDocuments.map(
+              (item) =>
+                String(
+                  item.documentId,
+                ) ===
+                String(
+                  document.documentId,
+                )
+                  ? {
+                      ...item,
+
+                      reviewStatus:
+                        "approved",
+
+                      visibilityStatus:
+                        "public",
+                    }
+                  : item,
+            ),
+        );
+
+        /*
+         * Yêu cầu MemberPage tải lại
+         * danh sách tài liệu chung.
+         */
+        await onDocumentsChanged?.();
+
+        window.alert(
+          "File đã được public. Teacher và Admin có thể xem file này.",
+        );
+      } catch (error) {
+        window.alert(
+          error.message ||
+            "Public file thất bại",
+        );
+      } finally {
+        setPublishingId(null);
+      }
+    };
 
   const renderEmpty = () => (
     <div className="library-empty">
       <div className="library-empty__icon">
-        <i className="bi bi-folder"></i>
+        <i className="bi bi-folder" />
       </div>
 
       <h4>
@@ -258,106 +561,230 @@ const LibraryPanel = ({
     </div>
   );
 
-  const renderFileCard = (doc) => {
+  const renderFileCard = (
+    document,
+  ) => {
     const isActive =
-      String(selectedDocument?.documentId) === String(doc.documentId);
+      String(
+        selectedDocument?.documentId,
+      ) ===
+      String(document.documentId);
 
     const isOwner =
-      currentUserId && Number(doc.uploaderId) === Number(currentUserId);
+      Boolean(currentUserId) &&
+      String(document.uploaderId) ===
+        String(currentUserId);
 
     const canPublish =
-      activeTab === "student" && isOwner && isPrivateStudentFile(doc);
+      activeTab === "student" &&
+      isOwner &&
+      isPrivateStudentFile(
+        document,
+      );
+
+    const versionNumber =
+      Number(document.versionNo) ||
+      1;
 
     return (
       <div
-        key={`${doc.uploadedBy}-${doc.documentId}`}
-        className={`lesson-card ${isActive ? "lesson-card--active" : ""}`}
+        key={`${document.uploadedBy}-${document.documentId}`}
+        className={`lesson-card ${
+          isActive
+            ? "lesson-card--active"
+            : ""
+        }`}
       >
         <div className="lesson-card__top">
           <div
             className={`lesson-card__icon ${
-              doc.uploadedBy === "teacher"
+              document.uploadedBy ===
+              "teacher"
                 ? "lesson-card__icon--teacher"
                 : "lesson-card__icon--student"
             }`}
           >
-            <i className={getFileIcon(doc.fileName)}></i>
+            <i
+              className={getFileIcon(
+                document.fileName,
+              )}
+            />
           </div>
 
           <div className="lesson-card__info">
-            <div className="lesson-card__title">{doc.fileName}</div>
+            <div
+              className="lesson-card__title"
+              title={
+                document.fileName
+              }
+            >
+              {document.fileName}
+            </div>
 
             <div className="lesson-card__category">
-              {doc.uploadedBy === "teacher"
-                ? `Teacher: ${doc.uploaderName || "Unknown"}`
+              {document.uploadedBy ===
+              "teacher"
+                ? `Teacher: ${
+                    document.uploaderName ||
+                    "Unknown"
+                  }`
                 : "My Upload"}
             </div>
 
-            {doc.uploadedBy === "student" && (
-              <div
-                className={`lesson-card__status ${
-                  isPrivateStudentFile(doc)
-                    ? "lesson-card__status--private"
-                    : isApprovedStudentFile(doc)
-                      ? "lesson-card__status--public"
-                      : "lesson-card__status--pending"
-                }`}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 6,
+                marginTop: 6,
+              }}
+            >
+              <span
+                style={{
+                  display:
+                    "inline-flex",
+
+                  alignItems:
+                    "center",
+
+                  gap: 4,
+
+                  padding:
+                    "3px 8px",
+
+                  borderRadius: 999,
+
+                  background:
+                    "#eef2ff",
+
+                  color:
+                    "#4338ca",
+
+                  fontSize: 11,
+
+                  fontWeight: 700,
+                }}
+                title={`Document version ${versionNumber}`}
               >
-                <i
-                  className={
-                    isPrivateStudentFile(doc)
-                      ? "bi bi-lock-fill"
-                      : isApprovedStudentFile(doc)
-                        ? "bi bi-globe2"
-                        : "bi bi-hourglass-split"
-                  }
-                ></i>
-                {isPrivateStudentFile(doc)
-                  ? "Private"
-                  : isApprovedStudentFile(doc)
-                    ? "Public"
-                    : doc.reviewStatus || "Pending"}
-              </div>
-            )}
+                <i className="bi bi-layers" />
+                Version {versionNumber}
+              </span>
+
+              {document.uploadedBy ===
+                "student" && (
+                <div
+                  className={`lesson-card__status ${
+                    isPrivateStudentFile(
+                      document,
+                    )
+                      ? "lesson-card__status--private"
+                      : isApprovedStudentFile(
+                            document,
+                          )
+                        ? "lesson-card__status--public"
+                        : "lesson-card__status--pending"
+                  }`}
+                >
+                  <i
+                    className={
+                      isPrivateStudentFile(
+                        document,
+                      )
+                        ? "bi bi-lock-fill"
+                        : isApprovedStudentFile(
+                              document,
+                            )
+                          ? "bi bi-globe2"
+                          : "bi bi-hourglass-split"
+                    }
+                  />
+
+                  {isPrivateStudentFile(
+                    document,
+                  )
+                    ? "Private"
+                    : isApprovedStudentFile(
+                          document,
+                        )
+                      ? "Public"
+                      : document.reviewStatus ||
+                        "Pending"}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="lesson-card__meta">
-          {doc.documentTypeName || doc.fileType || "Document"}
-          {doc.levelName ? ` · ${doc.levelName}` : ""}
+          {document.documentTypeName ||
+            document.fileType ||
+            "Document"}
+
+          {document.levelName
+            ? ` · ${document.levelName}`
+            : ""}
+
           {" · "}
-          {formatDate(doc.uploadDate)}
+
+          {formatDate(
+            document.uploadDate,
+          )}
         </div>
 
         <div className="lesson-card__actions">
           <Button
             variant="outline-secondary"
             className="lesson-card__btn-open"
-            onClick={() => handleOpenFile(doc)}
-            disabled={!getDocumentUrl(doc)}
+            onClick={() =>
+              handleOpenFile(document)
+            }
+            disabled={
+              !getDocumentUrl(
+                document,
+              )
+            }
           >
-            <i className="bi bi-box-arrow-up-right me-1"></i>
+            <i className="bi bi-box-arrow-up-right me-1" />
             Open
           </Button>
 
           <Button
             variant="primary"
             className="lesson-card__btn-ask"
-            onClick={() => onSelectDocument?.(doc)}
+            onClick={() =>
+              onSelectDocument?.(
+                document,
+              )
+            }
           >
-            <i className="bi bi-chat-dots me-1"></i>
-            {isActive ? "Using" : "Ask AI"}
+            <i className="bi bi-chat-dots me-1" />
+
+            {isActive
+              ? "Using"
+              : "Ask AI"}
           </Button>
 
           {canPublish && (
             <Button
               variant="success"
               className="lesson-card__btn-public"
-              onClick={() => handlePublishDocument(doc)}
-              disabled={publishingId === doc.documentId}
+              onClick={() =>
+                handlePublishDocument(
+                  document,
+                )
+              }
+              disabled={
+                publishingId ===
+                document.documentId
+              }
             >
-              <i className="bi bi-globe2 me-1"></i>
-              {publishingId === doc.documentId ? "..." : "Public"}
+              <i className="bi bi-globe2 me-1" />
+
+              {publishingId ===
+              document.documentId
+                ? "..."
+                : "Public"}
             </Button>
           )}
         </div>
@@ -366,11 +793,17 @@ const LibraryPanel = ({
   };
 
   return (
-    <div className={`library-panel ${open ? "library-panel--open" : ""}`}>
+    <div
+      className={`library-panel ${
+        open
+          ? "library-panel--open"
+          : ""
+      }`}
+    >
       <div className="library-panel__inner">
         <div className="library-panel__header">
           <div className="library-panel__title">
-            <i className="bi bi-book"></i>
+            <i className="bi bi-book" />
             Library
           </div>
 
@@ -380,7 +813,7 @@ const LibraryPanel = ({
             onClick={onClose}
             title="Close"
           >
-            <i className="bi bi-x-lg"></i>
+            <i className="bi bi-x-lg" />
           </Button>
         </div>
 
@@ -388,25 +821,39 @@ const LibraryPanel = ({
           <button
             type="button"
             className={`library-panel__tab ${
-              activeTab === "teacher" ? "library-panel__tab--active" : ""
+              activeTab === "teacher"
+                ? "library-panel__tab--active"
+                : ""
             }`}
-            onClick={() => setActiveTab("teacher")}
+            onClick={() =>
+              setActiveTab("teacher")
+            }
           >
-            <i className="bi bi-mortarboard"></i>
+            <i className="bi bi-mortarboard" />
             Teacher
-            <span>{teacherFiles.length}</span>
+
+            <span>
+              {teacherFiles.length}
+            </span>
           </button>
 
           <button
             type="button"
             className={`library-panel__tab ${
-              activeTab === "student" ? "library-panel__tab--active" : ""
+              activeTab === "student"
+                ? "library-panel__tab--active"
+                : ""
             }`}
-            onClick={() => setActiveTab("student")}
+            onClick={() =>
+              setActiveTab("student")
+            }
           >
-            <i className="bi bi-person"></i>
+            <i className="bi bi-person" />
             My Files
-            <span>{studentFiles.length}</span>
+
+            <span>
+              {studentFiles.length}
+            </span>
           </button>
         </div>
 
@@ -419,23 +866,38 @@ const LibraryPanel = ({
         <div className="library-panel__list">
           {currentFiles.length === 0
             ? renderEmpty()
-            : groupedFiles.map((subject) => (
-                <div key={subject.label} className="library-meta-group">
-                  <div className="library-meta-group__subject">
-                    <i className="bi bi-folder2-open"></i>
-                    {subject.label}
-                  </div>
+            : groupedFiles.map(
+                (subject) => (
+                  <div
+                    key={
+                      subject.label
+                    }
+                    className="library-meta-group"
+                  >
+                    <div className="library-meta-group__subject">
+                      <i className="bi bi-folder2-open" />
 
-                  {subject.topics.map((topic) => (
-                    <div key={`${subject.label}-${topic.label}`}>
-                      <div className="library-meta-group__topic">
-                        {topic.label}
-                      </div>
-                      {topic.files.map(renderFileCard)}
+                      {subject.label}
                     </div>
-                  ))}
-                </div>
-              ))}
+
+                    {subject.topics.map(
+                      (topic) => (
+                        <div
+                          key={`${subject.label}-${topic.label}`}
+                        >
+                          <div className="library-meta-group__topic">
+                            {topic.label}
+                          </div>
+
+                          {topic.files.map(
+                            renderFileCard,
+                          )}
+                        </div>
+                      ),
+                    )}
+                  </div>
+                ),
+              )}
         </div>
       </div>
     </div>

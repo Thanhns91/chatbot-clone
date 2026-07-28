@@ -4380,3 +4380,97 @@ html[data-theme="dark"] {
     color: #ffedd5;
   }
 }
+
+
+/* =========================================================
+   TEACHER SIDEBAR — FOOTER VÀ APPLICATION VERSION
+========================================================= */
+
+.td-sidebar .td-sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+
+  width: 100%;
+  padding-top: 14px;
+}
+
+.td-sidebar__footer-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  width: 100%;
+  min-width: 0;
+}
+
+.td-sidebar__footer-user .td-sidebar__user-avatar {
+  flex: 0 0 auto;
+}
+
+.td-sidebar__footer-user .td-sidebar__user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.td-sidebar__footer-user .td-sidebar__user-name,
+.td-sidebar__footer-user .td-sidebar__user-role {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.td-sidebar .td-sidebar__logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  width: 100%;
+  min-height: 36px;
+}
+
+.td-sidebar__version {
+  width: 100%;
+  padding: 2px 8px 0;
+
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  letter-spacing: 0.02em;
+
+  user-select: none;
+}
+
+.td-sidebar__version:hover {
+  color: #64748b;
+}
+
+/* Giữ version dễ đọc khi giao diện đang có Dark Mode */
+html[data-theme="dark"] .td-sidebar__version,
+html.dark .td-sidebar__version,
+body.dark .td-sidebar__version,
+body.dark-mode .td-sidebar__version,
+body.theme-dark .td-sidebar__version {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .td-sidebar__version:hover,
+html.dark .td-sidebar__version:hover,
+body.dark .td-sidebar__version:hover,
+body.dark-mode .td-sidebar__version:hover,
+body.theme-dark .td-sidebar__version:hover {
+  color: #cbd5e1;
+}
+
+/* Màn hình hẹp */
+@media (max-width: 768px) {
+  .td-sidebar__version {
+    padding-left: 2px;
+    padding-right: 2px;
+    font-size: 10px;
+  }
+}

@@ -136,3 +136,44 @@ html[data-theme="dark"] .member-chat__document-info {
 html[data-theme="dark"] .member-chat__document-info b {
   color: #ffffff !important;
 }
+
+/* =========================================================
+   STUDENT DASHBOARD — APPLICATION VERSION
+========================================================= */
+
+.sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar__app-version {
+  width: 100%;
+  padding: 2px 8px 0;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.sidebar__app-version:hover {
+  color: #64748b;
+}
+
+/* Giữ version dễ đọc khi Student bật Dark Mode */
+html[data-theme="dark"] .sidebar__app-version,
+body.dark .sidebar__app-version,
+body.dark-mode .sidebar__app-version,
+body.theme-dark .sidebar__app-version {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .sidebar__app-version:hover,
+body.dark .sidebar__app-version:hover,
+body.dark-mode .sidebar__app-version:hover,
+body.theme-dark .sidebar__app-version:hover {
+  color: #cbd5e1;
+}
