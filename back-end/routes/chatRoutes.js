@@ -1,14 +1,14 @@
 import express from "express";
 
-import pool from "./db.js";
+import pool from "../db.js";
 
 import {
   qdrant,
   COLLECTION_NAME,
-} from "./qdrant.js";
+} from "../qdrant.js";
 
-import { embedText } from "./huggingface.js";
-import { generateAnswer } from "./groq.js";
+import { embedText } from "../huggingface.js";
+import { generateAnswer } from "../groq.js";
 
 const router = express.Router();
 
