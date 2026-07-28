@@ -1,14 +1,40 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./index.css";
+
 import App from "./App.jsx";
 
-const savedTheme = localStorage.getItem("theme") || "light";
-document.documentElement.setAttribute("data-theme", savedTheme);
+/*
+ * Không áp Dark Mode toàn cục tại đây.
+ *
+ * Mỗi khu vực sẽ tự quản lý theme:
+ * Student → theme
+ * Teacher → teacherTheme
+ * Admin   → luôn Light
+ */
+document.documentElement.setAttribute(
+  "data-theme",
+  "light",
+);
 
-createRoot(document.getElementById("root")).render(
+document.documentElement.classList.remove(
+  "dark",
+  "dark-mode",
+  "theme-dark",
+);
+
+document.body.classList.remove(
+  "dark",
+  "dark-mode",
+  "theme-dark",
+);
+
+createRoot(
+  document.getElementById("root"),
+).render(
   <StrictMode>
     <App />
   </StrictMode>,

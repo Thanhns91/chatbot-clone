@@ -813,109 +813,251 @@ router.put("/:documentId/metadata", async (req, res) => {
 });
 
 
-router.put("/:documentId/publish", async (req, res) => {
-  try {
-    const { documentId } = req.params;
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing userId",
-      });
-    }
-
-    const [rows] = await pool.query(
-      `
-      SELECT documentId, fileName, uploaderId, uploadedBy, reviewStatus
-      FROM Documents
-      WHERE documentId = ?
-        AND isDeleted = FALSE
-      LIMIT 1
-      `,
-      [documentId],
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Document not found",
-      });
-    }
-
-    const doc = rows[0];
-
-    if (doc.uploadedBy !== "student") {
-      return res.status(400).json({
-        success: false,
-        message: "Only student documents can be published by this action",
-      });
-    }
-
-    if (Number(doc.uploaderId) !== Number(userId)) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only publish your own document",
-      });
-    }
-
-    await pool.query(
-      `
-      UPDATE Documents
-      SET reviewStatus = 'approved'
-      WHERE documentId = ?
-      `,
-      [documentId],
-    );
-
+router.put(
+  "/:documentId/publish",
+  async (req, res) => {
     try {
-      const [receivers] = await pool.query(
-        `
-        SELECT userId
-        FROM Users
-        WHERE role IN ('teacher', 'admin')
-          AND status = 'active'
-        `,
-      );
+      const { documentId } =
+        req.params;
 
-      if (receivers.length > 0) {
+      const { userId } = req.body;
+
+      if (!userId) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Missing userId",
+          });
+      }
+
+      const [rows] =
         await pool.query(
           `
-          INSERT INTO Notifications
-          (receiverId, documentId, feedbackId, title, message, type)
-          VALUES ?
+          SELECT
+            documentId,
+            fileName,
+            uploaderId,
+            uploadedBy,
+            reviewStatus,
+            contentHash
+          FROM Documents
+          WHERE documentId = ?
+            AND uploadStatus = 'success'
+            AND isDeleted = FALSE
+          LIMIT 1
           `,
-          [
-            receivers.map((receiver) => [
-              receiver.userId,
+          [documentId],
+        );
+
+      if (rows.length === 0) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message:
+              "Document not found",
+          });
+      }
+
+      const doc = rows[0];
+
+      if (
+        doc.uploadedBy !==
+        "student"
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Only student documents can be published by this action",
+          });
+      }
+
+      if (
+        Number(doc.uploaderId) !==
+        Number(userId)
+      ) {
+        return res
+          .status(403)
+          .json({
+            success: false,
+            message:
+              "You can only publish your own document",
+          });
+      }
+
+      /*
+       * File đã Public rồi thì trả thành công,
+       * không cần cập nhật hoặc gửi notification lại.
+       */
+      if (
+        doc.reviewStatus ===
+        "approved"
+      ) {
+        return res.json({
+          success: true,
+          message:
+            "File is already public",
+          documentId,
+          reviewStatus:
+            "approved",
+        });
+      }
+
+      /*
+       * Trước khi Public file Student,
+       * kiểm tra xem thư viện Public đã có
+       * file cùng nội dung chưa.
+       */
+      if (doc.contentHash) {
+        const [publicDuplicates] =
+          await pool.query(
+            `
+            SELECT
               documentId,
-              null,
-              "Student file published",
-              `Student made a file public: ${doc.fileName}`,
-              "document_approved",
-            ]),
-          ],
+              fileName,
+              uploaderId,
+              uploadedBy,
+              reviewStatus
+            FROM Documents
+            WHERE contentHash = ?
+              AND documentId <> ?
+              AND uploadStatus = 'success'
+              AND reviewStatus = 'approved'
+              AND isDeleted = FALSE
+            ORDER BY uploadDate ASC
+            LIMIT 1
+            `,
+            [
+              doc.contentHash,
+              documentId,
+            ],
+          );
+
+        if (
+          publicDuplicates.length >
+          0
+        ) {
+          const duplicate =
+            publicDuplicates[0];
+
+          return res
+            .status(409)
+            .json({
+              success: false,
+              duplicate: true,
+              duplicateType:
+                "public",
+
+              message:
+                "Không thể Public vì tài liệu này đã tồn tại trong thư viện công khai.",
+
+              existingDocumentId:
+                duplicate.documentId,
+
+              existingFileName:
+                duplicate.fileName,
+
+              existingUploadedBy:
+                duplicate.uploadedBy,
+            });
+        }
+      }
+
+      /*
+       * Không có bản Public trùng,
+       * cho phép Student công khai file.
+       */
+      await pool.query(
+        `
+        UPDATE Documents
+        SET
+          reviewStatus = 'approved',
+          updatedAt = NOW()
+        WHERE documentId = ?
+          AND uploaderId = ?
+          AND uploadedBy = 'student'
+          AND isDeleted = FALSE
+        `,
+        [documentId, userId],
+      );
+
+      try {
+        const [receivers] =
+          await pool.query(
+            `
+            SELECT userId
+            FROM Users
+            WHERE role IN (
+              'teacher',
+              'admin'
+            )
+              AND status = 'active'
+            `,
+          );
+
+        if (
+          receivers.length > 0
+        ) {
+          await pool.query(
+            `
+            INSERT INTO Notifications
+            (
+              receiverId,
+              documentId,
+              feedbackId,
+              title,
+              message,
+              type
+            )
+            VALUES ?
+            `,
+            [
+              receivers.map(
+                (receiver) => [
+                  receiver.userId,
+                  documentId,
+                  null,
+                  "Student file published",
+                  `Student made a file public: ${doc.fileName}`,
+                  "document_approved",
+                ],
+              ),
+            ],
+          );
+        }
+      } catch (notifyError) {
+        console.log(
+          "Create publish notification failed:",
+          notifyError.message,
         );
       }
-    } catch (notifyError) {
-      console.log("Create publish notification failed:", notifyError.message);
-    }
 
-    res.json({
-      success: true,
-      message: "File is now public",
-      documentId,
-      reviewStatus: "approved",
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      success: false,
-      message: "Cannot publish document",
-      detail: error.message,
-    });
-  }
-});
+      return res.json({
+        success: true,
+        message:
+          "File is now public",
+        documentId,
+        reviewStatus:
+          "approved",
+      });
+    } catch (error) {
+      console.log(error);
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Cannot publish document",
+          detail: error.message,
+        });
+    }
+  },
+);
 
 router.get("/", async (req, res) => {
   try {

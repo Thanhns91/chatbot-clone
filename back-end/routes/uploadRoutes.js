@@ -155,9 +155,8 @@ async function getUploaderInfo(uploaderId) {
   return userRows[0] || null;
 }
 
-async function getDuplicateInfo(contentHash) {
-  const [existingDocs] = await pool.query(
-    `
+async function getDuplicateInfo(contentHash, uploaderId) {
+  const selectColumns = `
     SELECT
       documentId,
       fileName,
@@ -171,42 +170,116 @@ async function getDuplicateInfo(contentHash) {
       uploaderId,
       uploadedBy,
       reviewStatus,
-      uploadDate
+      uploadDate,
+      isDuplicate
     FROM Documents
+  `;
+
+  /*
+   * Ưu tiên kiểm tra file của chính người đang upload.
+   *
+   * Trường hợp này vẫn được xem là duplicate để người dùng
+   * có thể tạo version mới hoặc replace file cũ.
+   */
+  const [ownDocuments] = await pool.query(
+    `
+    ${selectColumns}
     WHERE uploadStatus = 'success'
       AND isDeleted = FALSE
       AND contentHash = ?
-    ORDER BY isDuplicate ASC, versionNo ASC, uploadDate ASC
+      AND uploaderId = ?
+    ORDER BY
+      isDuplicate ASC,
+      versionNo ASC,
+      uploadDate ASC
     LIMIT 1
     `,
-    [contentHash],
+    [contentHash, uploaderId],
   );
 
-  if (existingDocs.length === 0) return null;
+  let originalDoc = ownDocuments[0] || null;
+  let duplicateScope = "own";
 
-  const originalDoc = existingDocs[0];
+  /*
+   * Không tìm thấy file của chính user thì chỉ kiểm tra
+   * các tài liệu đã Public.
+   *
+   * File Student đang Private sẽ không xuất hiện tại đây.
+   */
+  if (!originalDoc) {
+    const [publicDocuments] = await pool.query(
+      `
+      ${selectColumns}
+      WHERE uploadStatus = 'success'
+        AND isDeleted = FALSE
+        AND contentHash = ?
+        AND reviewStatus = 'approved'
+      ORDER BY
+        isDuplicate ASC,
+        versionNo ASC,
+        uploadDate ASC
+      LIMIT 1
+      `,
+      [contentHash],
+    );
 
-  const versionGroupId = originalDoc.versionGroupId || originalDoc.documentId;
+    originalDoc = publicDocuments[0] || null;
+    duplicateScope = "public";
+  }
+
+  if (!originalDoc) {
+    return null;
+  }
+
+  const versionGroupId =
+    originalDoc.versionGroupId ||
+    originalDoc.documentId;
+
   const vectorDocumentId =
-    originalDoc.vectorDocumentId || originalDoc.documentId;
-  const originalDocumentId =
-    originalDoc.originalDocumentId || originalDoc.documentId;
+    originalDoc.vectorDocumentId ||
+    originalDoc.documentId;
 
-  const [versionRows] = await pool.query(
-    `
-    SELECT COALESCE(MAX(versionNo), 0) + 1 AS nextVersion
-    FROM Documents
-    WHERE versionGroupId = ?
-    `,
-    [versionGroupId],
-  );
+  const originalDocumentId =
+    originalDoc.originalDocumentId ||
+    originalDoc.documentId;
+
+  /*
+   * Chỉ tính version khi đây là file của chính người upload.
+   * Không cho một user tạo version dựa trên file Public
+   * thuộc quyền sở hữu của người khác.
+   */
+  let nextVersion = null;
+
+  if (duplicateScope === "own") {
+    const [versionRows] = await pool.query(
+      `
+      SELECT
+        COALESCE(MAX(versionNo), 0) + 1 AS nextVersion
+      FROM Documents
+      WHERE versionGroupId = ?
+         OR documentId = ?
+         OR originalDocumentId = ?
+      `,
+      [
+        versionGroupId,
+        originalDocumentId,
+        originalDocumentId,
+      ],
+    );
+
+    nextVersion = Math.max(
+      Number(versionRows[0]?.nextVersion || 2),
+      Number(originalDoc.versionNo || 1) + 1,
+    );
+  }
 
   return {
     originalDoc,
+    duplicateScope,
     versionGroupId,
     vectorDocumentId,
     originalDocumentId,
-    nextVersion: Number(versionRows[0]?.nextVersion || 2),
+    nextVersion,
   };
 }
 
@@ -829,9 +902,45 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     await validateMetadata(metadata);
 
-    const contentHash = createContentHash(text);
-    const duplicateInfo = await getDuplicateInfo(contentHash);
-    const replaceInfo = explicitReplaceInfo || duplicateInfo;
+  const contentHash = createContentHash(text);
+
+const duplicateInfo =
+  await getDuplicateInfo(
+    contentHash,
+    uploaderId,
+  );
+
+/*
+ * File trùng với một tài liệu Public của người khác.
+ *
+ * Không cho tạo version hoặc replace vì user hiện tại
+ * không sở hữu tài liệu đang tồn tại.
+ */
+if (
+  duplicateInfo?.duplicateScope ===
+  "public"
+) {
+  cleanupFile(req.file.path);
+
+  return res.status(409).json({
+    success: false,
+    duplicate: true,
+    needConfirm: false,
+    duplicateType: "public",
+    message:
+      "Tài liệu này đã tồn tại trong thư viện công khai.",
+    existingDocumentId:
+      duplicateInfo.originalDoc.documentId,
+    existingFileName:
+      duplicateInfo.originalDoc.fileName,
+    existingUploadedBy:
+      duplicateInfo.originalDoc.uploadedBy,
+  });
+}
+
+const replaceInfo =
+  explicitReplaceInfo ||
+  duplicateInfo;
 
     if (duplicateInfo && !duplicateAction) {
       cleanupFile(req.file.path);
@@ -841,7 +950,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         duplicate: true,
         needConfirm: true,
         versionCreated: false,
-        duplicateType: "content",
+        duplicateType: "own",
         message: "File content already exists. Choose how you want to continue.",
         actions: [
           {
