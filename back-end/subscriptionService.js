@@ -100,7 +100,10 @@ function calculatePreviewFromRows(currentSubscription, targetPlan) {
   const oldPlanCredit = (currentPrice / currentPlanDays) * remainingDays;
   const targetRemainingCost =
     (normalizedTarget.price / targetPlanDays) * remainingDays;
-  const finalAmount = Math.max(targetRemainingCost - oldPlanCredit, 0);
+  const rawFinalAmount = Math.max(targetRemainingCost - oldPlanCredit, 0);
+
+  // Cân bằng tròn số tiền chênh lệch theo đơn vị 1.000 VNĐ
+  const roundVnd = (amount) => Math.round(Number(amount || 0) / 1000) * 1000;
 
   return {
     type: "upgrade",
@@ -111,9 +114,9 @@ function calculatePreviewFromRows(currentSubscription, targetPlan) {
       storageLimitBytes: Number(currentSubscription.storageLimitBytes || 0),
     },
     targetPlan: normalizedTarget,
-    originalAmount: Math.round(targetRemainingCost),
-    discountAmount: Math.round(oldPlanCredit),
-    finalAmount: Math.round(finalAmount),
+    originalAmount: roundVnd(targetRemainingCost),
+    discountAmount: roundVnd(oldPlanCredit),
+    finalAmount: roundVnd(rawFinalAmount),
     totalDays: currentPlanDays,
     targetDurationDays: targetPlanDays,
     remainingDays,

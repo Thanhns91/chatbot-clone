@@ -556,36 +556,42 @@ router.get("/admin/revenue-stats", async (req, res) => {
     const [summaryRows] = await pool.query(
       `
       SELECT
-        COALESCE(SUM(finalAmount), 0) AS totalRevenue,
+        ROUND(COALESCE(SUM(finalAmount), 0)) AS totalRevenue,
 
-        COALESCE(
-          SUM(
-            CASE
-              WHEN DATE(paidAt) = CURDATE()
-              THEN finalAmount
-              ELSE 0
-            END
-          ),
-          0
+        ROUND(
+          COALESCE(
+            SUM(
+              CASE
+                WHEN DATE(paidAt) = CURDATE()
+                THEN finalAmount
+                ELSE 0
+              END
+            ),
+            0
+          )
         ) AS todayRevenue,
 
-        COALESCE(
-          SUM(
-            CASE
-              WHEN YEAR(paidAt) = YEAR(CURDATE())
-               AND MONTH(paidAt) = MONTH(CURDATE())
-              THEN finalAmount
-              ELSE 0
-            END
-          ),
-          0
+        ROUND(
+          COALESCE(
+            SUM(
+              CASE
+                WHEN YEAR(paidAt) = YEAR(CURDATE())
+                 AND MONTH(paidAt) = MONTH(CURDATE())
+                THEN finalAmount
+                ELSE 0
+              END
+            ),
+            0
+          )
         ) AS monthRevenue,
 
         COUNT(*) AS paidPayments,
 
-        COALESCE(
-          AVG(finalAmount),
-          0
+        ROUND(
+          COALESCE(
+            AVG(finalAmount),
+            0
+          )
         ) AS averageOrderValue,
 
         SUM(
@@ -618,7 +624,7 @@ router.get("/admin/revenue-stats", async (req, res) => {
       `
       SELECT
         DATE(paidAt) AS date,
-        COALESCE(SUM(finalAmount), 0) AS revenue,
+        ROUND(COALESCE(SUM(finalAmount), 0)) AS revenue,
         COUNT(*) AS payments
 
       FROM Payments
@@ -650,9 +656,11 @@ router.get("/admin/revenue-stats", async (req, res) => {
           'Unknown'
         ) AS planName,
 
-        COALESCE(
-          SUM(p.finalAmount),
-          0
+        ROUND(
+          COALESCE(
+            SUM(p.finalAmount),
+            0
+          )
         ) AS revenue,
 
         COUNT(*) AS payments

@@ -11,6 +11,7 @@ import {
   Alert,
   Dropdown,
 } from "react-bootstrap";
+import { toast } from "react-toastify";
 import { getMetadata, updateDocumentMetadata, deleteDocument } from "../../services/api";
 
 const API = import.meta.env.VITE_API_URL;
@@ -273,7 +274,7 @@ export default function StudentFilesTab() {
     const url = getPreviewUrl(file);
 
     if (!url) {
-      alert("File này chưa có URL để xem. Hãy upload lại file.");
+      toast.warning("File này chưa có URL để xem. Hãy upload lại file.");
       return;
     }
 
@@ -282,7 +283,7 @@ export default function StudentFilesTab() {
 
   const handleDownload = (file) => {
     if (!file?.documentId) {
-      alert("File này không có documentId để tải.");
+      toast.warning("File này không có documentId để tải.");
       return;
     }
 
@@ -298,12 +299,13 @@ export default function StudentFilesTab() {
 
       if (data.success) {
         setFiles((prev) => prev.filter((file) => file.documentId !== documentId));
+        toast.success("Xóa file thành công!");
       } else {
-        alert(data.message || "Xóa file thất bại.");
+        toast.error(data.message || "Xóa file thất bại.");
       }
     } catch (error) {
       console.error("Delete student file failed", error);
-      alert("Không thể xóa file.");
+      toast.error("Không thể xóa file.");
     }
   };
 
@@ -337,12 +339,13 @@ export default function StudentFilesTab() {
       if (data.success) {
         await fetchStudentFiles();
         closeEditModal();
+        toast.success("Cập nhật thông tin file thành công!");
       } else {
-        alert(data.message || "Cannot update metadata");
+        toast.error(data.message || "Cannot update metadata");
       }
     } catch (error) {
       console.error(error);
-      alert(error.message || "Cannot update metadata");
+      toast.error(error.message || "Cannot update metadata");
     } finally {
       setSaving(false);
     }

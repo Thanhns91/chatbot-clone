@@ -82,25 +82,28 @@ const HomePage = () => {
 
     // Chỉ dùng đường dẫn đã lưu khi thực sự quay về từ VNPAY.
     if (paymentResult) {
-      const savedPath =
-        sessionStorage.getItem("vnpayReturnPath");
+      const savedPath = sessionStorage.getItem("vnpayReturnPath");
 
-      const isValidSavedPath =
-        savedPath &&
-        savedPath !== "/" &&
-        savedPath !== window.location.pathname;
+      const isValidSavedPath = savedPath && savedPath !== "/";
 
       if (isValidSavedPath) {
         returnPath = savedPath;
+      } else if (currentUser.role === "student") {
+        const slug =
+          toSlug(
+            currentUser.name ||
+              currentUser.fullName ||
+              "user",
+          ) || "user";
+
+        returnPath = `/u/${slug}/chat`;
       }
 
       sessionStorage.removeItem("vnpayReturnPath");
     }
 
     // Khi VNPAY return thì giữ query để SettingsModal đọc kết quả.
-    const queryString = paymentResult
-      ? window.location.search
-      : "";
+    const queryString = paymentResult ? window.location.search : "";
 
     navigate(`${returnPath}${queryString}`, {
       replace: true,

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
+import { toast } from "react-toastify";
 import logo7 from "../../assets/images/7.png";
 
 import {
@@ -542,7 +543,7 @@ const ChatArea = ({
 
   const handleChooseFile = async () => {
     if (!conversationId) {
-      alert(
+      toast.warning(
         "Bạn cần tạo New Chat trước khi upload tài liệu.",
       );
 

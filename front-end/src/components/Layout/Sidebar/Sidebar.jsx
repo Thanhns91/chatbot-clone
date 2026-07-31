@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { toast } from "react-toastify";
 
 import "./Sidebar.scss";
 
@@ -17,6 +18,8 @@ const Sidebar = ({
   onToggleStar,
   onDelete,
   appVersion = "1.0.0",
+  collapsed = false,
+  onToggleCollapse,
 }) => {
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] =
@@ -108,7 +111,7 @@ const Sidebar = ({
         error,
       );
 
-      window.alert(
+      toast.error(
         error.message ||
           "Không thể lưu trạng thái ngôi sao.",
       );

@@ -4,6 +4,7 @@ import Button from "react-bootstrap/Button";
 import Table from "react-bootstrap/Table";
 import InputGroup from "react-bootstrap/InputGroup";
 import Form from "react-bootstrap/Form";
+import { toast } from "react-toastify";
 import {
   getStudentSubmissions,
   generateStudentFeedback,
@@ -301,7 +302,7 @@ export default function StudentSummaryTab() {
 
   const handleViewFile = () => {
     if (!selected?.fileUrl) {
-      alert("This file does not have a preview link.");
+      toast.warning("File này chưa có đường dẫn xem trước.");
       return;
     }
 

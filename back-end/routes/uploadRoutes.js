@@ -41,20 +41,16 @@ function cleanupFile(filePath) {
   }
 }
 
-function fixFileNameEncoding(
-  fileName = "",
-) {
+function fixFileNameEncoding(fileName = "") {
+  if (!fileName) return "";
   try {
-    const decoded = Buffer.from(
-      fileName,
-      "latin1",
-    ).toString("utf8");
-
-    if (decoded.includes(" ")) {
-      return fileName;
+    if (/[\u00C0-\u00FF]/.test(fileName) || fileName.includes("Ã") || fileName.includes("áº") || fileName.includes("Ná»")) {
+      const decoded = Buffer.from(fileName, "latin1").toString("utf8");
+      if (decoded && !decoded.includes("\uFFFD")) {
+        return decoded;
+      }
     }
-
-    return decoded;
+    return fileName;
   } catch {
     return fileName;
   }

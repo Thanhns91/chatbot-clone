@@ -50,12 +50,13 @@ body,
   color: var(--admin-text);
 
   font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
+    "Plus Jakarta Sans",
+    "Be Vietnam Pro",
+    "Inter",
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
+    Roboto,
     sans-serif;
 }
 
@@ -280,6 +281,112 @@ body,
   color: var(--admin-danger);
 }
 
+.admin-header-toggle-btn,
+.td-header-toggle-btn {
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  &:hover {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #3b82f6;
+    transform: scale(1.04);
+  }
+}
+
+.admin-wrapper {
+  --admin-sidebar-width: 280px;
+}
+
+.admin-wrapper--collapsed {
+  --admin-sidebar-width: 72px;
+
+  .admin-sidebar {
+    width: 72px !important;
+
+    .sidebar-brand {
+      padding: 16px 8px;
+      justify-content: center;
+      min-height: 80px;
+
+      .brand-avatar {
+        margin: 0 auto;
+      }
+
+      .brand-info,
+      > div > div:not(.brand-avatar) {
+        display: none !important;
+      }
+    }
+
+    .sidebar-nav {
+      padding: 14px 8px;
+    }
+
+    .nav-item {
+      justify-content: center;
+      padding: 0;
+
+      span {
+        display: none !important;
+      }
+
+      i {
+        font-size: 22px;
+        width: auto;
+        margin: 0;
+      }
+    }
+
+    .sidebar-footer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px 8px;
+      gap: 10px;
+    }
+
+    .admin-sidebar__user-info,
+    .admin-app-version,
+    .logout-btn span {
+      display: none !important;
+    }
+
+    .logout-btn.btn {
+      padding: 0 !important;
+      min-height: 38px !important;
+      height: 38px !important;
+      width: 38px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      margin: 0 auto !important;
+
+      i {
+        margin: 0 !important;
+        font-size: 18px !important;
+      }
+    }
+  }
+}
+
+.admin-sidebar {
+  width: var(--admin-sidebar-width);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* =========================================================
    MAIN LAYOUT
 ========================================================= */
@@ -292,9 +399,14 @@ body,
   margin-left: var(--admin-sidebar-width);
 
   background: var(--admin-bg);
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .admin-topbar {
+  width: 100%;
   min-height: 88px;
 
   display: flex;
@@ -307,6 +419,11 @@ body,
   border-bottom: 1px solid var(--admin-border);
 
   backdrop-filter: blur(10px);
+}
+
+.admin-topbar > * {
+  width: 100%;
+  max-width: 100%;
 }
 
 .admin-topbar h1 {
@@ -326,8 +443,9 @@ body,
 
 .admin-body {
   width: 100%;
-
-  padding: 24px 32px 34px;
+  max-width: 100%;
+  padding: 24px 34px 34px;
+  flex: 1;
 }
 
 /* =========================================================
@@ -1519,15 +1637,15 @@ body,
 
 /* Documents column widths */
 .admin-table--documents .admin-col-document-name {
-  width: 27%;
+  width: 24%;
 }
 
 .admin-table--documents .admin-col-document-subject {
-  width: 22%;
+  width: 21%;
 }
 
 .admin-table--documents .admin-col-document-uploader {
-  width: 11%;
+  width: 12%;
 }
 
 .admin-table--documents .admin-col-document-visibility {
@@ -1539,7 +1657,7 @@ body,
 }
 
 .admin-table--documents .admin-col-document-chat {
-  width: 8%;
+  width: 9%;
 }
 
 .admin-table--documents .admin-col-document-uploaded {
@@ -1547,7 +1665,7 @@ body,
 }
 
 .admin-table--documents .admin-col-document-actions {
-  width: 5%;
+  width: 7%;
 }
 
 /* Users column widths — không còn cột Public / Private */
@@ -1556,7 +1674,7 @@ body,
 }
 
 .admin-table--users .admin-col-user-email {
-  width: 25%;
+  width: 24%;
 }
 
 .admin-table--users .admin-col-user-role {
@@ -1572,7 +1690,7 @@ body,
 }
 
 .admin-table--users .admin-col-user-upload {
-  width: 12%;
+  width: 11%;
 }
 
 .admin-table--users .admin-col-user-status {
@@ -1580,7 +1698,7 @@ body,
 }
 
 .admin-table--users .admin-col-user-actions {
-  width: 6%;
+  width: 8%;
 }
 
 .admin-table--documents th,

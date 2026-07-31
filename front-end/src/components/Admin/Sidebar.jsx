@@ -25,16 +25,18 @@ export default function Sidebar({
   active,
   onNav,
   onLogout,
+  collapsed = false,
+  onToggleCollapse,
 }) {
   return (
-    <div className="admin-sidebar">
+    <div className={`admin-sidebar ${collapsed ? "admin-sidebar--collapsed" : ""}`}>
       <div className="sidebar-brand">
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
           <div className="brand-avatar">
             A
           </div>
 
-          <div>
+          <div className="brand-info">
             <div className="brand-title">
               Admin Dashboard
             </div>
@@ -94,7 +96,7 @@ export default function Sidebar({
           onClick={onLogout}
         >
           <i className="bi bi-box-arrow-right" />
-          Logout
+          <span>Logout</span>
         </Button>
 
         <div

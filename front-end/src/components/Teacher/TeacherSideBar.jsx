@@ -41,6 +41,8 @@ export default function TeacherSidebar({
   page,
   setPage,
   onLogout,
+  collapsed = false,
+  onToggleCollapse,
 }) {
   const displayName =
     user?.fullName ||
@@ -75,7 +77,7 @@ export default function TeacherSidebar({
   };
 
   return (
-    <aside className="td-sidebar">
+    <aside className={`td-sidebar ${collapsed ? "td-sidebar--collapsed" : ""}`}>
       <div className="td-sidebar__brand">
         {renderAvatar(
           "td-sidebar__avatar",

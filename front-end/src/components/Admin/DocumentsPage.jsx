@@ -73,7 +73,7 @@ const getDocumentVisibility = (document) => {
     : "private";
 };
 
-export default function DocumentsPage() {
+export default function DocumentsPage({ sidebarCollapsed, onToggleSidebar }) {
   const [docs, setDocs] = useState([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -255,8 +255,22 @@ export default function DocumentsPage() {
   return (
     <>
       <div className="admin-topbar">
-        <h1>Document Management</h1>
-        <p>AI Learning — Manage learning materials &amp; document access</p>
+        <div className="d-flex align-items-center gap-3">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              className="admin-header-toggle-btn"
+              onClick={onToggleSidebar}
+              title={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+            >
+              <i className={`bi ${sidebarCollapsed ? "bi-layout-sidebar-reverse" : "bi-layout-sidebar"}`} />
+            </button>
+          )}
+          <div>
+            <h1>Document Management</h1>
+            <p>AI Learning — Manage learning materials &amp; document access</p>
+          </div>
+        </div>
       </div>
 
       <div className="admin-body">
@@ -265,7 +279,7 @@ export default function DocumentsPage() {
             <i className="bi bi-search search-box__icon" />
             <Form.Control
               className="search-box__input"
-              placeholder="Search file, uploader, subject, topic"
+              placeholder=""
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -353,8 +367,15 @@ export default function DocumentsPage() {
                             ) : (
                               <span
                                 className="admin-primary-line admin-ellipsis"
-                                title={`${d.fileName} — Private document cannot be opened`}
+                                style={{ cursor: "not-allowed", opacity: 0.85 }}
+                                title={`${d.fileName} — Tài liệu Private (không thể xem nội dung)`}
+                                onClick={() =>
+                                  toast.info(
+                                    "Tài liệu ở trạng thái Private — Admin không có quyền xem nội dung tài liệu này.",
+                                  )
+                                }
                               >
+                                <i className="bi bi-lock-fill text-muted me-1" />
                                 {d.fileName}
                               </span>
                             )}
@@ -443,14 +464,25 @@ export default function DocumentsPage() {
                               popperConfig={{ strategy: "fixed" }}
                             >
                               <Dropdown.Item
-                                onClick={() =>
-                                  window.open(
-                                    previewUrl,
-                                    "_blank",
-                                    "noopener,noreferrer",
-                                  )
-                                }
+                                onClick={() => {
+                                  if (canView) {
+                                    window.open(
+                                      previewUrl,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    );
+                                  } else {
+                                    toast.info(
+                                      "Tài liệu ở trạng thái Private — Admin không thể xem nội dung.",
+                                    );
+                                  }
+                                }}
                                 disabled={!canView}
+                                title={
+                                  !canView
+                                    ? "Private document cannot be viewed"
+                                    : ""
+                                }
                               >
                                 <i className="bi bi-eye document-action-icon document-action-icon--view" />
                                 <span>Open document</span>
@@ -470,6 +502,11 @@ export default function DocumentsPage() {
                                   as="button"
                                   type="button"
                                   disabled
+                                  onClick={() =>
+                                    toast.info(
+                                      "Tài liệu ở trạng thái Private — Admin không thể tải nội dung.",
+                                    )
+                                  }
                                   title="Private documents cannot be downloaded"
                                 >
                                   <i className="bi bi-download document-action-icon document-action-icon--download" />

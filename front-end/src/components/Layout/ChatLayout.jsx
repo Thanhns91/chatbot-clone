@@ -51,8 +51,20 @@ const ChatLayout = ({
     setLibraryOpen(false);
   };
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem("student_sidebar_collapsed") === "true",
+  );
+
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("student_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
   return (
-    <div className="chat-layout app-chat-layout">
+    <div className={`chat-layout app-chat-layout ${sidebarCollapsed ? "chat-layout--collapsed" : ""}`}>
       <Sidebar
         conversations={conversations}
         activeId={activeId}
@@ -63,6 +75,8 @@ const ChatLayout = ({
         }
         onDelete={onDelete}
         appVersion={APP_VERSION}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
       />
 
       <main className="chat-layout__main">

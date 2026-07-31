@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { logout } from "../services/authService";
 
@@ -20,6 +21,18 @@ export default function AdminPage() {
   const { page = "home" } = useParams();
   const navigate = useNavigate();
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem("admin_sidebar_collapsed") === "true",
+  );
+
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("admin_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
   const Page = PAGES[page] || HomeScreen;
 
   const handleNav = (id) => {
@@ -34,15 +47,17 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="admin-wrapper">
+    <div className={`admin-wrapper ${sidebarCollapsed ? "admin-wrapper--collapsed" : ""}`}>
       <Sidebar
         active={page}
         onNav={handleNav}
         onLogout={handleLogout}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
       />
 
       <main className="admin-main">
-        <Page />
+        <Page sidebarCollapsed={sidebarCollapsed} onToggleSidebar={handleToggleSidebar} />
       </main>
     </div>
   );

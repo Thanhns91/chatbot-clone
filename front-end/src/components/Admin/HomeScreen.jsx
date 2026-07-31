@@ -61,7 +61,7 @@ const formatDateTime = (value) => {
   }).format(date);
 };
 
-export default function HomePage() {
+export default function HomePage({ sidebarCollapsed, onToggleSidebar }) {
   const [tab, setTab] = useState("members");
   const [stats, setStats] = useState({ members: 0, teachers: 0, documents: 0 });
   const [charts, setCharts] = useState({
@@ -227,8 +227,22 @@ export default function HomePage() {
   return (
     <>
       <div className="admin-topbar">
-        <h1>Admin Dashboard</h1>
-        <p>AI Learning — User, AI &amp; Revenue Management</p>
+        <div className="d-flex align-items-center gap-3">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              className="admin-header-toggle-btn"
+              onClick={onToggleSidebar}
+              title={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+            >
+              <i className={`bi ${sidebarCollapsed ? "bi-layout-sidebar-reverse" : "bi-layout-sidebar"}`} />
+            </button>
+          )}
+          <div>
+            <h1>Admin Dashboard</h1>
+            <p>AI Learning — User, AI &amp; Revenue Management</p>
+          </div>
+        </div>
       </div>
 
       <div className="admin-body">

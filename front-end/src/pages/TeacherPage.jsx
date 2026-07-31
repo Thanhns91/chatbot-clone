@@ -105,6 +105,18 @@ export default function TeacherPage() {
       }
     });
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem("teacher_sidebar_collapsed") === "true",
+  );
+
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("teacher_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
   /*
    * Mỗi khi vào Teacher Dashboard,
    * bắt buộc giao diện trở về Light Mode.
@@ -278,7 +290,7 @@ export default function TeacherPage() {
     PAGE_META[activePage];
 
   return (
-    <div className="td-root">
+    <div className={`td-root ${sidebarCollapsed ? "td-root--collapsed" : ""}`}>
       <TeacherSidebar
         user={user}
         page={activePage}
@@ -286,17 +298,32 @@ export default function TeacherPage() {
           navigate(`/teacher/${id}`)
         }
         onLogout={handleLogout}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
       />
 
       <div className="td-main">
         <header className="td-page-header">
-          <h1 className="td-page-header__title">
-            {meta.title}
-          </h1>
+          <div className="d-flex align-items-center gap-3">
+            <button
+              type="button"
+              className="td-header-toggle-btn"
+              onClick={handleToggleSidebar}
+              title={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+            >
+              <i className={`bi ${sidebarCollapsed ? "bi-layout-sidebar-reverse" : "bi-layout-sidebar"}`} />
+            </button>
 
-          <p className="td-page-header__sub">
-            {meta.sub}
-          </p>
+            <div>
+              <h1 className="td-page-header__title">
+                {meta.title}
+              </h1>
+
+              <p className="td-page-header__sub">
+                {meta.sub}
+              </p>
+            </div>
+          </div>
         </header>
 
         <main className="td-content">

@@ -88,7 +88,7 @@ const formatStorage = (bytes = 0) => {
   return `${value} B`;
 };
 
-export default function UsersPage() {
+export default function UsersPage({ sidebarCollapsed, onToggleSidebar }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setModal] = useState(false);
@@ -347,8 +347,22 @@ export default function UsersPage() {
   return (
     <>
       <div className="admin-topbar">
-        <h1>User Management</h1>
-        <p>AI Learning — Manage users, roles &amp; teacher accounts</p>
+        <div className="d-flex align-items-center gap-3">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              className="admin-header-toggle-btn"
+              onClick={onToggleSidebar}
+              title={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+            >
+              <i className={`bi ${sidebarCollapsed ? "bi-layout-sidebar-reverse" : "bi-layout-sidebar"}`} />
+            </button>
+          )}
+          <div>
+            <h1>User Management</h1>
+            <p>AI Learning — Manage users, roles &amp; teacher accounts</p>
+          </div>
+        </div>
       </div>
 
       <div className="admin-body">

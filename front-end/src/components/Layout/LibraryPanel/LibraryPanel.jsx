@@ -3,8 +3,8 @@ import React, {
   useMemo,
   useState,
 } from "react";
-
 import Button from "react-bootstrap/Button";
+import { toast } from "react-toastify";
 
 import {
   getLibraryDocuments,
@@ -456,7 +456,7 @@ const LibraryPanel = ({
   const handlePublishDocument =
     async (document) => {
       if (!currentUserId) {
-        window.alert(
+        toast.warning(
           "Bạn cần đăng nhập để public file.",
         );
 
@@ -528,11 +528,11 @@ const LibraryPanel = ({
          */
         await onDocumentsChanged?.();
 
-        window.alert(
+        toast.success(
           "File đã được public. Teacher và Admin có thể xem file này.",
         );
       } catch (error) {
-        window.alert(
+        toast.error(
           error.message ||
             "Public file thất bại",
         );

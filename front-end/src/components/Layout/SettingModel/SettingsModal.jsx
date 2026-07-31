@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
+import { toast } from "react-toastify";
 
 import {
   uploadAvatar,
@@ -682,8 +683,8 @@ export default function SettingsModal({
         "image/",
       )
     ) {
-      alert(
-        "Please choose an image file.",
+      toast.warning(
+        "Vui lòng chọn một file hình ảnh.",
       );
 
       event.target.value = "";
@@ -695,8 +696,8 @@ export default function SettingsModal({
       file.size >
       5 * 1024 * 1024
     ) {
-      alert(
-        "Image size must be less than 5MB.",
+      toast.warning(
+        "Kích thước ảnh phải nhỏ hơn 5MB.",
       );
 
       event.target.value = "";
@@ -723,20 +724,20 @@ export default function SettingsModal({
 
   const handleSave = async () => {
     if (!user?.userId) {
-      alert("User ID not found.");
+      toast.error("Không tìm thấy thông tin người dùng.");
       return;
     }
 
     if (!form.name.trim()) {
-      alert(
-        "Display name is required.",
+      toast.warning(
+        "Vui lòng nhập tên hiển thị.",
       );
 
       return;
     }
 
     if (!form.email.trim()) {
-      alert("Email is required.");
+      toast.warning("Vui lòng nhập Email.");
       return;
     }
 
@@ -796,11 +797,12 @@ export default function SettingsModal({
         );
 
       onSave?.(finalUser);
+      toast.success("Cập nhật thông tin tài khoản thành công!");
       onClose?.();
     } catch (error) {
-      alert(
+      toast.error(
         error.message ||
-          "Save changes failed.",
+          "Lưu thay đổi thất bại.",
       );
     } finally {
       setSaving(false);
