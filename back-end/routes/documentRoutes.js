@@ -421,8 +421,8 @@ router.get("/library", async (req, res) => {
         )
       `;
       params.push(userId || 0);
-    } else if (role === "teacher" || role === "admin") {
-      // Teacher/Admin chỉ thấy file student đã public = approved.
+    } else if (role === "teacher") {
+      // Teacher chỉ thấy file teacher + file student đã public = approved.
       // File student private sẽ bị ẩn.
       sql += `
         AND (
@@ -430,6 +430,8 @@ router.get("/library", async (req, res) => {
           OR (d.uploadedBy = 'student' AND d.reviewStatus = 'approved')
         )
       `;
+    } else if (role === "admin") {
+      // Admin là quản trị viên hệ thống -> Thấy TẤT CẢ tài liệu (gồm cả Public & Private của học sinh)
     }
 
     if (subjectId) {

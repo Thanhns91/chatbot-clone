@@ -73,6 +73,39 @@ const getDocumentVisibility = (document) => {
     : "private";
 };
 
+const renderFileIcon = (fileType = "", isPublic = true) => {
+  const type = String(fileType).toUpperCase();
+  let iconClass = "bi-file-earmark-text-fill";
+  let toneClass = "admin-doc-icon--default";
+
+  if (type === "PDF") {
+    iconClass = "bi-file-earmark-pdf-fill";
+    toneClass = "admin-doc-icon--pdf";
+  } else if (["DOCX", "DOC", "WORD"].includes(type)) {
+    iconClass = "bi-file-earmark-word-fill";
+    toneClass = "admin-doc-icon--word";
+  } else if (["XLSX", "XLS", "EXCEL"].includes(type)) {
+    iconClass = "bi-file-earmark-excel-fill";
+    toneClass = "admin-doc-icon--excel";
+  } else if (["PPTX", "PPT", "POWERPOINT"].includes(type)) {
+    iconClass = "bi-file-earmark-ppt-fill";
+    toneClass = "admin-doc-icon--ppt";
+  }
+
+  return (
+    <div className="admin-doc-icon-wrap me-2">
+      <div className={`admin-doc-icon ${toneClass}`}>
+        <i className={`bi ${iconClass}`} />
+      </div>
+      {!isPublic && (
+        <span className="admin-doc-lock-badge" title="Tài liệu Private">
+          <i className="bi bi-lock-fill" />
+        </span>
+      )}
+    </div>
+  );
+};
+
 export default function DocumentsPage({ sidebarCollapsed, onToggleSidebar }) {
   const [docs, setDocs] = useState([]);
   const [search, setSearch] = useState("");
@@ -351,8 +384,8 @@ export default function DocumentsPage({ sidebarCollapsed, onToggleSidebar }) {
                     return (
                       <tr key={d.documentId}>
                         <td className="admin-document-name-cell">
-                          <div className="admin-document-name-wrap">
-                            <i className="bi bi-file-earmark admin-document-file-icon" />
+                          <div className="admin-document-name-wrap d-flex align-items-center">
+                            {renderFileIcon(fileType, isPublic)}
 
                             {canView ? (
                               <a
@@ -367,15 +400,14 @@ export default function DocumentsPage({ sidebarCollapsed, onToggleSidebar }) {
                             ) : (
                               <span
                                 className="admin-primary-line admin-ellipsis"
-                                style={{ cursor: "not-allowed", opacity: 0.85 }}
-                                title={`${d.fileName} — Tài liệu Private (không thể xem nội dung)`}
+                                style={{ cursor: "pointer" }}
+                                title={`${d.fileName} — Tài liệu Private`}
                                 onClick={() =>
                                   toast.info(
-                                    "Tài liệu ở trạng thái Private — Admin không có quyền xem nội dung tài liệu này.",
+                                    "Tài liệu ở trạng thái Private — Quyền riêng tư của sinh viên.",
                                   )
                                 }
                               >
-                                <i className="bi bi-lock-fill text-muted me-1" />
                                 {d.fileName}
                               </span>
                             )}
@@ -391,58 +423,65 @@ export default function DocumentsPage({ sidebarCollapsed, onToggleSidebar }) {
                                 : "No Subject"
                             }
                           >
-                            {d.subjectCode
-                              ? `${d.subjectCode} - ${d.subjectName || ""}`
-                              : "No Subject"}
+                            {d.subjectCode ? (
+                              <>
+                                <span className="subject-code-tag">{d.subjectCode}</span>
+                                <span className="subject-name">{d.subjectName}</span>
+                              </>
+                            ) : (
+                              <span className="no-subject-tag">No Subject</span>
+                            )}
                           </div>
                           <div
-                            className="admin-secondary-line admin-ellipsis"
+                            className="admin-topic-line admin-ellipsis"
                             title={`${d.topicName || "Uncategorized"} · ${
                               d.documentTypeName || fileType
                             }`}
                           >
-                            {d.topicName || "Uncategorized"} ·{" "}
-                            {d.documentTypeName || fileType}
+                            <span>{d.topicName || "Uncategorized"}</span>
+                            <span className="dot-sep">•</span>
+                            <span>{d.documentTypeName || fileType}</span>
                           </div>
                         </td>
 
                         <td className="admin-document-uploader-cell">
-                          <div
-                            className="admin-primary-line admin-ellipsis"
-                            title={d.uploaderName || d.uploadedBy}
-                          >
-                            {d.uploaderName || d.uploadedBy || "-"}
-                          </div>
-                          <div className="admin-secondary-line admin-no-wrap">
-                            {d.uploaderRole || d.uploadedBy || "-"}
+                          <div>
+                            <div className="admin-uploader-name admin-ellipsis" title={d.uploaderName || d.uploadedBy}>
+                              {d.uploaderName || d.uploadedBy || "-"}
+                            </div>
+                            <span className={`admin-role-badge admin-role-badge--${d.uploaderRole || d.uploadedBy}`}>
+                              {d.uploaderRole || d.uploadedBy || "user"}
+                            </span>
                           </div>
                         </td>
 
                         <td className="admin-document-visibility-cell">
-                          <span
-                            className={
-                              isPublic ? "status-active" : "status-blocked"
-                            }
-                          >
-                            {isPublic ? "Public" : "Private"}
-                          </span>
+                          {isPublic ? (
+                            <span className="admin-status-badge admin-status-badge--public">
+                              <span className="status-dot" />
+                              Public
+                            </span>
+                          ) : (
+                            <span className="admin-status-badge admin-status-badge--private">
+                              <i className="bi bi-lock-fill" style={{ fontSize: 11 }} />
+                              Private
+                            </span>
+                          )}
                         </td>
 
                         <td className="admin-document-storage-cell admin-no-wrap">
-                          {formatStorage(d.fileSizeBytes)}
+                          <span className="storage-text">{formatStorage(d.fileSizeBytes)}</span>
                         </td>
 
                         <td className="admin-document-chat-cell">
-                          <div className="admin-primary-line">
+                          <div className="chat-uses-badge">
+                            <i className="bi bi-chat-dots-fill me-1" />
                             {Number(d.chatUseCount || 0)}
-                          </div>
-                          <div className="admin-secondary-line admin-no-wrap">
-                            sessions
                           </div>
                         </td>
 
                         <td className="admin-document-uploaded-cell admin-no-wrap">
-                          {formatDate(d.uploadDate)}
+                          <span style={{ fontSize: 13, color: "#64748b" }}>{formatDate(d.uploadDate)}</span>
                         </td>
 
                         <td className="admin-action-cell">

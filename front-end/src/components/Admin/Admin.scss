@@ -2360,3 +2360,212 @@ body.dark-mode .admin-wrapper .admin-app-version,
 body.theme-dark .admin-wrapper .admin-app-version {
   color: #94a3b8;
 }
+
+/* =========================================================
+   ENHANCED DOCUMENT TABLE STYLES
+========================================================= */
+
+.admin-doc-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-doc-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+
+  &--pdf {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+  }
+
+  &--word {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+  }
+
+  &--excel {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+  }
+
+  &--ppt {
+    background: #fff7ed;
+    color: #ea580c;
+    border: 1px solid #fed7aa;
+  }
+
+  &--default {
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+  }
+}
+
+.admin-doc-lock-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ea580c;
+  color: #ffffff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  border: 1.5px solid #ffffff;
+}
+
+.admin-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  &--public {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+    }
+  }
+
+  &--private {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
+  }
+}
+
+.admin-user-avatar-sm {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
+  flex-shrink: 0;
+
+  &--teacher {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
+  }
+
+  &--student {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    box-shadow: 0 2px 5px rgba(139, 92, 246, 0.25);
+  }
+
+  &--admin {
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.25);
+  }
+}
+
+.admin-uploader-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.admin-role-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-block;
+  margin-top: 2px;
+
+  &--teacher {
+    color: #2563eb;
+  }
+
+  &--student {
+    color: #7c3aed;
+  }
+
+  &--admin {
+    color: #dc2626;
+  }
+}
+
+.subject-code-tag {
+  font-weight: 700;
+  font-size: 13px;
+  color: #0f172a;
+  margin-right: 6px;
+}
+
+.subject-name {
+  font-size: 13px;
+  color: #475569;
+}
+
+.no-subject-tag {
+  font-weight: 600;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.admin-topic-line {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 3px;
+
+  .dot-sep {
+    margin: 0 5px;
+    color: #cbd5e1;
+  }
+}
+
+.chat-uses-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+
+  i {
+    color: #3b82f6;
+  }
+}
+
+.storage-text {
+  font-weight: 600;
+  font-size: 13px;
+  color: #334155;
+}

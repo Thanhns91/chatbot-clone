@@ -206,8 +206,8 @@ export async function getUserDocuments(userId) {
    DOCUMENTS
 ========================= */
 
-export async function getDocuments() {
-  return requestJson("/documents");
+export async function getDocuments(params = {}) {
+  return requestJson(`/documents${buildQuery(params)}`);
 }
 
 export async function getDocumentDetail(documentId) {
