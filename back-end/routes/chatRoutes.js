@@ -1766,6 +1766,28 @@ function ensureAnswerFormat({
       `\n\n${quoteLabel}\n“${fallbackQuote}”`;
   }
 
+  // ===== FIX CONTRADICTION BETWEEN "Đáp án: Có" AND NEGATIVE CONSTRAINTS LIKE "is not allowed" / "không được" =====
+  const textToCheck = `${normalizedAnswer} ${context || ""} ${fallbackQuote || ""}`;
+
+  const hasNegativeInQuote =
+    /(is not allowed|not allowed|is not permitted|not permitted|forbidden|prohibited|does not allow|cannot|không được|không cho phép|không được phép)/i.test(
+      textToCheck,
+    );
+
+  if (hasNegativeInQuote) {
+    if (/^Đáp án:\s*Có/i.test(normalizedAnswer)) {
+      normalizedAnswer = normalizedAnswer.replace(
+        /^Đáp án:\s*Có/i,
+        "Đáp án: Không",
+      );
+    } else if (/^Answer:\s*Yes/i.test(normalizedAnswer)) {
+      normalizedAnswer = normalizedAnswer.replace(
+        /^Answer:\s*Yes/i,
+        "Answer: No",
+      );
+    }
+  }
+
   return normalizedAnswer;
 }
 
@@ -1837,6 +1859,7 @@ function makeQdrantFilter(
 
 async function getRecentHistory(
   sessionId,
+  currentQuestion = "",
 ) {
   if (!sessionId) return "";
 
@@ -1852,8 +1875,31 @@ async function getRecentHistory(
       [sessionId],
     );
 
-  return historyRows
-    .reverse()
+  const normCurrent = normalizeSearchText(currentQuestion);
+  const reversed = historyRows.reverse();
+  const filteredRows = [];
+
+  for (let i = 0; i < reversed.length; i++) {
+    const item = reversed[i];
+    if (
+      item.sender === "user" &&
+      normCurrent &&
+      normalizeSearchText(item.message) === normCurrent
+    ) {
+      // Skip this previous identical question turn AND its assistant response
+      if (
+        i + 1 < reversed.length &&
+        (reversed[i + 1].sender === "assistant" ||
+          reversed[i + 1].sender === "bot")
+      ) {
+        i++;
+      }
+      continue;
+    }
+    filteredRows.push(item);
+  }
+
+  return filteredRows
     .map(
       (item) =>
         `${String(
@@ -1982,6 +2028,7 @@ router.post(
       const recentHistory =
         await getRecentHistory(
           sessionId,
+          safeMessage,
         );
 
       const safeRecentHistory =
@@ -2695,6 +2742,7 @@ QUY TẮC TRẢ LỜI:
 - Trả lời thẳng vào câu hỏi, không mở đầu dài dòng.
 - Phải trả lời đầy đủ tất cả các vế của QUESTION.
 - Giữ chính xác quan hệ phủ định, điều kiện, số lượng, thứ tự và phạm vi áp dụng.
+- ĐẶC BIỆT VỀ CÂU HỎI CÓ/KHÔNG (Is ...?, Can ...?, Có ... không?): Nếu đoạn trích nguồn chứa cụm từ phủ định như "is not allowed", "not allowed", "not permitted", "forbidden", "prohibited", "cannot", "does not allow", "không được", "không cho phép", thì ĐÁP ÁN BẮT BUỘC PHẢI LÀ "Đáp án: Không" (hoặc "Answer: No"). CẤM KHÔNG ĐƯỢC trả lời "Đáp án: Có" khi trong đoạn trích có từ "not allowed" hoặc "không được".
 - Không được đổi “không” thành “có”, không được bỏ các điều kiện như “trước”, “sau”, “thường xuyên”, “cho đến khi”.
 - Khi câu nguồn dùng các từ “can”, “may”, “should” hoặc “does not”, bản dịch phải giữ đúng mức độ khẳng định.
 - Nếu câu hỏi yêu cầu danh sách, phải lấy đủ các mục trong câu hoặc đoạn nguồn và không thêm mục ngoài tài liệu.

@@ -155,14 +155,9 @@ export default function MessageReportsPage({ user: propUser }) {
       return;
     }
 
-    const ok = window.confirm(
-      `Replace old file "${selectedReport.fileName}" with "${correctedFile.name}"?\nOld chat history will be kept, but future chat will use the corrected version.`,
-    );
-
-    if (!ok) return;
-
     try {
       setReplacingFile(true);
+      toast.info(`Replacing file "${selectedReport.fileName}" with "${correctedFile.name}"...`);
 
       const uploadResult = await replaceReportedDocument(
         selectedReport,
