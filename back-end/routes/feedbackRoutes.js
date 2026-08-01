@@ -544,61 +544,56 @@ router.post("/generate", async (req, res) => {
     const analyticsText = analyticsToPromptText(analytics);
 
     const prompt = `
-Bạn là trợ lý phân tích học tập cho giáo viên, KHÔNG phải chatbot trả lời bài thông thường.
+Bạn là chuyên gia cố vấn sư phạm và phân tích dữ liệu học tập cho giảng viên.
 
-Nhiệm vụ của bạn là tạo feedback thực tiễn để giáo viên biết:
-1. Học sinh đang hoạt động nhiều hay ít.
-2. Học sinh hỏi nhiều về nhóm nghiệp vụ nào.
-3. Học sinh đang hiểu ở mức nào qua cách đặt câu hỏi.
-4. Giáo viên nên can thiệp bằng hành động cụ thể nào.
+Nhiệm vụ của bạn là đánh giá chân thực, cụ thể và có giá trị sư phạm thực tế về quá trình học tập của sinh viên dựa trên lịch sử tương tác giữa sinh viên và Chatbot. KHÔNG đánh giá rập khuôn như robot.
 
-THÔNG TIN:
-Student: ${student.fullName}
-Email: ${student.email}
-Document: ${document.fileName}
+THÔNG TIN SINH VIÊN & BÀI HỌC:
+- Sinh viên: ${student.fullName} (${student.email})
+- Tài liệu học tập: ${document.fileName}
 
 ${analyticsText}
 
-LỊCH SỬ CHAT RÚT GỌN:
+LỊCH SỬ TƯƠNG TÁC CHI TIẾT:
 ${chatHistory}
 
-NGUYÊN TẮC ĐÁNH GIÁ:
-- Không trả lời kiểu chung chung như chatbot.
-- Không chỉ nói "học sinh hiểu tốt/chưa tốt" nếu không có bằng chứng.
-- Phải dựa vào tần suất hoạt động, số câu hỏi, nhóm câu hỏi, và ví dụ câu hỏi cụ thể.
-- Phân biệt học sinh "ít hỏi vì đã hiểu" và "ít hỏi vì chưa tương tác". Nếu dữ liệu chưa đủ thì nói rõ chưa đủ dữ liệu.
-- Ưu tiên feedback có thể dùng ngay trong lớp: giáo viên nên hỏi lại câu nào, giao bài gì, kiểm tra phần nào.
-- Nếu học sinh hỏi nhiều về code/triển khai nhưng ít hỏi nghiệp vụ, phải nêu rủi ro lệch trọng tâm nghiệp vụ.
-- Nếu học sinh hỏi nhiều về định nghĩa nhưng ít hỏi vận dụng, phải khuyến nghị bài tập vận dụng.
+TIÊU CHÍ ĐÁNH GIÁ THỰC TẾ & CHUYÊN MÔN SƯ PHẠM:
+1. MỨC ĐỘ CHỦ ĐỘNG & TƯƠNG TÁC: Đánh giá qua số ngày active, tổng số câu hỏi và tính liên tục trong quá trình đọc tài liệu (học chủ động hay chỉ hỏi đối phó 1 câu trước giờ nộp).
+2. CẤP ĐỘ TƯ DUY CÂU HỎI (Bloom's Taxonomy):
+   - Mức độ Nhận biết: Chỉ hỏi định nghĩa/khái niệm "là gì", "danh sách nào".
+   - Mức độ Phân tích/Hiểu: Hỏi "vì sao", "như thế nào", "khác nhau ra sao".
+   - Mức độ Vận dụng/Phản biện: Đưa ra tình huống thực tế, đoạn mã/bài tập cụ thể hoặc hỏi trường hợp ngoại lệ (Edge cases).
+3. MẠCH TƯ DUY LÝ LUẬN: Đánh giá câu hỏi có chuỗi logic phát triển bài học (tổng quan -> chi tiết -> bài tập) hay chỉ hỏi rời rạc.
+4. ĐỘ TRỌNG TÂM KIẾN THỨC: Xác định sinh viên có tập trung vào cốt lõi tài liệu (${document.fileName}) hay bị lệch sang mảng khác.
 
-RUBRIC SCORE:
-0-30: rất ít hoạt động hoặc dữ liệu không đủ.
-31-50: có hoạt động nhưng chủ yếu hỏi khái niệm rời rạc, ít vận dụng.
-51-70: hoạt động ổn, có hỏi đúng chủ đề nhưng còn thiếu chiều sâu nghiệp vụ.
-71-85: hoạt động tốt, câu hỏi có liên hệ nghiệp vụ/quy trình/ràng buộc.
-86-100: hoạt động cao, câu hỏi có phân tích, phản biện, vận dụng thực tế rõ.
+CHUẨN RUBRIC THANG ĐIỂM 100:
+- 0-30: Rất ít tương tác (1-2 câu), dữ liệu không đủ để đánh giá hoặc chỉ chào hỏi.
+- 31-50: Tương tác mức cơ bản, chỉ hỏi tra cứu khái niệm rời rạc, chưa có tư duy vận dụng.
+- 51-70: Tương tác ổn, hỏi đúng trọng tâm bài học nhưng các câu hỏi còn ở mức bề nổi, thiếu chiều sâu bài tập/tình huống.
+- 71-85: Tương tác tốt, biết đặt câu hỏi phân tích nghiệp vụ/quy trình, có chuỗi hỏi phát triển kiến thức rõ ràng.
+- 86-100: Tương tác xuất sắc, có tư duy phản biện cao, tự đưa ra bài tập/tình huống/đoạn code cụ thể để đối chiếu với Chatbot.
 
 YÊU CẦU FORMAT CHÍNH XÁC:
 
 SUMMARY:
-Viết đúng 1 câu, tối đa 35 từ. Nêu mức độ hoạt động, số câu hỏi/ngày active và nhóm câu hỏi nổi bật.
+Tóm tắt ngắn gọn 1 câu (tối đa 35 từ) nhận xét chuyên môn về thái độ học tập và cấp độ tư duy của sinh viên.
 
 STRENGTHS:
-Tối đa 2 bullet, mỗi bullet tối đa 18 từ, gắn với bằng chứng từ hành vi hoặc nhóm câu hỏi.
+Tối đa 2 dòng bullet (mỗi dòng tối đa 20 từ), trích dẫn minh chứng từ câu hỏi thực tế của sinh viên.
 
 WEAKNESSES:
-Tối đa 2 bullet, mỗi bullet tối đa 18 từ. Tập trung vào tần suất thấp, lệch trọng tâm hoặc thiếu vận dụng.
+Tối đa 2 dòng bullet (mỗi dòng tối đa 20 từ), nêu rõ điểm hổng kiến thức hoặc hạn chế tư duy cần khắc phục.
 
 RECOMMENDATIONS:
-Tối đa 2 bullet, mỗi bullet là một hành động làm được ngay trong lớp.
+Tối đa 2 dòng bullet, đưa ra 2 HÀNH ĐỘNG CỤ THỂ giảng viên có thể dùng ngay trên lớp (ví dụ: gọi sinh viên giải thích câu X, giao bài tập vận dụng Y).
 
 SCORE:
-Chỉ ghi một số từ 0 đến 100.
+Một con số nguyên duy nhất từ 0 đến 100 theo chuẩn Rubric trên.
 `;
 
     const aiResult = await generateAnswer(prompt, {
-      maxTokens: 430,
-      temperature: 0.25,
+      maxTokens: 500,
+      temperature: 0.2,
     });
 
     const fallback = buildFallbackFeedback(analytics);
